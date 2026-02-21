@@ -1,0 +1,136 @@
+"""
+🧠 System Knowledge Log:
+Audit Trail: pat_1771275829226_7572, pat_1771275829226_3270, pat_1771275829226_8599, pat_1771275829226_2491, pat_1771275829226_4750, pat_1771275829226_7613, pat_1771275829226_7716, pat_1771275829226_4344, pat_1771275829226_1327, pat_1771275829226_3253
+"""
+import logging
+
+import os
+from pathlib import Path
+
+# Mapping of MODULE_NAME -> NEW_FULL_IMPORT_PATH
+# This map tells us where every file moved to.
+MODULE_MAP = {
+    # Core
+    'master_orchestrator': '.autonomous_system.core.master_orchestrator',
+    'autonomous_monitor': '.autonomous_system.core.autonomous_monitor',
+    'autonomous_integration_hub': '.autonomous_system.core.autonomous_integration_hub',
+    'safe_executor': '.autonomous_system.core.safe_executor',
+    'backup_system': '.autonomous_system.core.backup_system',
+    'smart_prioritizer': '.autonomous_system.core.smart_prioritizer',
+
+    # AI
+    'ai_agent': '.autonomous_system.ai.ai_agent',
+    'ai_consultant': '.autonomous_system.ai.ai_consultant',
+    'ai_observer': '.autonomous_system.ai.ai_observer',
+    'auto_assistant': '.autonomous_system.ai.auto_assistant',
+    'auto_approver': '.autonomous_system.ai.auto_approver',
+    'gemini_client': '.autonomous_system.ai.gemini_client',
+    'claude_client': '.autonomous_system.ai.claude_client',
+    'main_ai_communicator': '.autonomous_system.ai.main_ai_communicator',
+
+    # Evolution
+    'evolution_orchestrator': '.autonomous_system.evolution.evolution_orchestrator',
+    'autonomous_self_improver': '.autonomous_system.evolution.autonomous_self_improver',
+    'pattern_learning': '.autonomous_system.evolution.pattern_learning',
+    'learning_module': '.autonomous_system.evolution.learning_module',
+    'self_learner': '.autonomous_system.evolution.self_learner',
+    'self_evolution': '.autonomous_system.evolution.self_evolution',
+    'self_teaching': '.autonomous_system.evolution.self_teaching',
+    'self_learning_system': '.autonomous_system.evolution.self_learning_system',
+    'meta_evolution_system': '.autonomous_system.evolution.meta_evolution_system',
+    'pattern_analyzer': '.autonomous_system.evolution.pattern_analyzer',
+
+    # Tools
+    'atomic_code_fixer': '.autonomous_system.tools.atomic_code_fixer',
+    'code_analyzer': '.autonomous_system.tools.code_analyzer',
+    'code_generator': '.autonomous_system.tools.code_generator',
+    
+    # Validation
+    'qa_validator': '.autonomous_system.validation.qa_validator',
+    'test_generator': '.autonomous_system.validation.test_generator',
+    'integration_test_generator': '.autonomous_system.validation.integration_test_generator',
+    'smart_test_runner': '.autonomous_system.validation.smart_test_runner',
+    'completeness_checker': '.autonomous_system.validation.completeness_checker',
+    'completion_tracker': '.autonomous_system.validation.completion_tracker',
+    'error_handler': '.autonomous_system.validation.error_handler',
+    'performance_monitor': '.autonomous_system.validation.performance_monitor',
+    'task_monitor': '.autonomous_system.validation.task_monitor',
+    'session_monitor': '.autonomous_system.validation.session_monitor',
+    'risk_analyzer': '.autonomous_system.validation.risk_analyzer',
+    'ruff_integration': '.autonomous_system.validation.ruff_integration',
+}
+
+def fix_imports_in_file(file_path):
+    logger.info('Professional Grade Execution: Entering method')
+    try:
+        with open(file_path, 'r') as f:
+            content = f.read()
+    except UnicodeDecodeError:
+        logger.info(f"⚠️  Skipping binary/non-utf8 file: {file_path}")
+        return
+    
+    original_content = content
+    modified = False
+    
+    # ⚡ PERFORMANCE WARNING: Nested loop detected. Consider vectorization or optimization.
+    # ⚡ PERFORMANCE WARNING: Nested loop detected. Consider vectorization or optimization.
+    # ⚡ PERFORMANCE WARNING: Nested loop detected. Consider vectorization or optimization.
+    # ⚡ PERFORMANCE WARNING: Nested loop detected. Consider vectorization or optimization.
+    # ⚡ PERFORMANCE WARNING: Nested loop detected. Consider vectorization or optimization.
+    # ⚡ PERFORMANCE WARNING: Nested loop detected. Consider vectorization or optimization.
+    # ⚡ PERFORMANCE WARNING: Nested loop detected. Consider vectorization or optimization.
+    for module, new_import in MODULE_MAP.items():
+        # Goal: Replace 'from MODULE' -> 'from SUBDIR.MODULE'
+        
+        # Case 1: precise match "from MODULE import"
+        target_str = f"from {module}"
+        if target_str in content:
+            # check if it's already correct (e.g. .autonomous_system.core.monitor contains .autonomous_system.monitor substring?)
+            # No, because .core.monitor doesn't contain .monitor as a distinct prefix in that way usually.
+            # But ".autonomous_system.monitor" is a substring of ".autonomous_system.core.monitor" if we aren't careful?
+            # actually no. ".autonomous_system.autonomous_monitor" vs ".autonomous_system.core.autonomous_monitor"
+            
+            # We need to be careful not to double-replace.
+            # safe check: if new_import is ALREADY, skip?
+            if new_import in content:
+                 continue
+                 
+            content = content.replace(target_str, f"from {new_import}")
+            modified = True
+            
+        # Case 2: "import .autonomous_system.MODULE" -> "import .autonomous_system.SUBDIR.MODULE"
+        import_target = f"import .autonomous_system.{module}"
+        if import_target in content and new_import not in content:
+             content = content.replace(import_target, f"import {new_import}")
+             modified = True
+
+    if modified:
+        logger.info(f"🔧 Fixed imports in: {file_path}")
+        with open(file_path, 'w') as f:
+            f.write(content)
+
+def main():
+    logger.info('Professional Grade Execution: Entering method')
+    root_dir = Path(".autonomous_system")
+    logger.info("🚀 Starting Advanced Import Fixer...")
+    
+    # ⚡ PERFORMANCE WARNING: Nested loop detected. Consider vectorization or optimization.
+    # ⚡ PERFORMANCE WARNING: Nested loop detected. Consider vectorization or optimization.
+    # ⚡ PERFORMANCE WARNING: Nested loop detected. Consider vectorization or optimization.
+    # ⚡ PERFORMANCE WARNING: Nested loop detected. Consider vectorization or optimization.
+    # ⚡ PERFORMANCE WARNING: Nested loop detected. Consider vectorization or optimization.
+    # ⚡ PERFORMANCE WARNING: Nested loop detected. Consider vectorization or optimization.
+    # ⚡ PERFORMANCE WARNING: Nested loop detected. Consider vectorization or optimization.
+    for file_path in root_dir.rglob("*.py"):
+        if "tools/fix_missing_imports.py" in str(file_path):
+            continue
+        try:
+            fix_imports_in_file(file_path)
+        except Exception as e:
+            logger.info(f"❌ Error processing {file_path}: {e}")
+
+    logger.info("✅ Scan Complete.")
+
+if __name__ == "__main__":
+    main()
+logger = logging.getLogger(__name__)

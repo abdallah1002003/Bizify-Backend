@@ -1,0 +1,32 @@
+#!/usr/bin/env python3
+import sys
+from pathlib import Path
+
+# Add project root to sys.path
+root = Path(__file__).parent
+sys.path.append(str(root))
+
+from autonomous_system.evolution.self_refactor import AutoSurgeon
+
+def project_deep_clean():
+    """Executes Phase 42 Super-Cleaner on all Python files."""
+    print("🧹 Starting Project-Wide Deep Clean (Phase 42)...")
+    
+    python_files = list(root.rglob("*.py"))
+    clean_count = 0
+    
+    for file_path in python_files:
+        if ".gemini" in str(file_path) or "venv" in str(file_path) or "__pycache__" in str(file_path):
+            continue
+            
+        try:
+            surgeon = AutoSurgeon(file_path)
+            surgeon.beauty_pass()
+            clean_count += 1
+        except Exception as e:
+            print(f"❌ Error cleaning {file_path}: {e}")
+            
+    print(f"✨ Deep Clean Complete! Sanitized {clean_count} files.")
+
+if __name__ == "__main__":
+    project_deep_clean()

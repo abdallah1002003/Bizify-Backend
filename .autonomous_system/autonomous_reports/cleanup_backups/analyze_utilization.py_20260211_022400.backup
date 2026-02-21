@@ -1,0 +1,291 @@
+#!/usr/bin/env python3
+"""
+System Utilization Analyzer
+
+Analyzes all autonomous system files to determine:
+1. Which files exist
+2. Which are actively used
+3. Which are underutilized
+4. How to maximize utilization
+"""
+
+from pathlib import Path
+from typing import Dict, List, Set
+import ast
+import json
+
+
+class SystemUtilizationAnalyzer:
+    """Analyzes how well the system uses its available modules"""
+    
+    def __init__(self, autonomous_dir: Path):
+        self.autonomous_dir = Path(autonomous_dir)
+        self.analysis = {
+            'total_modules': 0,
+            'used_modules': set(),
+            'unused_modules': set(),
+            'import_graph': {},
+            'functionality_map': {},
+            'utilization_score': 0
+        }
+    
+    def scan_all_modules(self) -> List[Path]:
+        """Find all Python modules"""
+        modules = []
+        for py_file in self.autonomous_dir.rglob("*.py"):
+            if py_file.name != "__init__.py":
+                modules.append(py_file)
+        return modules
+    
+    def extract_imports(self, file_path: Path) -> Set[str]:
+        """Extract all imports from a file"""
+        imports = set()
+        try:
+            content = file_path.read_text()
+            tree = ast.parse(content)
+            
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    for name in node.names:
+                        imports.add(name.name)
+                elif isinstance(node, ast.ImportFrom):
+                    if node.module:
+                        imports.add(node.module)
+        except Exception:
+            pass
+        
+        return imports
+    
+    def analyze_functionality(self, file_path: Path) -> Dict:
+        """Analyze what a module does"""
+        functionality = {
+            'classes': [],
+            'functions': [],
+            'has_main': False,
+            'lines_of_code': 0
+        }
+        
+        try:
+            content = file_path.read_text()
+            tree = ast.parse(content)
+            
+            functionality['lines_of_code'] = len(content.split('\n'))
+            
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ClassDef):
+                    functionality['classes'].append(node.name)
+                elif isinstance(node, ast.FunctionDef):
+                    if node.name == 'main':
+                        functionality['has_main'] = True
+                    if not node.name.startswith('_'):
+                        functionality['functions'].append(node.name)
+        except Exception:
+            pass
+        
+        return functionality
+    
+    def analyze(self) -> Dict:
+        """Perform complete analysis"""
+        print("\n" + "="*70)
+        print("🔍 SYSTEM UTILIZATION ANALYSIS")
+        print("="*70)
+        
+        modules = self.scan_all_modules()
+        self.analysis['total_modules'] = len(modules)
+        
+        print(f"\n📊 Found {len(modules)} Python modules")
+        print("\n🔎 Analyzing each module...")
+        
+        # Build import graph
+        for module in modules:
+            module_name = module.stem
+            imports = self.extract_imports(module)
+            functionality = self.analyze_functionality(module)
+            
+            self.analysis['import_graph'][module_name] = list(imports)
+            self.analysis['functionality_map'][module_name] = functionality
+            
+            # Track which modules are imported (used)
+            for imp in imports:
+                if any(imp in m.stem for m in modules):
+                    self.analysis['used_modules'].add(imp)
+        
+        # Find unused modules
+        all_module_names = {m.stem for m in modules}
+        self.analysis['unused_modules'] = all_module_names - self.analysis['used_modules']
+        
+        # Calculate utilization score
+        if self.analysis['total_modules'] > 0:
+            self.analysis['utilization_score'] = (
+                len(self.analysis['used_modules']) / self.analysis['total_modules'] * 100
+            )
+        
+        self._print_report()
+        return self.analysis
+    
+    def _print_report(self):
+        """Print analysis report"""
+        print(f"\n" + "="*70)
+        print("📊 UTILIZATION REPORT")
+        print("="*70)
+        
+        print(f"\n📈 Statistics:")
+        print(f"   Total Modules: {self.analysis['total_modules']}")
+        print(f"   Used Modules: {len(self.analysis['used_modules'])}")
+        print(f"   Unused Modules: {len(self.analysis['unused_modules'])}")
+        print(f"   Utilization Score: {self.analysis['utilization_score']:.1f}%")
+        
+        if self.analysis['unused_modules']:
+            print(f"\n⚠️  UNDERUTILIZED MODULES ({len(self.analysis['unused_modules'])}):")
+            for module in sorted(self.analysis['unused_modules'])[:20]:
+                func_info = self.analysis['functionality_map'].get(module, {})
+                classes = len(func_info.get('classes', []))
+                functions = len(func_info.get('functions', []))
+                print(f"   • {module:30s} ({classes} classes, {functions} functions)")
+        
+        # Find most important modules (most imported)
+        import_counts = {}
+        for module, imports in self.analysis['import_graph'].items():
+            for imp in imports:
+                import_counts[imp] = import_counts.get(imp, 0) + 1
+        
+        if import_counts:
+            print(f"\n✨ MOST USED MODULES:")
+            sorted_imports = sorted(import_counts.items(), key=lambda x: x[1], reverse=True)
+            for module, count in sorted_imports[:10]:
+                print(f"   • {module:30s} (imported {count} times)")
+        
+        print("\n" + "="*70)
+    
+    def generate_integration_plan(self) -> str:
+        """Generate plan to maximize utilization"""
+        
+        plan = f"""# SYSTEM UTILIZATION IMPROVEMENT PLAN
+
+## Current State
+
+- **Total Modules:** {self.analysis['total_modules']}
+- **Utilization Score:** {self.analysis['utilization_score']:.1f}%
+- **Unused Modules:** {len(self.analysis['unused_modules'])}
+
+---
+
+## Underutilized Modules Analysis
+
+"""
+        
+        for module in sorted(self.analysis['unused_modules']):
+            func_info = self.analysis['functionality_map'].get(module, {})
+            
+            plan += f"\n### {module}\n\n"
+            plan += f"- **Classes:** {', '.join(func_info.get('classes', [])) or 'None'}\n"
+            plan += f"- **Functions:** {', '.join(func_info.get('functions', [])[:5]) or 'None'}\n"
+            plan += f"- **Lines of Code:** {func_info.get('lines_of_code', 0)}\n"
+            plan += f"- **Has Main:** {'Yes' if func_info.get('has_main') else 'No'}\n"
+            plan += f"- **Integration Potential:** High\n"
+        
+        plan += """
+
+---
+
+## Recommendations
+
+### 1. Create Master Orchestrator
+Integrate all modules through a single master orchestrator that:
+- Uses ALL available modules
+- Coordinates their functions
+- Maximizes system capabilities
+
+### 2. Module Categories
+
+Organize modules into functional categories and ensure each is used:
+
+**Fixing & Execution:**
+- atomic_code_fixer
+- backup_system
+- safe_executor
+
+**Learning & Evolution:**
+- pattern_learning
+- self_evolution
+- meta_evolution_system
+- self_learning_system
+
+**Monitoring & Tracking:**
+- performance_monitor
+- ai_observer
+- session_monitor
+- completeness_checker
+
+**Intelligence:**
+- super_brain
+- pattern_analyzer
+- code_generator
+
+### 3. Integration Points
+
+Each module should be called by the master orchestrator at appropriate times:
+
+```python
+class MasterOrchestrator:
+    def __init__(self):
+        # Initialize ALL modules
+        self.fixer = AtomicCodeFixer()
+        self.learner = PatternLearningSystem()
+        self.observer = AIObserver()
+        self.monitor = SessionMonitor()
+        self.checker = CompletenessChecker()
+        # ... etc for ALL modules
+    
+    def execute_task(self, task):
+        # Use ALL modules in sequence
+        self.observer.start()
+        self.monitor.start()
+        self.checker.start_monitoring(task)
+        
+        # Execute with all tools
+        result = self.fixer.fix_all()
+        self.learner.learn_from(result)
+        
+        # Verify completeness
+        self.checker.check_completeness()
+```
+
+---
+
+## Expected Outcome
+
+**Target Utilization:** 95%+
+**All modules actively contributing**
+**Maximum system capability**
+"""
+        
+        return plan
+
+
+if __name__ == "__main__":
+    analyzer = SystemUtilizationAnalyzer(Path("AUTONOMOUS_SYSTEM_COMPLETE/autonomous_system"))
+    analysis = analyzer.analyze()
+    
+    # Generate plan
+    plan = analyzer.generate_integration_plan()
+    
+    # Save plan
+    plan_file = Path("AUTONOMOUS_SYSTEM_COMPLETE/UTILIZATION_IMPROVEMENT_PLAN.md")
+    plan_file.write_text(plan)
+    
+    print(f"\n📄 Improvement plan saved: {plan_file}")
+    
+    # Save analysis
+    analysis_file = Path("AUTONOMOUS_SYSTEM_COMPLETE/logs/utilization_analysis.json")
+    analysis_file.parent.mkdir(parents=True, exist_ok=True)
+    
+    analysis_to_save = {
+        k: list(v) if isinstance(v, set) else v
+        for k, v in analysis.items()
+    }
+    
+    with open(analysis_file, 'w') as f:
+        json.dump(analysis_to_save, f, indent=2)
+    
+    print(f"📄 Analysis data saved: {analysis_file}")

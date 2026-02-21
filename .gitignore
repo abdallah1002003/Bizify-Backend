@@ -1,0 +1,13 @@
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.pyc
+.DS_Store
+.coverage
+.env
+sql_app.db
+*.db
+autonomous_reports/file_index.json

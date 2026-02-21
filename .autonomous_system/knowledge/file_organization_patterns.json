@@ -1,0 +1,104 @@
+{
+    "file_organization_patterns": [
+        {
+            "pattern_id": "autonomous_files_to_autonomous_system",
+            "pattern_type": "file_organization",
+            "description": "Move autonomous system related files to autonomous_system directory",
+            "rules": [
+                {
+                    "rule_id": "config_files_to_core",
+                    "pattern": "^\\.autonomous.*\\.json$|^\\.workers.*\\.json$|^\\.directives\\.json$",
+                    "action": "move",
+                    "destination": "autonomous_system/core/",
+                    "reason": "Configuration files belong in core directory",
+                    "examples": [
+                        ".autonomous_mode.json → autonomous_system/core/",
+                        ".workers.json → autonomous_system/core/",
+                        ".workers_state.json → autonomous_system/core/"
+                    ]
+                },
+                {
+                    "rule_id": "lock_files_to_evolution",
+                    "pattern": "^\\..*learner.*\\.lock$",
+                    "action": "move",
+                    "destination": "autonomous_system/evolution/",
+                    "reason": "Learning lock files belong in evolution directory",
+                    "examples": [
+                        ".learner.lock → autonomous_system/evolution/"
+                    ]
+                },
+                {
+                    "rule_id": "reports_to_autonomous_reports",
+                    "pattern": ".*organization.*report.*\\.json$|.*autonomous.*report.*\\.json$",
+                    "action": "move",
+                    "destination": "autonomous_system/autonomous_reports/",
+                    "reason": "Report files belong in autonomous_reports directory",
+                    "examples": [
+                        "project_organization_report.json → autonomous_system/autonomous_reports/"
+                    ]
+                },
+                {
+                    "rule_id": "dashboard_docs_to_autonomous",
+                    "pattern": "^(LIVE_DASHBOARD|MODE_CONTROL_GUIDE)\\.md$",
+                    "action": "move",
+                    "destination": "autonomous_system/",
+                    "reason": "Autonomous system documentation belongs in autonomous_system root",
+                    "examples": [
+                        "LIVE_DASHBOARD.md → autonomous_system/",
+                        "MODE_CONTROL_GUIDE.md → autonomous_system/"
+                    ]
+                },
+                {
+                    "rule_id": "autonomous_scripts_to_scripts",
+                    "pattern": "^(start_autonomous|stop_autonomous)\\.sh$|^trigger_self_construction\\.py$",
+                    "action": "move",
+                    "destination": "autonomous_system/scripts/",
+                    "reason": "Autonomous control scripts belong in scripts directory",
+                    "examples": [
+                        "start_autonomous.sh → autonomous_system/scripts/",
+                        "stop_autonomous.sh → autonomous_system/scripts/",
+                        "trigger_self_construction.py → autonomous_system/scripts/"
+                    ]
+                },
+                {
+                    "rule_id": "autonomous_tools_to_tools",
+                    "pattern": "^(deep_clean|debug_import|map_and_fix_imports)\\.py$",
+                    "action": "move",
+                    "destination": "autonomous_system/tools/",
+                    "reason": "Autonomous utility tools belong in tools directory",
+                    "examples": [
+                        "deep_clean.py → autonomous_system/tools/",
+                        "debug_import.py → autonomous_system/tools/",
+                        "map_and_fix_imports.py → autonomous_system/tools/"
+                    ]
+                }
+            ],
+            "success_count": 15,
+            "confidence_score": 1.0,
+            "first_applied": "2026-02-17T03:51:00",
+            "last_applied": "2026-02-17T03:53:00",
+            "learned_from": "collaborative_organization_session_2026_02_17"
+        }
+    ],
+    "organization_principles": [
+        {
+            "principle": "Separation of Concerns",
+            "description": "Keep autonomous system files separate from main project files"
+        },
+        {
+            "principle": "Logical Grouping",
+            "description": "Group related files together (configs, scripts, tools, reports)"
+        },
+        {
+            "principle": "Clean Root Directory",
+            "description": "Keep project root clean with only essential files"
+        },
+        {
+            "principle": "Predictable Structure",
+            "description": "Files should be in expected locations based on their purpose"
+        }
+    ],
+    "total_patterns": 1,
+    "total_files_organized": 15,
+    "last_updated": "2026-02-17T03:54:00"
+}

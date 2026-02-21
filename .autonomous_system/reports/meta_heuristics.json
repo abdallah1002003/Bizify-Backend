@@ -1,0 +1,609 @@
+{
+  "rule_effectiveness": {
+    "opt_ai_agent.py": {
+      "success_count": 11,
+      "total_gain": 0.2819478511810303
+    },
+    "opt_ai_observer.py": {
+      "success_count": 13,
+      "total_gain": 0.029842853546142578
+    },
+    "opt_antigravity_bridge.py": {
+      "success_count": 11,
+      "total_gain": 0.011710643768310547
+    },
+    "opt_safe_executor.py": {
+      "success_count": 11,
+      "total_gain": 0.1787412166595459
+    },
+    "opt_meta_heuristic.py": {
+      "success_count": 1,
+      "total_gain": 0.00033926963806152344
+    },
+    "opt_pattern_analyzer.py": {
+      "success_count": 11,
+      "total_gain": 0.009929180145263672
+    },
+    "opt_pattern_learning.py": {
+      "success_count": 13,
+      "total_gain": 0.22296786308288574
+    },
+    "opt_self_evolution.py": {
+      "success_count": 11,
+      "total_gain": 0.03255438804626465
+    },
+    "opt_self_refactor.py": {
+      "success_count": 12,
+      "total_gain": 0.19517946243286133
+    },
+    "opt_advanced_pydantic_v2_usage_validation_protocols_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.00015306472778320312
+    },
+    "opt_antigravity_physics_simulation_python_demo.py": {
+      "success_count": 14,
+      "total_gain": 0.01457834243774414
+    },
+    "opt_ast-based_code_transformation_security_hardening_demo.py": {
+      "success_count": 3,
+      "total_gain": 0.0006518363952636719
+    },
+    "opt_automated_qa_for_ai_systems_demo.py": {
+      "success_count": 14,
+      "total_gain": 0.018420696258544922
+    },
+    "opt_backend_system_hardening_techniques_demo.py": {
+      "success_count": 15,
+      "total_gain": 0.013268709182739258
+    },
+    "opt_continuous_verification_protocols_validation_protocols_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.00039577484130859375
+    },
+    "opt_explainable_ai_code_logic_security_hardening_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.0002560615539550781
+    },
+    "opt_explainable_ai_code_logic_validation_protocols_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.003595590591430664
+    },
+    "opt_fuzzing_python_code_security_hardening_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.00037980079650878906
+    },
+    "opt_mocking_distributed_systems_architecture_demo.py": {
+      "success_count": 3,
+      "total_gain": 0.0008721351623535156
+    },
+    "opt_mocking_distributed_systems_validation_protocols_demo.py": {
+      "success_count": 4,
+      "total_gain": 0.0012447834014892578
+    },
+    "opt_neural_code_generation_best_practices_security_hardening_demo.py": {
+      "success_count": 5,
+      "total_gain": 0.003493785858154297
+    },
+    "opt_neural_code_generation_best_practices_validation_protocols_demo.py": {
+      "success_count": 4,
+      "total_gain": 0.0049839019775390625
+    },
+    "opt_performance_regression_benchmarking_demo.py": {
+      "success_count": 13,
+      "total_gain": 0.05865144729614258
+    },
+    "opt_postgresql_query_optimization_best_practices_demo.py": {
+      "success_count": 3,
+      "total_gain": 0.020750999450683594
+    },
+    "opt_professional_prompt_engineering_automated_testing_demo.py": {
+      "success_count": 3,
+      "total_gain": 0.006704807281494141
+    },
+    "opt_pytest_advanced_integration_patterns_demo.py": {
+      "success_count": 9,
+      "total_gain": 0.0029954910278320312
+    },
+    "opt_redis_distributed_locking_architecture_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.0005388259887695312
+    },
+    "opt_redis_distributed_locking_best_practices_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.0033168792724609375
+    },
+    "opt_scalable_microservices_patterns_security_hardening_demo.py": {
+      "success_count": 1,
+      "total_gain": 4.8160552978515625e-05
+    },
+    "opt_self-healing_architectures_architecture_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.011085987091064453
+    },
+    "opt_semantic_memory_optimization_automated_testing_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.0006983280181884766
+    },
+    "opt_system_integrity_verification_automated_testing_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.0003018379211425781
+    },
+    "opt_system_integrity_verification_security_hardening_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.004310131072998047
+    },
+    "opt_system_integrity_verification_validation_protocols_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.00027871131896972656
+    },
+    "opt_test-driven_development_for_ai_architecture_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.0038487911224365234
+    },
+    "opt_test-driven_development_for_ai_automated_testing_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.003918647766113281
+    },
+    "opt_universe_simulation_code_python_demo.py": {
+      "success_count": 7,
+      "total_gain": 0.0016262531280517578
+    },
+    "opt_zero-trust_api_security_architecture_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.0007288455963134766
+    },
+    "opt_zero-trust_api_security_best_practices_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.004486799240112305
+    },
+    "opt_protocol_backend_system_hardening_techniques.py": {
+      "success_count": 1,
+      "total_gain": 0.0013380050659179688
+    },
+    "opt_protocol_implement_a_project-wide_security_headers_audit_tool.py": {
+      "success_count": 1,
+      "total_gain": 0.0003502368927001953
+    },
+    "opt_super_brain.py": {
+      "success_count": 5,
+      "total_gain": 0.04111075401306152
+    },
+    "opt_RUN_EVERYTHING.py": {
+      "success_count": 5,
+      "total_gain": 0.005543947219848633
+    },
+    "opt_RUN_META_EVOLUTION.py": {
+      "success_count": 4,
+      "total_gain": 0.002631664276123047
+    },
+    "opt_active_code_scan.py": {
+      "success_count": 5,
+      "total_gain": 0.01894092559814453
+    },
+    "opt_collaboration_protocol_injection.py": {
+      "success_count": 5,
+      "total_gain": 0.0027544498443603516
+    },
+    "opt_collaboration_protocol_massive.py": {
+      "success_count": 4,
+      "total_gain": 0.01397848129272461
+    },
+    "opt_flatten_autonomous.py": {
+      "success_count": 4,
+      "total_gain": 0.0022292137145996094
+    },
+    "opt_knowledge_injection.py": {
+      "success_count": 5,
+      "total_gain": 0.04463315010070801
+    },
+    "opt_knowledge_injection_massive.py": {
+      "success_count": 5,
+      "total_gain": 0.14316606521606445
+    },
+    "opt_code_generator.py": {
+      "success_count": 5,
+      "total_gain": 0.0030455589294433594
+    },
+    "opt_fix_missing_imports.py": {
+      "success_count": 5,
+      "total_gain": 0.01230764389038086
+    },
+    "opt_organization_system.py": {
+      "success_count": 5,
+      "total_gain": 0.013128519058227539
+    },
+    "opt_recover_syntax.py": {
+      "success_count": 5,
+      "total_gain": 0.0291290283203125
+    },
+    "opt_upgrade_system_to_elite.py": {
+      "success_count": 5,
+      "total_gain": 0.02317070960998535
+    },
+    "opt_completeness_checker.py": {
+      "success_count": 5,
+      "total_gain": 0.017631053924560547
+    },
+    "opt_completion_tracker.py": {
+      "success_count": 5,
+      "total_gain": 0.011551141738891602
+    },
+    "opt_integration_test_generator.py": {
+      "success_count": 5,
+      "total_gain": 0.010618925094604492
+    },
+    "opt_test_generator.py": {
+      "success_count": 5,
+      "total_gain": 0.0028235912322998047
+    },
+    "opt_ai_consultant.py": {
+      "success_count": 11,
+      "total_gain": 0.02082967758178711
+    },
+    "opt_web_researcher.py": {
+      "success_count": 9,
+      "total_gain": 0.27590441703796387
+    },
+    "opt_advanced_pydantic_v2_usage_security_hardening_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.0001811981201171875
+    },
+    "opt_advanced_python_ai_patterns_2025_demo.py": {
+      "success_count": 15,
+      "total_gain": 0.045081138610839844
+    },
+    "opt_autonomous_system_self-correction_algorithms_demo.py": {
+      "success_count": 16,
+      "total_gain": 0.04258918762207031
+    },
+    "opt_explainable_ai_code_logic_best_practices_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.0003039836883544922
+    },
+    "opt_human-in-the-loop_ai_protocols_best_practices_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.000392913818359375
+    },
+    "opt_mutation_testing_in_python_demo.py": {
+      "success_count": 10,
+      "total_gain": 0.038845062255859375
+    },
+    "opt_neural_code_generation_best_practices_architecture_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.0020818710327148438
+    },
+    "opt_postgresql_query_optimization_optimization_strategies_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.0058367252349853516
+    },
+    "opt_postgresql_query_optimization_security_hardening_demo.py": {
+      "success_count": 3,
+      "total_gain": 0.0006940364837646484
+    },
+    "opt_professional_prompt_engineering_best_practices_demo.py": {
+      "success_count": 3,
+      "total_gain": 0.008948802947998047
+    },
+    "opt_property-based_testing_hypothesis_security_hardening_demo.py": {
+      "success_count": 3,
+      "total_gain": 0.0015363693237304688
+    },
+    "opt_scalable_microservices_patterns_architecture_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.00042510032653808594
+    },
+    "opt_self-healing_architectures_best_practices_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.0002810955047607422
+    },
+    "opt_chaos_chamber.py": {
+      "success_count": 3,
+      "total_gain": 0.003769397735595703
+    },
+    "opt_smart_test_runner.py": {
+      "success_count": 4,
+      "total_gain": 0.0018148422241210938
+    },
+    "opt_advanced_pydantic_v2_usage_architecture_demo.py": {
+      "success_count": 1,
+      "total_gain": 1.9073486328125e-05
+    },
+    "opt_advanced_pydantic_v2_usage_best_practices_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.0002655982971191406
+    },
+    "opt_ast-based_code_transformation_optimization_strategies_demo.py": {
+      "success_count": 3,
+      "total_gain": 0.0006902217864990234
+    },
+    "opt_collaborative_ai_coding_standards_architecture_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.0004520416259765625
+    },
+    "opt_continuous_verification_protocols_optimization_strategies_demo.py": {
+      "success_count": 3,
+      "total_gain": 0.0005834102630615234
+    },
+    "opt_continuous_verification_protocols_security_hardening_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.0037097930908203125
+    },
+    "opt_human-in-the-loop_ai_protocols_security_hardening_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.00038695335388183594
+    },
+    "opt_property-based_testing_hypothesis_optimization_strategies_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.00018787384033203125
+    },
+    "opt_redis_distributed_locking_validation_protocols_demo.py": {
+      "success_count": 3,
+      "total_gain": 0.0006198883056640625
+    },
+    "opt_self-healing_architectures_optimization_strategies_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.00018358230590820312
+    },
+    "opt_zero-trust_api_security_validation_protocols_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.000186920166015625
+    },
+    "opt_ast-based_code_transformation_best_practices_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.00042510032653808594
+    },
+    "opt_human-in-the-loop_ai_protocols_optimization_strategies_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.0055429935455322266
+    },
+    "opt_mocking_distributed_systems_automated_testing_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.0003254413604736328
+    },
+    "opt_property-based_testing_hypothesis_automated_testing_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.00496673583984375
+    },
+    "opt_qa_automation_best_practices_security_hardening_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.0015704631805419922
+    },
+    "opt_semantic_memory_optimization_best_practices_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.0016031265258789062
+    },
+    "opt_semantic_memory_optimization_security_hardening_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.0012755393981933594
+    },
+    "opt_property-based_testing_hypothesis_best_practices_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.0004138946533203125
+    },
+    "opt_redis_distributed_locking_optimization_strategies_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.0002999305725097656
+    },
+    "opt_system_integrity_verification_architecture_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.0005235671997070312
+    },
+    "opt_performance.py": {
+      "success_count": 8,
+      "total_gain": 0.010628700256347656
+    },
+    "opt_plugin_manager.py": {
+      "success_count": 8,
+      "total_gain": 0.05496788024902344
+    },
+    "opt_security.py": {
+      "success_count": 7,
+      "total_gain": 0.021325349807739258
+    },
+    "opt_advanced_pydantic_v2_usage_automated_testing_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.00019407272338867188
+    },
+    "opt_advanced_pydantic_v2_usage_optimization_strategies_demo.py": {
+      "success_count": 3,
+      "total_gain": 0.0002582073211669922
+    },
+    "opt_collaborative_ai_coding_standards_automated_testing_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.0009548664093017578
+    },
+    "opt_collaborative_ai_coding_standards_optimization_strategies_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.00041604042053222656
+    },
+    "opt_collaborative_ai_coding_standards_validation_protocols_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.0002467632293701172
+    },
+    "opt_continuous_verification_protocols_architecture_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.0009708404541015625
+    },
+    "opt_continuous_verification_protocols_automated_testing_demo.py": {
+      "success_count": 1,
+      "total_gain": 7.104873657226562e-05
+    },
+    "opt_continuous_verification_protocols_best_practices_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.0001087188720703125
+    },
+    "opt_explainable_ai_code_logic_automated_testing_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.0003960132598876953
+    },
+    "opt_explainable_ai_code_logic_optimization_strategies_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.00020742416381835938
+    },
+    "opt_fuzzing_python_code_best_practices_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.00041747093200683594
+    },
+    "opt_fuzzing_python_code_optimization_strategies_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.00043702125549316406
+    },
+    "opt_fuzzing_python_code_validation_protocols_demo.py": {
+      "success_count": 4,
+      "total_gain": 0.0006580352783203125
+    },
+    "opt_mocking_distributed_systems_optimization_strategies_demo.py": {
+      "success_count": 1,
+      "total_gain": 4.2438507080078125e-05
+    },
+    "opt_mocking_distributed_systems_security_hardening_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.00012421607971191406
+    },
+    "opt_mutation_testing_best_practices_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.00021982192993164062
+    },
+    "opt_mutation_testing_optimization_strategies_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.0020589828491210938
+    },
+    "opt_mutation_testing_security_hardening_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.00033020973205566406
+    },
+    "opt_mutation_testing_validation_protocols_demo.py": {
+      "success_count": 3,
+      "total_gain": 0.00045943260192871094
+    },
+    "opt_logging_config.py": {
+      "success_count": 5,
+      "total_gain": 0.0023040771484375
+    },
+    "opt_worker_orchestrator.py": {
+      "success_count": 7,
+      "total_gain": 0.23064374923706055
+    },
+    "opt_collaborative_ai_coding_standards_best_practices_demo.py": {
+      "success_count": 3,
+      "total_gain": 0.0004887580871582031
+    },
+    "opt_fuzzing_python_code_architecture_demo.py": {
+      "success_count": 1,
+      "total_gain": 2.9802322387695312e-05
+    },
+    "opt_human-in-the-loop_ai_protocols_validation_protocols_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.00011754035949707031
+    },
+    "opt_mode_controller.py": {
+      "success_count": 1,
+      "total_gain": 6.29425048828125e-05
+    },
+    "opt_mocking_distributed_systems_best_practices_demo.py": {
+      "success_count": 1,
+      "total_gain": 4.673004150390625e-05
+    },
+    "opt_postgresql_query_optimization_automated_testing_demo.py": {
+      "success_count": 3,
+      "total_gain": 0.001463174819946289
+    },
+    "opt_auto_fix_engine.py": {
+      "success_count": 2,
+      "total_gain": 0.00391387939453125
+    },
+    "opt_smart_auto_fixer.py": {
+      "success_count": 2,
+      "total_gain": 0.00402379035949707
+    },
+    "opt_mutation_testing_automated_testing_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.0001537799835205078
+    },
+    "opt_neural_code_generation_best_practices_automated_testing_demo.py": {
+      "success_count": 1,
+      "total_gain": 9.751319885253906e-05
+    },
+    "opt_postgresql_query_optimization_architecture_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.0016825199127197266
+    },
+    "opt_postgresql_query_optimization_validation_protocols_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.0003459453582763672
+    },
+    "opt_professional_prompt_engineering_optimization_strategies_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.0010104179382324219
+    },
+    "opt_professional_prompt_engineering_security_hardening_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.00022602081298828125
+    },
+    "opt_property-based_testing_hypothesis_validation_protocols_demo.py": {
+      "success_count": 2,
+      "total_gain": 0.0004038810729980469
+    },
+    "opt_qa_automation_best_practices_architecture_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.0015628337860107422
+    },
+    "opt_redis_distributed_locking_automated_testing_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.00018477439880371094
+    },
+    "opt_self-healing_architectures_validation_protocols_demo.py": {
+      "success_count": 1,
+      "total_gain": 4.1961669921875e-05
+    },
+    "opt_semantic_memory_optimization_architecture_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.00014090538024902344
+    },
+    "opt_system_integrity_verification_best_practices_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.000926971435546875
+    },
+    "opt_dashboard_updater.py": {
+      "success_count": 1,
+      "total_gain": 0.0032808780670166016
+    },
+    "opt_metrics.py": {
+      "success_count": 1,
+      "total_gain": 0.0010068416595458984
+    },
+    "opt_worker_health_monitor.py": {
+      "success_count": 1,
+      "total_gain": 0.006905794143676758
+    },
+    "opt_test_workflows.py": {
+      "success_count": 1,
+      "total_gain": 0.0007109642028808594
+    },
+    "opt_test_pattern_learning.py": {
+      "success_count": 1,
+      "total_gain": 0.00019097328186035156
+    },
+    "opt_explainable_ai_code_logic_architecture_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.000743865966796875
+    },
+    "opt_human-in-the-loop_ai_protocols_automated_testing_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.0009052753448486328
+    },
+    "opt_scalable_microservices_patterns_best_practices_demo.py": {
+      "success_count": 1,
+      "total_gain": 7.605552673339844e-05
+    },
+    "opt_semantic_memory_optimization_optimization_strategies_demo.py": {
+      "success_count": 1,
+      "total_gain": 6.699562072753906e-05
+    },
+    "opt_test-driven_development_for_ai_optimization_strategies_demo.py": {
+      "success_count": 1,
+      "total_gain": 0.0003650188446044922
+    }
+  },
+  "global_fitness_score": 0.0
+}
