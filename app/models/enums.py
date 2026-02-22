@@ -87,3 +87,9 @@ class SubscriptionStatus(str, enum.Enum):
     ACTIVE = "active"
     CANCELED = "canceled"
     EXPIRED = "expired"
+
+class PaymentStatus(str, enum.Enum):
+    PENDING = "pending"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    REFUNDED = "refunded"

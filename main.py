@@ -39,7 +39,7 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "Accept", "Origin"],
 )
 
-# Custom middleware
+# Custom middleware - Order matters (first added = last executed)
 app.add_middleware(RateLimiterMiddleware)
 app.add_middleware(ErrorHandlerMiddleware)
 app.add_middleware(SessionActivityMiddleware)

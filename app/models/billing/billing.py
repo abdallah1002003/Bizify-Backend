@@ -4,7 +4,7 @@ from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Enum, JSON
 from app.db.guid import GUID
 from sqlalchemy.orm import relationship
 from app.db.database import Base
-from app.models.enums import SubscriptionStatus
+from app.models.enums import SubscriptionStatus, PaymentStatus
 
 def utc_now():
     return datetime.now(timezone.utc)
@@ -57,8 +57,8 @@ class Payment(Base):
     subscription_id = Column(GUID, ForeignKey("subscriptions.id", ondelete="SET NULL"), nullable=True)
     payment_method_id = Column(GUID, ForeignKey("payment_methods.id", ondelete="SET NULL"), nullable=True)
     amount = Column(Float, nullable=False)
-    currency = Column(String, nullable=False)
-    status = Column(String, nullable=False)
+    currency = Column(String, nullable=False, default="USD")
+    status = Column(Enum(PaymentStatus), default=PaymentStatus.PENDING, nullable=False)
     created_at = Column(DateTime(timezone=True), default=utc_now)
 
     user = relationship("User", foreign_keys=[user_id], back_populates="payments")

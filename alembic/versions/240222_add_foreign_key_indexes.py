@@ -8,7 +8,7 @@ Create Date: 2026-02-22 00:00:00.000000
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = '240222_add_fk_indexes'
+revision = '240222_add_foreign_key_indexes'
 down_revision = '239000f30fd1_sync_with_guid'
 branch_labels = None
 depends_on = None
@@ -47,11 +47,11 @@ def upgrade() -> None:
     op.create_index('idx_payment_methods_user_id', 'payment_methods', ['user_id'])
     op.create_index('idx_usages_user_id', 'usages', ['user_id'])
     
-    # Chat-related indexes
-    op.create_index('idx_chats_business_id', 'chats', ['business_id'])
-    op.create_index('idx_chats_creator_id', 'chats', ['creator_id'])
-    op.create_index('idx_chat_messages_chat_id', 'chat_messages', ['chat_id'])
-    op.create_index('idx_chat_messages_sender_id', 'chat_messages', ['sender_id'])
+    # Chat-related indexes (note: actual table is chat_sessions, not chats)
+    op.create_index('idx_chat_sessions_user_id', 'chat_sessions', ['user_id'])
+    op.create_index('idx_chat_sessions_business_id', 'chat_sessions', ['business_id'])
+    op.create_index('idx_chat_sessions_idea_id', 'chat_sessions', ['idea_id'])
+    op.create_index('idx_chat_messages_session_id', 'chat_messages', ['session_id'])
     
     # Partner-related indexes
     op.create_index('idx_partner_profiles_user_id', 'partner_profiles', ['user_id'])
@@ -78,10 +78,10 @@ def downgrade() -> None:
     op.drop_index('idx_partner_requests_receiver_id', table_name='partner_requests')
     op.drop_index('idx_partner_requests_sender_id', table_name='partner_requests')
     op.drop_index('idx_partner_profiles_user_id', table_name='partner_profiles')
-    op.drop_index('idx_chat_messages_sender_id', table_name='chat_messages')
-    op.drop_index('idx_chat_messages_chat_id', table_name='chat_messages')
-    op.drop_index('idx_chats_creator_id', table_name='chats')
-    op.drop_index('idx_chats_business_id', table_name='chats')
+    op.drop_index('idx_chat_messages_session_id', table_name='chat_messages')
+    op.drop_index('idx_chat_sessions_idea_id', table_name='chat_sessions')
+    op.drop_index('idx_chat_sessions_business_id', table_name='chat_sessions')
+    op.drop_index('idx_chat_sessions_user_id', table_name='chat_sessions')
     op.drop_index('idx_usages_user_id', table_name='usages')
     op.drop_index('idx_payment_methods_user_id', table_name='payment_methods')
     op.drop_index('idx_payments_subscription_id', table_name='payments')

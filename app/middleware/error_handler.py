@@ -1,16 +1,138 @@
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+from pydantic import ValidationError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 import logging
 import traceback
+from typing import Any, Dict
+
+logger = logging.getLogger(__name__)
+
+
+class ErrorResponse:
+    """Standardized error response structure."""
+    
+    def __init__(
+        self, 
+        status_code: int,
+        error_code: str,
+        message: str,
+        details: Any = None
+    ):
+        self.status_code = status_code
+        self.error_code = error_code
+        self.message = message
+        self.details = details
+    
+    def to_dict(self) -> Dict[str, Any]:
+        response = {
+            "status_code": self.status_code,
+            "error_code": self.error_code,
+            "message": self.message,
+        }
+        if self.details:
+            response["details"] = self.details
+        return response
+
 
 class ErrorHandlerMiddleware(BaseHTTPMiddleware):
+    """
+    Enhanced error handler middleware with error classification and observability.
+    
+    Catches and classifies different exception types:
+    - ValidationError: 422 (VALIDATION_ERROR)
+    - IntegrityError: 409 (CONFLICT)
+    - SQLAlchemyError: 500 (DATABASE_ERROR)
+    - Generic Exception: 500 (INTERNAL_ERROR)
+    """
+    
     async def dispatch(self, request: Request, call_next):
         try:
-            return await call_next(request)
-        except Exception:
-            logging.error(traceback.format_exc())
+            response = await call_next(request)
+            return response
+            
+        except ValidationError as exc:
+            """Handle Pydantic validation errors."""
+            logger.warning(
+                f"Validation error on {request.method} {request.url.path}",
+                extra={"errors": exc.errors()}
+            )
+            error = ErrorResponse(
+                status_code=422,
+                error_code="VALIDATION_ERROR",
+                message="Request validation failed",
+                details=exc.errors()
+            )
+            return JSONResponse(
+                status_code=422,
+                content=error.to_dict()
+            )
+            
+        except IntegrityError as exc:
+            """Handle database integrity constraint violations."""
+            logger.warning(
+                f"Database integrity error on {request.method} {request.url.path}",
+                extra={"detail": str(exc.orig)}
+            )
+            error = ErrorResponse(
+                status_code=409,
+                error_code="CONFLICT",
+                message="Resource conflict (duplicate entry or constraint violation)",
+                details=str(exc.orig) if exc.orig else None
+            )
+            return JSONResponse(
+                status_code=409,
+                content=error.to_dict()
+            )
+            
+        except SQLAlchemyError as exc:
+            """Handle database errors."""
+            logger.error(
+                f"Database error on {request.method} {request.url.path}: {exc}",
+                extra={"trace": traceback.format_exc()}
+            )
+            error = ErrorResponse(
+                status_code=500,
+                error_code="DATABASE_ERROR",
+                message="Database operation failed",
+                details="An error occurred while processing your request"
+            )
             return JSONResponse(
                 status_code=500,
-                content={"detail": "Internal Server Error"}
+                content=error.to_dict()
+            )
+            
+        except ValueError as exc:
+            """Handle value errors (e.g., from business logic)."""
+            logger.warning(
+                f"Value error on {request.method} {request.url.path}: {exc}"
+            )
+            error = ErrorResponse(
+                status_code=400,
+                error_code="INVALID_VALUE",
+                message=str(exc)
+            )
+            return JSONResponse(
+                status_code=400,
+                content=error.to_dict()
+            )
+            
+        except Exception as exc:
+            """Catch-all for unexpected exceptions."""
+            logger.error(
+                f"Unhandled exception on {request.method} {request.url.path}",
+                extra={
+                    "exception_type": type(exc).__name__,
+                    "trace": traceback.format_exc()
+                }
+            )
+            error = ErrorResponse(
+                status_code=500,
+                error_code="INTERNAL_ERROR",
+                message="An unexpected error occurred"
+            )
+            return JSONResponse(
+                status_code=500,
+                content=error.to_dict()
             )

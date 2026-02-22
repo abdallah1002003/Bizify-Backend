@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     )
     CORS_ALLOW_CREDENTIALS: bool = True
     RATE_LIMIT_PER_MINUTE: int = 120
+    REDIS_ENABLED: bool = False
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_PASSWORD: str = ""
     ALLOW_ADMIN_BOOTSTRAP: bool = False
     ADMIN_BOOTSTRAP_TOKEN: str = ""
     AI_PROVIDER: str = "mock"
