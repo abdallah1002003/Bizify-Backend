@@ -1,25 +1,23 @@
-"""Pagination utilities for API endpoints."""
+"""Pagination utilities shared by API endpoints."""
 
+from typing import Annotated
+
+from fastapi import Query
 from pydantic import BaseModel, Field
+
+# Reusable typed query parameters for paginated list endpoints.
+SkipParam = Annotated[int, Query(ge=0, description="Number of records to skip")]
+LimitParam = Annotated[int, Query(ge=1, le=100, description="Number of records to return (max 100)")]
 
 
 class PaginationParams(BaseModel):
-    """Standard pagination query parameters."""
+    """Normalized pagination values used by services."""
+
     skip: int = Field(0, ge=0, description="Number of records to skip")
     limit: int = Field(20, ge=1, le=100, description="Number of records to return (max 100)")
 
 
-def get_pagination_params(skip: int = 0, limit: int = 20) -> tuple[int, int]:
-    """
-    Validate and normalize pagination parameters.
-    
-    Args:
-        skip: Number of records to skip (default 0)
-        limit: Number of records to return (default 20, max 100)
-        
-    Returns:
-        Tuple of (skip, limit) with validated values
-    """
-    skip = max(0, skip)
-    limit = max(1, min(limit, 100))  # Clamp between 1 and 100
+def get_pagination_params(skip: SkipParam = 0, limit: LimitParam = 20) -> tuple[int, int]:
+    """Return validated `(skip, limit)` values for callers using tuple semantics."""
+
     return skip, limit

@@ -1,6 +1,7 @@
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
+from app.core.pagination import LimitParam, SkipParam
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.schemas.ai.agent import AgentCreate, AgentUpdate, AgentResponse
@@ -11,8 +12,8 @@ router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.get("/", response_model=List[AgentResponse])
 def read_agents(
-    skip: int = 0,
-    limit: int = 20,
+    skip: SkipParam = 0,
+    limit: LimitParam = 20,
     db: Session = Depends(get_db)
 ):
     """List all AI agents with pagination.
@@ -24,8 +25,6 @@ def read_agents(
     Returns:
         List of Agent records
     """
-    skip = max(0, skip)
-    limit = max(1, min(limit, 100))
     return service.get_agents(db, skip=skip, limit=limit)
 
 @router.post("/", response_model=AgentResponse)

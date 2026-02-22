@@ -1,6 +1,7 @@
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
+from app.core.pagination import LimitParam, SkipParam
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.schemas.ideation.idea_comparison import IdeaComparisonCreate, IdeaComparisonUpdate, IdeaComparisonResponse
@@ -9,7 +10,7 @@ from app.services.ideation import idea_comparison as service
 router = APIRouter()
 
 @router.get("/", response_model=List[IdeaComparisonResponse])
-def read_idea_comparisons(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def read_idea_comparisons(skip: SkipParam = 0, limit: LimitParam = 100, db: Session = Depends(get_db)):
     return service.get_idea_comparisons(db, skip=skip, limit=limit)
 
 @router.post("/", response_model=IdeaComparisonResponse)

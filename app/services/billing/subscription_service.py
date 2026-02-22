@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.models import Subscription, Usage
 from app.models.enums import SubscriptionStatus
 from app.services.billing import plan_service
+from app.services.billing.crud_utils import get_by_id, list_records
 from app.services.billing.billing_service import _utc_now, _to_update_dict, _apply_updates
 
 logger = logging.getLogger(__name__)
@@ -57,7 +58,9 @@ def _sync_plan_limits(db: Session, subscription: Subscription, auto_commit: bool
 # ----------------------------
 
 def get_subscription(db: Session, id: UUID) -> Optional[Subscription]:
-    return db.query(Subscription).filter(Subscription.id == id).first()
+    """Return a single subscription by id."""
+
+    return get_by_id(db, Subscription, id)
 
 
 def get_subscriptions(
@@ -66,13 +69,20 @@ def get_subscriptions(
     limit: int = 100,
     user_id: Optional[UUID] = None,
 ) -> List[Subscription]:
-    query = db.query(Subscription)
-    if user_id is not None:
-        query = query.filter(Subscription.user_id == user_id)
-    return query.offset(skip).limit(limit).all()
+    """Return paginated subscriptions, optionally filtered by user."""
+
+    return list_records(
+        db,
+        Subscription,
+        skip=skip,
+        limit=limit,
+        filters={"user_id": user_id},
+    )
 
 
 def get_active_subscription(db: Session, user_id: UUID) -> Optional[Subscription]:
+    """Return the currently active subscription for a user, if present."""
+
     return (
         db.query(Subscription)
         .filter(Subscription.user_id == user_id, Subscription.status == SubscriptionStatus.ACTIVE)
@@ -81,6 +91,8 @@ def get_active_subscription(db: Session, user_id: UUID) -> Optional[Subscription
 
 
 def create_subscription(db: Session, obj_in: Any) -> Subscription:
+    """Create a subscription and synchronize usage limits from its plan."""
+
     try:
         data = _to_update_dict(obj_in)
         data.setdefault("status", SubscriptionStatus.PENDING)
@@ -102,6 +114,8 @@ def create_subscription(db: Session, obj_in: Any) -> Subscription:
 
 
 def update_subscription(db: Session, db_obj: Subscription, obj_in: Any) -> Subscription:
+    """Update a subscription then re-sync plan usage limits."""
+
     _apply_updates(db_obj, _to_update_dict(obj_in))
     db.add(db_obj)
     db.commit()
@@ -112,6 +126,8 @@ def update_subscription(db: Session, db_obj: Subscription, obj_in: Any) -> Subsc
 
 
 def delete_subscription(db: Session, id: UUID) -> Optional[Subscription]:
+    """Delete a subscription by id."""
+
     db_obj = get_subscription(db, id=id)
     if not db_obj:
         return None

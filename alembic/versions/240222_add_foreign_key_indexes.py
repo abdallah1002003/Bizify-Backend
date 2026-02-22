@@ -6,7 +6,6 @@ Create Date: 2026-02-22 00:00:00.000000
 
 """
 from alembic import op
-import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '240222_add_fk_indexes'
@@ -62,16 +61,18 @@ def upgrade() -> None:
     # Core-related indexes
     op.create_index('idx_files_owner_id', 'files', ['owner_id'])
     op.create_index('idx_notifications_user_id', 'notifications', ['user_id'])
-    op.create_index('idx_shared_resources_resource_owner_id', 'shared_resources', ['resource_owner_id'])
-    op.create_index('idx_shared_resources_granted_user_id', 'shared_resources', ['granted_user_id'])
+    op.create_index('idx_share_links_created_by', 'share_links', ['created_by'])
+    op.create_index('idx_share_links_business_id', 'share_links', ['business_id'])
+    op.create_index('idx_share_links_idea_id', 'share_links', ['idea_id'])
 
 
 def downgrade() -> None:
     """Drop all created indexes."""
     
     # Drop all indexes in reverse order
-    op.drop_index('idx_shared_resources_granted_user_id', table_name='shared_resources')
-    op.drop_index('idx_shared_resources_resource_owner_id', table_name='shared_resources')
+    op.drop_index('idx_share_links_idea_id', table_name='share_links')
+    op.drop_index('idx_share_links_business_id', table_name='share_links')
+    op.drop_index('idx_share_links_created_by', table_name='share_links')
     op.drop_index('idx_notifications_user_id', table_name='notifications')
     op.drop_index('idx_files_owner_id', table_name='files')
     op.drop_index('idx_partner_requests_receiver_id', table_name='partner_requests')

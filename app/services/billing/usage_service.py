@@ -10,6 +10,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.models import Usage
+from app.services.billing.crud_utils import get_by_id, list_records
 from app.services.billing.billing_service import _to_update_dict, _apply_updates
 
 logger = logging.getLogger(__name__)
@@ -20,6 +21,8 @@ logger = logging.getLogger(__name__)
 # ----------------------------
 
 def check_usage_limit(db: Session, user_id: UUID, resource_type: str) -> bool:
+    """Return whether the user's usage remains below the configured limit."""
+
     usage = (
         db.query(Usage)
         .filter(Usage.user_id == user_id, Usage.resource_type == resource_type)
@@ -31,6 +34,8 @@ def check_usage_limit(db: Session, user_id: UUID, resource_type: str) -> bool:
 
 
 def record_usage(db: Session, user_id: UUID, resource_type: str, quantity: int = 1) -> Usage:
+    """Increment usage for a resource, creating the row when needed."""
+
     usage = (
         db.query(Usage)
         .filter(Usage.user_id == user_id, Usage.resource_type == resource_type)
@@ -51,7 +56,9 @@ def record_usage(db: Session, user_id: UUID, resource_type: str, quantity: int =
 # ----------------------------
 
 def get_usage(db: Session, id: UUID) -> Optional[Usage]:
-    return db.query(Usage).filter(Usage.id == id).first()
+    """Return a single usage row by id."""
+
+    return get_by_id(db, Usage, id)
 
 
 def get_usages(
@@ -60,13 +67,20 @@ def get_usages(
     limit: int = 100,
     user_id: Optional[UUID] = None,
 ) -> List[Usage]:
-    query = db.query(Usage)
-    if user_id is not None:
-        query = query.filter(Usage.user_id == user_id)
-    return query.offset(skip).limit(limit).all()
+    """Return paginated usage rows, optionally filtered by user."""
+
+    return list_records(
+        db,
+        Usage,
+        skip=skip,
+        limit=limit,
+        filters={"user_id": user_id},
+    )
 
 
 def create_usage(db: Session, obj_in: Any) -> Usage:
+    """Create a usage row."""
+
     db_obj = Usage(**_to_update_dict(obj_in))
     db.add(db_obj)
     db.commit()
@@ -75,6 +89,8 @@ def create_usage(db: Session, obj_in: Any) -> Usage:
 
 
 def update_usage(db: Session, db_obj: Usage, obj_in: Any) -> Usage:
+    """Update mutable fields on a usage row."""
+
     _apply_updates(db_obj, _to_update_dict(obj_in))
     db.add(db_obj)
     db.commit()
@@ -83,6 +99,8 @@ def update_usage(db: Session, db_obj: Usage, obj_in: Any) -> Usage:
 
 
 def delete_usage(db: Session, id: UUID) -> Optional[Usage]:
+    """Delete a usage row by id."""
+
     db_obj = get_usage(db, id=id)
     if not db_obj:
         return None

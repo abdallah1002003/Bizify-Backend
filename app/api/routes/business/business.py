@@ -1,6 +1,7 @@
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
+from app.core.pagination import LimitParam, SkipParam
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.schemas.business.business import BusinessCreate, BusinessUpdate, BusinessResponse
@@ -12,8 +13,8 @@ router = APIRouter()
 
 @router.get("/", response_model=List[BusinessResponse])
 def read_businesses(
-    skip: int = 0,
-    limit: int = 20,
+    skip: SkipParam = 0,
+    limit: LimitParam = 20,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(dependencies.get_current_active_user)
 ):
@@ -26,8 +27,6 @@ def read_businesses(
     Returns:
         List of Business records owned by the authenticated user
     """
-    skip = max(0, skip)
-    limit = max(1, min(limit, 100))
     return service.get_businesses(db, skip=skip, limit=limit, owner_id=current_user.id)
 
 @router.post("/", response_model=BusinessResponse)

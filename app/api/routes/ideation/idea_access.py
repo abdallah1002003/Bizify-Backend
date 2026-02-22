@@ -1,6 +1,7 @@
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
+from app.core.pagination import LimitParam, SkipParam
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.schemas.ideation.idea_access import IdeaAccessCreate, IdeaAccessUpdate, IdeaAccessResponse
@@ -19,7 +20,7 @@ def _require_idea_owner(db: Session, idea_id: UUID, current_user_id: UUID) -> No
 
 @router.get("/", response_model=List[IdeaAccessResponse])
 def read_idea_accesses(
-    skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)
+    skip: SkipParam = 0, limit: LimitParam = 100, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)
 ):
     # Returns only idea accesses for ideas owned by the current user
     return service.get_idea_accesses_by_owner(db, owner_id=current_user.id, skip=skip, limit=limit)

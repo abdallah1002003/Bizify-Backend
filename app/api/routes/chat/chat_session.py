@@ -1,6 +1,7 @@
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
+from app.core.pagination import LimitParam, SkipParam
 from sqlalchemy.orm import Session
 import app.models as models
 from app.core.dependencies import get_current_active_user
@@ -18,8 +19,8 @@ def _ensure_chat_session_owner(session: models.ChatSession, current_user: models
 
 @router.get("/", response_model=List[ChatSessionResponse])
 def read_chat_sessions(
-    skip: int = 0,
-    limit: int = 100,
+    skip: SkipParam = 0,
+    limit: LimitParam = 100,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
 ):

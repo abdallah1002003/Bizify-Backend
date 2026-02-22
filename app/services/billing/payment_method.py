@@ -10,6 +10,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.models import PaymentMethod
+from app.services.billing.crud_utils import get_by_id, list_records
 from app.services.billing.billing_service import _to_update_dict, _apply_updates
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,9 @@ logger = logging.getLogger(__name__)
 # ----------------------------
 
 def get_payment_method(db: Session, id: UUID) -> Optional[PaymentMethod]:
-    return db.query(PaymentMethod).filter(PaymentMethod.id == id).first()
+    """Return a single payment method by id."""
+
+    return get_by_id(db, PaymentMethod, id)
 
 
 def get_payment_methods(
@@ -29,13 +32,20 @@ def get_payment_methods(
     limit: int = 100,
     user_id: Optional[UUID] = None,
 ) -> List[PaymentMethod]:
-    query = db.query(PaymentMethod)
-    if user_id is not None:
-        query = query.filter(PaymentMethod.user_id == user_id)
-    return query.offset(skip).limit(limit).all()
+    """Return paginated payment methods, optionally filtered by user."""
+
+    return list_records(
+        db,
+        PaymentMethod,
+        skip=skip,
+        limit=limit,
+        filters={"user_id": user_id},
+    )
 
 
 def create_payment_method(db: Session, obj_in: Any) -> PaymentMethod:
+    """Create a payment method record."""
+
     db_obj = PaymentMethod(**_to_update_dict(obj_in))
     db.add(db_obj)
     db.commit()
@@ -44,6 +54,8 @@ def create_payment_method(db: Session, obj_in: Any) -> PaymentMethod:
 
 
 def update_payment_method(db: Session, db_obj: PaymentMethod, obj_in: Any) -> PaymentMethod:
+    """Update mutable fields on an existing payment method."""
+
     _apply_updates(db_obj, _to_update_dict(obj_in))
     db.add(db_obj)
     db.commit()
@@ -52,6 +64,8 @@ def update_payment_method(db: Session, db_obj: PaymentMethod, obj_in: Any) -> Pa
 
 
 def delete_payment_method(db: Session, id: UUID) -> Optional[PaymentMethod]:
+    """Delete a payment method by id."""
+
     db_obj = get_payment_method(db, id=id)
     if not db_obj:
         return None

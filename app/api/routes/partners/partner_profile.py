@@ -1,6 +1,7 @@
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
+from app.core.pagination import LimitParam, SkipParam
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.schemas.partners.partner_profile import PartnerProfileCreate, PartnerProfileUpdate, PartnerProfileResponse
@@ -9,7 +10,7 @@ from app.services.partners import partner_service as service
 router = APIRouter()
 
 @router.get("/", response_model=List[PartnerProfileResponse])
-def read_partner_profiles(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def read_partner_profiles(skip: SkipParam = 0, limit: LimitParam = 100, db: Session = Depends(get_db)):
     return service.get_partner_profiles(db, skip=skip, limit=limit)
 
 @router.post("/", response_model=PartnerProfileResponse)

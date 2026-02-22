@@ -1,6 +1,7 @@
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
+from app.core.pagination import LimitParam, SkipParam
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.schemas.business.business_invite import BusinessInviteCreate, BusinessInviteUpdate, BusinessInviteResponse
@@ -9,7 +10,7 @@ from app.services.business import business_invite as service
 router = APIRouter()
 
 @router.get("/", response_model=List[BusinessInviteResponse])
-def read_business_invites(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def read_business_invites(skip: SkipParam = 0, limit: LimitParam = 100, db: Session = Depends(get_db)):
     return service.get_business_invites(db, skip=skip, limit=limit)
 
 @router.post("/", response_model=BusinessInviteResponse)

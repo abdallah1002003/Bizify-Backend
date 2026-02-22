@@ -1,6 +1,7 @@
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
+from app.core.pagination import LimitParam, SkipParam
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.schemas.ideation.idea import IdeaCreate, IdeaUpdate, IdeaResponse
@@ -12,8 +13,8 @@ router = APIRouter()
 
 @router.get("/", response_model=List[IdeaResponse])
 def read_ideas(
-    skip: int = 0,
-    limit: int = 20,
+    skip: SkipParam = 0,
+    limit: LimitParam = 20,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user)
 ):
@@ -26,8 +27,6 @@ def read_ideas(
     Returns:
         List of Idea records the user has access to
     """
-    skip = max(0, skip)
-    limit = max(1, min(limit, 100))
     return service.get_ideas(db, skip=skip, limit=limit, user_id=current_user.id)
 
 @router.post("/", response_model=IdeaResponse)

@@ -1,6 +1,7 @@
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
+from app.core.pagination import LimitParam, SkipParam
 from sqlalchemy.orm import Session
 from app.core.dependencies import get_current_active_user
 from app.core.cache import cache
@@ -21,8 +22,8 @@ def _require_admin(current_user: models.User) -> None:
 @router.get("/", response_model=List[PlanResponse])
 @cache(ttl_seconds=300)
 def read_plans(
-    skip: int = 0,
-    limit: int = 20,
+    skip: SkipParam = 0,
+    limit: LimitParam = 20,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
 ):
@@ -36,8 +37,6 @@ def read_plans(
         List of Plan records (cached for 5 minutes)
     """
     _ = current_user
-    skip = max(0, skip)
-    limit = max(1, min(limit, 100))
     return service.get_plans(db, skip=skip, limit=limit)
 
 @router.post("/", response_model=PlanResponse)

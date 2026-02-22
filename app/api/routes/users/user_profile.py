@@ -1,6 +1,7 @@
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
+from app.core.pagination import LimitParam, SkipParam
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.models.enums import UserRole
@@ -24,8 +25,8 @@ def _require_admin_or_owner(current_user: models.User, owner_id: UUID) -> None:
 
 @router.get("/", response_model=List[UserProfileResponse])
 def read_user_profiles(
-    skip: int = 0,
-    limit: int = 100,
+    skip: SkipParam = 0,
+    limit: LimitParam = 100,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
 ):

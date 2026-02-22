@@ -17,6 +17,14 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _is_expired(expires_at: datetime) -> bool:
+    now = _utc_now()
+    # SQLite commonly returns naive datetimes even for timezone-aware columns.
+    if expires_at.tzinfo is None and now.tzinfo is not None:
+        now = now.replace(tzinfo=None)
+    return expires_at < now
+
+
 def _to_update_dict(obj_in: Any) -> Dict[str, Any]:
     if obj_in is None:
         return {}
@@ -151,7 +159,7 @@ def validate_share_link(db: Session, token: str) -> Optional[ShareLink]:
     if link is None:
         return None
 
-    if link.expires_at is not None and link.expires_at < _utc_now():
+    if link.expires_at is not None and _is_expired(link.expires_at):
         return None
 
     return link

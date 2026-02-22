@@ -1,6 +1,7 @@
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
+from app.core.pagination import LimitParam, SkipParam
 from sqlalchemy.orm import Session
 import app.models as models
 from app.core.dependencies import get_current_active_user
@@ -20,8 +21,8 @@ def _ensure_payment_owner(payment: models.Payment, current_user: models.User) ->
 
 @router.get("/", response_model=List[PaymentResponse])
 def read_payments(
-    skip: int = 0,
-    limit: int = 20,
+    skip: SkipParam = 0,
+    limit: LimitParam = 20,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
 ):
@@ -34,8 +35,6 @@ def read_payments(
     Returns:
         List of Payment records for the authenticated user
     """
-    skip = max(0, skip)
-    limit = max(1, min(limit, 100))
     return service.get_payments(db, skip=skip, limit=limit, user_id=current_user.id)
 
 @router.post("/", response_model=PaymentResponse)

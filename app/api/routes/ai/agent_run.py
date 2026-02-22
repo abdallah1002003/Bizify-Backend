@@ -1,6 +1,7 @@
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
+from app.core.pagination import LimitParam, SkipParam
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.schemas.ai.agent_run import AgentRunCreate, AgentRunUpdate, AgentRunResponse
@@ -22,8 +23,8 @@ def _ensure_agent_run_owner(db_obj: models.AgentRun, current_user: models.User) 
 
 @router.get("/", response_model=List[AgentRunResponse])
 def read_agent_runs(
-    skip: int = 0,
-    limit: int = 20,
+    skip: SkipParam = 0,
+    limit: LimitParam = 20,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user)
 ):
@@ -36,8 +37,6 @@ def read_agent_runs(
     Returns:
         List of AgentRun records owned by user's businesses
     """
-    skip = max(0, skip)
-    limit = max(1, min(limit, 100))
     return service.get_agent_runs(db, skip=skip, limit=limit, user_id=current_user.id)
 
 @router.post("/", response_model=AgentRunResponse)

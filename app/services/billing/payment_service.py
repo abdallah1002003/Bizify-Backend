@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Payment, Usage
 from app.models.enums import SubscriptionStatus
+from app.services.billing.crud_utils import get_by_id, list_records
 from app.services.billing import subscription_service
 from app.services.billing.billing_service import _utc_now, _to_update_dict, _apply_updates
 
@@ -23,7 +24,9 @@ logger = logging.getLogger(__name__)
 # ----------------------------
 
 def get_payment(db: Session, id: UUID) -> Optional[Payment]:
-    return db.query(Payment).filter(Payment.id == id).first()
+    """Return a single payment by id."""
+
+    return get_by_id(db, Payment, id)
 
 
 def get_payments(
@@ -32,13 +35,20 @@ def get_payments(
     limit: int = 100,
     user_id: Optional[UUID] = None,
 ) -> List[Payment]:
-    query = db.query(Payment)
-    if user_id is not None:
-        query = query.filter(Payment.user_id == user_id)
-    return query.offset(skip).limit(limit).all()
+    """Return paginated payments, optionally filtered by user."""
+
+    return list_records(
+        db,
+        Payment,
+        skip=skip,
+        limit=limit,
+        filters={"user_id": user_id},
+    )
 
 
 def create_payment(db: Session, obj_in: Any) -> Payment:
+    """Create a new payment record."""
+
     db_obj = Payment(**_to_update_dict(obj_in))
     db.add(db_obj)
     db.commit()
@@ -47,6 +57,8 @@ def create_payment(db: Session, obj_in: Any) -> Payment:
 
 
 def update_payment(db: Session, db_obj: Payment, obj_in: Any) -> Payment:
+    """Update mutable fields on a payment."""
+
     _apply_updates(db_obj, _to_update_dict(obj_in))
     db.add(db_obj)
     db.commit()
@@ -55,6 +67,8 @@ def update_payment(db: Session, db_obj: Payment, obj_in: Any) -> Payment:
 
 
 def delete_payment(db: Session, id: UUID) -> Optional[Payment]:
+    """Delete a payment by id."""
+
     db_obj = get_payment(db, id=id)
     if not db_obj:
         return None
@@ -71,6 +85,8 @@ def process_payment(
     method_id: UUID,
     currency: str = "usd",
 ) -> Payment:
+    """Create a successful payment and activate the related subscription."""
+
     subscription = subscription_service.get_subscription(db, id=subscription_id)
     if subscription is None:
         raise ValueError("Subscription not found")
@@ -95,7 +111,7 @@ def process_payment(
 
 
 def process_subscription_payment(db: Session, subscription_id, amount: float, payment_method_id):
-    """Backward-compatible wrapper."""
+    """Backward-compatible wrapper around `process_payment`."""
     return process_payment(
         db,
         subscription_id=subscription_id,
@@ -105,6 +121,8 @@ def process_subscription_payment(db: Session, subscription_id, amount: float, pa
 
 
 def handle_payment_reversal(db: Session, payment_id: UUID) -> None:
+    """Reverse a payment and cancel the linked subscription if present."""
+
     payment = get_payment(db, id=payment_id)
     if payment is None:
         return

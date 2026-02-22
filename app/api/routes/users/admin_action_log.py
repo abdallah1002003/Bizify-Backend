@@ -1,6 +1,7 @@
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
+from app.core.pagination import LimitParam, SkipParam
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.models.enums import UserRole
@@ -21,7 +22,7 @@ def get_current_admin_user(
 router = APIRouter(dependencies=[Depends(get_current_admin_user)])
 
 @router.get("/", response_model=List[AdminActionLogResponse])
-def read_admin_action_logs(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def read_admin_action_logs(skip: SkipParam = 0, limit: LimitParam = 100, db: Session = Depends(get_db)):
     return service.get_admin_action_logs(db, skip=skip, limit=limit)
 
 @router.post("/", response_model=AdminActionLogResponse)

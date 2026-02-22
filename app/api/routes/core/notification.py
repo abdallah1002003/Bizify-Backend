@@ -1,6 +1,7 @@
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
+from app.core.pagination import LimitParam, SkipParam
 from sqlalchemy.orm import Session
 import app.models as models
 from app.core.dependencies import get_current_active_user
@@ -18,8 +19,8 @@ def _ensure_notification_owner(notification: models.Notification, current_user: 
 
 @router.get("/", response_model=List[NotificationResponse])
 def read_notifications(
-    skip: int = 0,
-    limit: int = 100,
+    skip: SkipParam = 0,
+    limit: LimitParam = 100,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
 ):
