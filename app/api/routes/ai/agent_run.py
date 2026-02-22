@@ -8,7 +8,7 @@ from app.core.dependencies import get_current_active_user
 from app.services.ai import ai_service as service
 import app.models as models
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.get("/", response_model=List[AgentRunResponse])
 def read_agent_runs(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):

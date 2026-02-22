@@ -4,9 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.schemas.ai.agent import AgentCreate, AgentUpdate, AgentResponse
+from app.core.dependencies import get_current_active_user
 from app.services.ai import ai_service as service
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.get("/", response_model=List[AgentResponse])
 def read_agents(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
