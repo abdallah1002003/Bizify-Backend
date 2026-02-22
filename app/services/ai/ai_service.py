@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import logging
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -11,27 +10,9 @@ from app.models import Agent, AgentRun, Business, BusinessRoadmap, Embedding, Ro
 from app.models.enums import AgentRunStatus
 from app.services.ai import provider_runtime
 from app.services.billing import billing_service
+from app.services.billing.billing_service import _utc_now, _to_update_dict, _apply_updates
 
 logger = logging.getLogger(__name__)
-
-
-def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-def _to_update_dict(obj_in: Any) -> Dict[str, Any]:
-    if obj_in is None:
-        return {}
-    if hasattr(obj_in, "model_dump"):
-        return obj_in.model_dump(exclude_unset=True)
-    return dict(obj_in)
-
-
-def _apply_updates(db_obj: Any, update_data: Dict[str, Any]) -> Any:
-    for field, value in update_data.items():
-        if hasattr(db_obj, field):
-            setattr(db_obj, field, value)
-    return db_obj
 
 
 # ----------------------------
@@ -47,6 +28,20 @@ def get_agents(db: Session, skip: int = 0, limit: int = 100) -> List[Agent]:
 
 
 def create_agent(db: Session, name: str, phase: str, config: Optional[dict] = None) -> Agent:
+    """Create a new AI agent template.
+    
+    Args:
+        db: Database session
+        name: Human-readable agent name
+        phase: Execution phase (e.g., 'discovery', 'validation')
+        config: Optional agent configuration dict (reserved for future use)
+        
+    Returns:
+        Created Agent instance
+        
+    Raises:
+        SQLAlchemyError: If database commit fails
+    """
     _ = config
     db_obj = Agent(name=name, phase=phase)
     db.add(db_obj)
@@ -87,6 +82,17 @@ def get_agent_runs(
     limit: int = 100,
     user_id: Optional[UUID] = None,
 ) -> List[AgentRun]:
+    """Retrieve agent runs with optional user filtering.
+    
+    Args:
+        db: Database session
+        skip: Number of records to skip (pagination)
+        limit: Maximum number of records to return
+        user_id: Optional user ID to filter runs by business ownership
+        
+    Returns:
+        List of AgentRun instances, filtered by user if provided
+    """
     query = db.query(AgentRun)
     if user_id is not None:
         query = (
@@ -107,6 +113,26 @@ def initiate_agent_run(
     stage_id: UUID,
     input_data: Optional[Dict[str, Any]] = None,
 ) -> AgentRun:
+    """Create and queue an agent run for execution.
+    
+    Validates user quota and prepares the agent to process a specific business roadmap stage.
+    
+    Args:
+        db: Database session
+        agent_id: UUID of the Agent to execute
+        user_id: UUID of the requesting user (for quota tracking)
+        target_id: Optional target object ID
+        target_type: Optional target object type
+        stage_id: UUID of the RoadmapStage to process
+        input_data: Optional context data for the agent
+        
+    Returns:
+        Created AgentRun with PENDING status
+        
+    Raises:
+        PermissionError: If user has exhausted AI request quota
+        SQLAlchemyError: If database operations fail
+    """
     # Keep quota checks used by existing flow.
     if user_id is not None:
         if not billing_service.check_usage_limit(db, user_id, "AI_REQUEST"):
@@ -147,7 +173,22 @@ def delete_agent_run(db: Session, id: UUID) -> Optional[AgentRun]:
 
 
 def execute_agent_run_sync(db: Session, run_id: UUID) -> Optional[AgentRun]:
-    """Execute one agent run synchronously using configured AI runtime."""
+    """Execute an agent run synchronously using the configured AI provider.
+    
+    Transitions AgentRun through lifecycle (PENDING -> RUNNING -> SUCCESS/FAILED).
+    Supports fallback to mock AI when the configured provider is unavailable.
+    
+    Args:
+        db: Database session
+        run_id: UUID of the AgentRun to execute
+        
+    Returns:
+        Updated AgentRun with output_data, confidence_score, and final status
+        None if AgentRun not found
+        
+    Raises:
+        Exception: Caught and logged; run marked as FAILED with error details
+    """
     db_obj = get_agent_run(db, id=run_id)
     if db_obj is None:
         return None

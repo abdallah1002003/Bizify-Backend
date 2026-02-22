@@ -5,7 +5,21 @@ from app.db.guid import GUID
 from sqlalchemy.orm import relationship
 from app.db.database import Base
 from app.models.enums import AgentRunStatus
-from pgvector.sqlalchemy import Vector
+
+try:
+    from pgvector.sqlalchemy import Vector
+except ImportError:  # pragma: no cover
+    from sqlalchemy.types import TypeDecorator
+
+    class Vector(TypeDecorator):  # type: ignore[misc]
+        """Fallback vector type when pgvector is unavailable."""
+
+        impl = JSON
+        cache_ok = True
+
+        def __init__(self, dimensions: int, *args, **kwargs) -> None:
+            super().__init__(*args, **kwargs)
+            self.dimensions = dimensions
 
 def utc_now():
     return datetime.now(timezone.utc)

@@ -9,6 +9,7 @@ Comprehensive documentation for this project is available in the [`docs/`](docs/
 - [Final Assessment](docs/FINAL_ASSESSMENT.md)
 - [Services Architecture Report](docs/SERVICES_ARCHITECTURE_REPORT.md)
 - [API Routes Index](docs/ROUTES_INDEX.md)
+- [AI Expert Handoff](docs/AI_EXPERT_HANDOFF.md)
 
 ## 🔀 API Versioning Strategy
 

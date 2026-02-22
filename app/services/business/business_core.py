@@ -49,6 +49,17 @@ def get_businesses(
     limit: int = 100,
     owner_id: Optional[UUID] = None,
 ) -> List[Business]:
+    """Retrieve businesses with optional owner filtering.
+    
+    Args:
+        db: Database session
+        skip: Number of records to skip (pagination)
+        limit: Maximum number of records to return
+        owner_id: Optional UUID to filter by business owner
+        
+    Returns:
+        List of Business records, filtered by owner if provided
+    """
     query = db.query(Business)
     if owner_id is not None:
         query = query.filter(Business.owner_id == owner_id)
@@ -56,6 +67,20 @@ def get_businesses(
 
 
 def create_business(db: Session, obj_in: Any) -> Business:
+    """Create a new business with auto-initialization.
+    
+    Automatically creates an associated roadmap and adds the owner as a collaborator.
+    
+    Args:
+        db: Database session
+        obj_in: Business data (must include owner_id)
+        
+    Returns:
+        Created Business instance with initialized roadmap and owner collaboration
+        
+    Raises:
+        SQLAlchemyError: If database operations fail
+    """
     from app.services.business import business_roadmap
     
     db_obj = Business(**_to_update_dict(obj_in))

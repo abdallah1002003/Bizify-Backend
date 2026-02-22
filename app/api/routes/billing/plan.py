@@ -22,11 +22,22 @@ def _require_admin(current_user: models.User) -> None:
 @cache(ttl_seconds=300)
 def read_plans(
     skip: int = 0,
-    limit: int = 100,
+    limit: int = 20,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
 ):
+    """List all billing plans with pagination.
+    
+    Query Parameters:
+        skip: Number of records to skip (default: 0)
+        limit: Number of records to return (default: 20, max: 100)
+        
+    Returns:
+        List of Plan records (cached for 5 minutes)
+    """
     _ = current_user
+    skip = max(0, skip)
+    limit = max(1, min(limit, 100))
     return service.get_plans(db, skip=skip, limit=limit)
 
 @router.post("/", response_model=PlanResponse)

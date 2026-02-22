@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import logging
 from typing import Any, Dict, List, Optional, Union
 from uuid import UUID
@@ -10,27 +9,9 @@ from sqlalchemy.orm import Session
 from app.core.security import get_password_hash
 from app.models import AdminActionLog, User, UserProfile
 from app.models.enums import UserRole
+from app.services.billing.billing_service import _utc_now, _to_update_dict, _apply_updates
 
 logger = logging.getLogger(__name__)
-
-
-def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-def _to_update_dict(obj_in: Any) -> Dict[str, Any]:
-    if obj_in is None:
-        return {}
-    if hasattr(obj_in, "model_dump"):
-        return obj_in.model_dump(exclude_unset=True)
-    return dict(obj_in)
-
-
-def _apply_updates(db_obj: Any, update_data: Dict[str, Any]) -> Any:
-    for field, value in update_data.items():
-        if hasattr(db_obj, field):
-            setattr(db_obj, field, value)
-    return db_obj
 
 
 def _record_admin_action(

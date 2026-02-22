@@ -21,10 +21,21 @@ def _ensure_payment_owner(payment: models.Payment, current_user: models.User) ->
 @router.get("/", response_model=List[PaymentResponse])
 def read_payments(
     skip: int = 0,
-    limit: int = 100,
+    limit: int = 20,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
 ):
+    """List payments for current user with pagination.
+    
+    Query Parameters:
+        skip: Number of records to skip (default: 0)
+        limit: Number of records to return (default: 20, max: 100)
+        
+    Returns:
+        List of Payment records for the authenticated user
+    """
+    skip = max(0, skip)
+    limit = max(1, min(limit, 100))
     return service.get_payments(db, skip=skip, limit=limit, user_id=current_user.id)
 
 @router.post("/", response_model=PaymentResponse)

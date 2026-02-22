@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
 from app.db.database import Base, engine, verify_database_connection
-import app.models  # Register all models for create_all
+from app import models as _models  # noqa: F401 - register models for metadata side effects
 from app.middleware.error_handler import ErrorHandlerMiddleware
 from app.middleware.log_middleware import LogMiddleware
 from app.middleware.rate_limiter import RateLimiterMiddleware

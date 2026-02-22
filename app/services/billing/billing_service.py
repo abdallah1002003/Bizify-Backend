@@ -10,9 +10,6 @@ from sqlalchemy.orm import Session
 from app.models import Payment, PaymentMethod, Subscription, Usage
 from app.models.enums import SubscriptionStatus
 
-from app.services.billing.plan_service import get_plan
-from app.services.billing.subscription_service import get_subscription
-
 logger = logging.getLogger(__name__)
 
 
@@ -40,6 +37,16 @@ def _apply_updates(db_obj: Any, update_data: Dict[str, Any]) -> Any:
 # ----------------------------
 
 def check_usage_limit(db: Session, user_id: UUID, resource_type: str) -> bool:
+    """Check if a user has remaining quota for a resource.
+    
+    Args:
+        db: Database session
+        user_id: UUID of the user
+        resource_type: Type of resource (e.g. 'AI_REQUEST')
+        
+    Returns:
+        True if user has remaining quota or no limit set, False if exceeded
+    """
     usage = (
         db.query(Usage)
         .filter(Usage.user_id == user_id, Usage.resource_type == resource_type)
@@ -51,6 +58,22 @@ def check_usage_limit(db: Session, user_id: UUID, resource_type: str) -> bool:
 
 
 def record_usage(db: Session, user_id: UUID, resource_type: str, quantity: int = 1) -> Usage:
+    """Record resource usage for a user.
+    
+    Increments the usage counter or creates a new Usage record if none exists.
+    
+    Args:
+        db: Database session
+        user_id: UUID of the user
+        resource_type: Type of resource (e.g. 'AI_REQUEST')
+        quantity: Quantity to add (default 1)
+        
+    Returns:
+        Updated Usage record
+        
+    Raises:
+        SQLAlchemyError: If database operations fail
+    """
     usage = (
         db.query(Usage)
         .filter(Usage.user_id == user_id, Usage.resource_type == resource_type)
@@ -83,6 +106,8 @@ def get_active_subscription(db: Session, user_id: UUID) -> Optional[Subscription
 
 
 def _sync_plan_limits(db: Session, subscription: Subscription) -> None:
+    from app.services.billing.plan_service import get_plan
+
     plan = get_plan(db, id=subscription.plan_id)
     if plan is None:
         return
@@ -213,6 +238,8 @@ def process_payment(
     method_id: UUID,
     currency: str = "usd",
 ) -> Payment:
+    from app.services.billing.subscription_service import get_subscription
+
     subscription = get_subscription(db, id=subscription_id)
     if subscription is None:
         raise ValueError("Subscription not found")
@@ -237,6 +264,8 @@ def process_payment(
 
 
 def handle_payment_reversal(db: Session, payment_id: UUID) -> None:
+    from app.services.billing.subscription_service import get_subscription
+
     payment = get_payment(db, id=payment_id)
     if payment is None:
         return

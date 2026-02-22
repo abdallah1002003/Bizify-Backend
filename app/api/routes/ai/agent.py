@@ -10,7 +10,22 @@ from app.services.ai import ai_service as service
 router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.get("/", response_model=List[AgentResponse])
-def read_agents(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def read_agents(
+    skip: int = 0,
+    limit: int = 20,
+    db: Session = Depends(get_db)
+):
+    """List all AI agents with pagination.
+    
+    Query Parameters:
+        skip: Number of records to skip (default: 0)
+        limit: Number of records to return (default: 20, max: 100)
+        
+    Returns:
+        List of Agent records
+    """
+    skip = max(0, skip)
+    limit = max(1, min(limit, 100))
     return service.get_agents(db, skip=skip, limit=limit)
 
 @router.post("/", response_model=AgentResponse)
