@@ -6,6 +6,16 @@ from typing import Any, Callable
 # Simple thread-safe and async-safe TTL memory cache
 _cache: dict[str, dict[str, Any]] = {}
 
+def _serialize(obj: Any) -> Any:
+    """Recursively serialize SQLAlchemy objects to plain dictionaries to avoid DetachedInstanceError."""
+    if hasattr(obj, "__table__"):
+        return {c.name: getattr(obj, c.name) for c.name in obj.__table__.columns.keys()}
+    if isinstance(obj, list):
+        return [_serialize(item) for item in obj]
+    if isinstance(obj, dict):
+        return {k: _serialize(v) for k, v in obj.items()}
+    return obj
+
 def cache(ttl_seconds: int = 60) -> Callable:
     def decorator(func: Callable) -> Callable:
         @wraps(func)
@@ -28,15 +38,13 @@ def cache(ttl_seconds: int = 60) -> Callable:
             
             # Exec
             result = await func(*args, **kwargs)
+            serialized_result = _serialize(result)
             
-            # Handle DB models: we shouldn't cache detached SQLAlchemy objects natively like this if they use lazy loading. 
-            # In FastAPI, we usually let it return, and Pydantic will dump it.
-            # For this simple implementation, we cache the raw result.
             _cache[cache_key] = {
                 "timestamp": now,
-                "value": result
+                "value": serialized_result
             }
-            return result
+            return serialized_result
 
         @wraps(func)
         def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -53,11 +61,13 @@ def cache(ttl_seconds: int = 60) -> Callable:
                     return entry["value"]
             
             result = func(*args, **kwargs)
+            serialized_result = _serialize(result)
+
             _cache[cache_key] = {
                 "timestamp": now,
-                "value": result
+                "value": serialized_result
             }
-            return result
+            return serialized_result
 
         return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
 

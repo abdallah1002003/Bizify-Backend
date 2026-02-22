@@ -91,6 +91,7 @@ def initiate_agent_run(
     target_id: Optional[UUID],
     target_type: Optional[str],
     stage_id: UUID,
+    input_data: Optional[Dict[str, Any]] = None,
 ) -> AgentRun:
     # Keep quota checks used by existing flow.
     if user_id is not None:
@@ -105,6 +106,7 @@ def initiate_agent_run(
         stage_id=stage_id,
         agent_id=agent_id,
         status=AgentRunStatus.PENDING,
+        input_data=input_data,
     )
     db.add(db_obj)
     db.commit()
@@ -131,6 +133,46 @@ def delete_agent_run(db: Session, id: UUID) -> Optional[AgentRun]:
 
 
 def execute_agent_run_sync(db: Session, run_id: UUID) -> Optional[AgentRun]:
+    """
+    WARNING FOR AI EXPERT:
+    This is currently MOCK LOGIC used for testing the flow.
+    You must replace this with actual AI execution logic.
+    
+    Here are two ways to do this correctly:
+    
+    Example 1: Using FastAPI BackgroundTasks (Recommended for simple setups)
+    -------------------------------------------------------------------------
+    from fastapi import BackgroundTasks
+    
+    def trigger_agent(db: Session, run_id: UUID, background_tasks: BackgroundTasks):
+        run = initiate_agent_run(...)
+        background_tasks.add_task(execute_agent_run_actual, db, run.id)
+        return run
+
+    def execute_agent_run_actual(db: Session, run_id: UUID):
+        # 1. Mark as RUNNING
+        # 2. Call your actual AI pipeline (LangChain, OpenAI API, etc)
+        # 3. Save output & mark SUCCESS or FAILED
+    
+    Example 2: Using Async Celery/Redis Queue (Recommended for Production)
+    -------------------------------------------------------------------------
+    @celery_app.task
+    def execute_agent_task(run_id_str: str):
+        with SessionLocal() as db:
+            run = db.query(AgentRun).get(UUID(run_id_str))
+            run.status = AgentRunStatus.RUNNING
+            db.commit()
+            
+            try:
+                # Call true AI logic
+                output = ai_pipeline.run(run.input_data)
+                run.output_data = output
+                run.status = AgentRunStatus.SUCCESS
+            except Exception as e:
+                run.status = AgentRunStatus.FAILED
+                
+            db.commit()
+    """
     db_obj = get_agent_run(db, id=run_id)
     if db_obj is None:
         return None
@@ -248,7 +290,7 @@ def trigger_vectorization(
         return None
 
     business_id = target_id if target_type.upper() == "BUSINESS" else None
-    vector = ",".join(["0.123"] * 16)
+    vector = [0.123] * 1536
     return create_embedding(
         db,
         {

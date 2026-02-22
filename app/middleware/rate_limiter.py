@@ -11,6 +11,31 @@ from config.settings import settings
 
 
 class RateLimiterMiddleware(BaseHTTPMiddleware):
+    """
+    WARNING: This is an in-memory rate limiter, suitable for a single-instance deployment.
+    When scaling this application horizontally (multiple workers/instances), this rate limiter 
+    will not share state across instances, allowing users to exceed the global rate limit.
+
+    For production at scale, replace this with a Redis-based rate limiter.
+    Example implementation snippet using Redis:
+
+    ```python
+    import redis.asyncio as redis
+    from config.settings import settings
+
+    redis_client = redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0)
+
+    async def check_rate_limit(redis_client, client_ip: str, limit: int, window: int):
+        pipe = redis_client.pipeline()
+        now = time.time()
+        pipe.zremrangebyscore(client_ip, 0, now - window)
+        pipe.zadd(client_ip, {str(now): now})
+        pipe.zcard(client_ip)
+        pipe.expire(client_ip, window)
+        _, _, count, _ = await pipe.execute()
+        return count <= limit
+    ```
+    """
     def __init__(self, app, requests_per_minute: Optional[int] = None):
         super().__init__(app)
         self.requests_per_minute = requests_per_minute or settings.RATE_LIMIT_PER_MINUTE

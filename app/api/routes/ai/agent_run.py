@@ -30,13 +30,27 @@ def create_agent_run(
     
     Elite API: Initiates an AI agent run with usage enforcement.
     """
+    from app.models.business.business import RoadmapStage
+    stage = db.query(RoadmapStage).filter(RoadmapStage.id == item_in.stage_id).first()
+    if not stage:
+        raise HTTPException(status_code=404, detail="Stage not found")
+        
+    business = stage.roadmap.business
+    input_context = {
+        "business_id": str(business.id),
+        "idea_id": str(business.idea_id) if business.idea_id else None,
+        "stage_type": stage.stage_type.value if hasattr(stage.stage_type, "value") else stage.stage_type,
+        "business_context": business.context_json
+    }
+
     return service.initiate_agent_run(
         db, 
         agent_id=item_in.agent_id, 
         user_id=current_user.id, 
         target_id=current_user.id, # Default to user context
         target_type="USER",
-        stage_id=item_in.stage_id
+        stage_id=item_in.stage_id,
+        input_data=input_context
     )
 
 @router.get("/{id}", response_model=AgentRunResponse)

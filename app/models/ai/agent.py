@@ -5,6 +5,7 @@ from app.db.guid import GUID
 from sqlalchemy.orm import relationship
 from app.db.database import Base
 from app.models.enums import AgentRunStatus
+from pgvector.sqlalchemy import Vector
 
 def utc_now():
     return datetime.now(timezone.utc)
@@ -58,7 +59,7 @@ class Embedding(Base):
     business_id = Column(GUID, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=True)
     agent_id = Column(GUID, ForeignKey("agents.id", ondelete="SET NULL"), nullable=True)
     content = Column(Text, nullable=False)
-    vector = Column(String, nullable=False) # Simplification for now
+    vector = Column(Vector(1536), nullable=False)
     created_at = Column(DateTime(timezone=True), default=utc_now)
 
     business = relationship("Business", back_populates="embeddings")

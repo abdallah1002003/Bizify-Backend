@@ -16,8 +16,6 @@ class UserCreate(BaseModel):
     name: str = Field(..., min_length=2, max_length=100, pattern=r"^[A-Za-z0-9\s\-_@.]+$")
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=128)
-    is_active: Optional[bool] = None
-    is_verified: Optional[bool] = None
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
