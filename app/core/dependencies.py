@@ -16,11 +16,11 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
         user_id: str = payload.get("sub")
         if user_id is None:
             raise HTTPException(status_code=403, detail="Could not validate credentials")
-    except (JWTError, ValidationError):
+    except (JWTError, ValidationError) as exc:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Could not validate credentials",
-        )
+        ) from exc
     
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:

@@ -135,13 +135,13 @@ class ProjectHealthCheck:
     def check_documentation(self) -> int:
         """Check for documentation files"""
         docs = [
-            "ROUTES_DOCUMENTATION.md",
-            "ROUTES_QUICK_REFERENCE.md", 
-            "ROUTES_DEVELOPER_SPEC.md",
-            "ROUTES_ARCHITECTURE_SECURITY.md",
-            "ROUTES_INDEX.md",
-            "PROJECT_EVALUATION.md",
-            "IMPROVEMENT_ROADMAP.md",
+            "docs/ROUTES_DOCUMENTATION.md",
+            "docs/ROUTES_QUICK_REFERENCE.md",
+            "docs/ROUTES_DEVELOPER_SPEC.md",
+            "docs/ROUTES_ARCHITECTURE_SECURITY.md",
+            "docs/ROUTES_INDEX.md",
+            "docs/FINAL_ASSESSMENT.md",
+            "docs/IMPROVEMENT_ROADMAP.md",
             "README.md"
         ]
         
@@ -493,8 +493,8 @@ class ProjectHealthCheck:
         print(f"Models:         {model_count}")
         print(f"Test Files:     {test_count}")
         print(f"Test Code Size: {test_size:,} bytes")
-        print("\nFor detailed evaluation, see PROJECT_EVALUATION.md")
-        print("For improvement plan, see IMPROVEMENT_ROADMAP.md\n")
+        print("\nFor detailed evaluation, see docs/FINAL_ASSESSMENT.md")
+        print("For improvement plan, see docs/IMPROVEMENT_ROADMAP.md\n")
         
         return percentage >= 70  # Return success if score >= 70%
 

@@ -8,7 +8,7 @@ from config.settings import settings
 load_dotenv()
 SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL
 
-ENGINE_KWARGS = {"pool_pre_ping": True}
+ENGINE_KWARGS: dict[str, object] = {"pool_pre_ping": True}
 if SQLALCHEMY_DATABASE_URL.startswith(("postgresql://", "postgresql+")):
     ENGINE_KWARGS.update(
         {

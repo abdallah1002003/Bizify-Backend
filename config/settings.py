@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     )
     CORS_ALLOW_CREDENTIALS: bool = True
     RATE_LIMIT_PER_MINUTE: int = 120
+    ALLOW_ADMIN_BOOTSTRAP: bool = False
+    ADMIN_BOOTSTRAP_TOKEN: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

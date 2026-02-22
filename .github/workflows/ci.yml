@@ -56,13 +56,21 @@ jobs:
     
     - name: Run Linting (Ruff)
       run: |
-        ruff check . --output-format=github
-      continue-on-error: true
+        ruff check . --config config/pyproject.toml --output-format=github
     
-    - name: Run Type Checking (Mypy)
+    - name: Run Type Checking (Mypy Gate)
       run: |
-        mypy . --explicit-package-bases --no-error-summary || true
-      continue-on-error: true
+        mypy --config-file config/pyproject.toml \
+          --explicit-package-bases \
+          --follow-imports=skip \
+          config/settings.py \
+          app/db/database.py \
+          app/core/security.py \
+          app/core/dependencies.py \
+          app/api/routes/auth.py \
+          app/api/routes/users/user.py \
+          app/api/routes/users/user_profile.py \
+          app/api/routes/users/admin_action_log.py
     
     - name: Run Unit Tests
       run: |

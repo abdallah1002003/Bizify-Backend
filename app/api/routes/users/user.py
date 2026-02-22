@@ -3,12 +3,24 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.database import get_db
+from app.models.enums import UserRole
 from app.schemas.users.user import UserCreate, UserUpdate, UserResponse
 from app.services.users import user_service as service
 from app.core.dependencies import get_current_active_user
 import app.models as models
 
 router = APIRouter()
+
+
+def _require_admin(current_user: models.User) -> None:
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin role required")
+
+
+def _require_admin_or_self(current_user: models.User, target_user_id: UUID) -> None:
+    if current_user.role == UserRole.ADMIN or current_user.id == target_user_id:
+        return
+    raise HTTPException(status_code=403, detail="Access denied")
 
 @router.get("/", response_model=List[UserResponse])
 def read_users(
@@ -17,11 +29,15 @@ def read_users(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
 ):
-    _ = current_user
+    _require_admin(current_user)
     return service.get_users(db, skip=skip, limit=limit)
 
 @router.post("/", response_model=UserResponse)
 def create_user(item_in: UserCreate, db: Session = Depends(get_db)):
+    # Public sign-up path: force safe defaults to prevent privilege escalation.
+    item_in.role = UserRole.ENTREPRENEUR
+    item_in.is_active = True
+    item_in.is_verified = False
     return service.create_user(db, obj_in=item_in)
 
 @router.get("/me", response_model=UserResponse)
@@ -36,7 +52,7 @@ def read_user(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
 ):
-    _ = current_user
+    _require_admin_or_self(current_user, id)
     db_obj = service.get_user(db, id=id)
     if not db_obj:
         raise HTTPException(status_code=404, detail="User not found")
@@ -49,7 +65,7 @@ def update_user(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
 ):
-    _ = current_user
+    _require_admin_or_self(current_user, id)
     db_obj = service.get_user(db, id=id)
     if not db_obj:
         raise HTTPException(status_code=404, detail="User not found")
@@ -61,7 +77,7 @@ def delete_user(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
 ):
-    _ = current_user
+    _require_admin_or_self(current_user, id)
     db_obj = service.get_user(db, id=id)
     if not db_obj:
         raise HTTPException(status_code=404, detail="User not found")

@@ -3,11 +3,22 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.database import get_db
+from app.models.enums import UserRole
 from app.schemas.users.admin_action_log import AdminActionLogCreate, AdminActionLogUpdate, AdminActionLogResponse
 from app.services.users import user_service as service
 from app.core.dependencies import get_current_active_user
+import app.models as models
 
-router = APIRouter(dependencies=[Depends(get_current_active_user)])
+
+def get_current_admin_user(
+    current_user: models.User = Depends(get_current_active_user),
+) -> models.User:
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin role required")
+    return current_user
+
+
+router = APIRouter(dependencies=[Depends(get_current_admin_user)])
 
 @router.get("/", response_model=List[AdminActionLogResponse])
 def read_admin_action_logs(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):

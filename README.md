@@ -37,6 +37,21 @@ Most routes require authentication.
 
 If the header is missing or malformed, protected routes will return `401`.
 
+### Admin Bootstrap (One-Time)
+
+For first-time setup only, you can create the initial admin via:
+
+- `POST /api/v1/auth/bootstrap-admin`
+- Required header: `X-Bootstrap-Token: <ADMIN_BOOTSTRAP_TOKEN>`
+
+Security behavior:
+- Disabled by default (`ALLOW_ADMIN_BOOTSTRAP=false`)
+- Requires exact bootstrap token match
+- Works only if no admin account exists yet
+- Returns JWT access token for the created admin
+
+After creating the first admin, disable bootstrap again.
+
 ## Testing
 
 ```bash
@@ -71,3 +86,6 @@ Current status: all tests pass.
   - set `AUTO_CREATE_TABLES=true` in `.env`.
 - Configure CORS via `CORS_ALLOWED_ORIGINS` (comma-separated origins).
 - Configure request throttling via `RATE_LIMIT_PER_MINUTE`.
+- For one-time admin provisioning:
+  - `ALLOW_ADMIN_BOOTSTRAP` (default `false`)
+  - `ADMIN_BOOTSTRAP_TOKEN` (required when bootstrap is enabled)
