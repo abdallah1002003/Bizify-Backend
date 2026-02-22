@@ -36,7 +36,7 @@ def _apply_updates(db_obj: Any, update_data: Dict[str, Any]) -> Any:
     return db_obj
 
 
-def _sync_plan_limits(db: Session, subscription: Subscription) -> None:
+def _sync_plan_limits(db: Session, subscription: Subscription, auto_commit: bool = True) -> None:
     plan = plan_service.get_plan(db, id=subscription.plan_id)
     if plan is None:
         return
@@ -65,7 +65,10 @@ def _sync_plan_limits(db: Session, subscription: Subscription) -> None:
     else:
         usage.limit_value = limit
 
-    db.commit()
+    if auto_commit:
+        db.commit()
+    else:
+        db.flush()
 
 
 # ----------------------------
@@ -97,17 +100,24 @@ def get_active_subscription(db: Session, user_id: UUID) -> Optional[Subscription
 
 
 def create_subscription(db: Session, obj_in: Any) -> Subscription:
-    data = _to_update_dict(obj_in)
-    data.setdefault("status", SubscriptionStatus.PENDING)
-    data.setdefault("start_date", _utc_now())
+    try:
+        data = _to_update_dict(obj_in)
+        data.setdefault("status", SubscriptionStatus.PENDING)
+        data.setdefault("start_date", _utc_now())
 
-    db_obj = Subscription(**data)
-    db.add(db_obj)
-    db.commit()
-    db.refresh(db_obj)
+        db_obj = Subscription(**data)
+        db.add(db_obj)
+        db.flush()
 
-    _sync_plan_limits(db, db_obj)
-    return db_obj
+        _sync_plan_limits(db, db_obj, auto_commit=False)
+        db.commit()
+        db.refresh(db_obj)
+        logger.info(f"Created subscription {db_obj.id} for user {db_obj.user_id}")
+        return db_obj
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Transaction failed during create_subscription: {e}")
+        raise
 
 
 def update_subscription(db: Session, db_obj: Subscription, obj_in: Any) -> Subscription:

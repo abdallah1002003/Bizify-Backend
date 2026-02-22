@@ -13,10 +13,9 @@ class UserBase(BaseModel):
     is_verified: Optional[bool] = None
 
 class UserCreate(BaseModel):
-    name: str = Field(..., max_length=255)
+    name: str = Field(..., min_length=2, max_length=100, pattern=r"^[A-Za-z0-9\s\-_@.]+$")
     email: EmailStr
-    password: str = Field(..., min_length=8)
-    role: UserRole
+    password: str = Field(..., min_length=8, max_length=128)
     is_active: Optional[bool] = None
     is_verified: Optional[bool] = None
 

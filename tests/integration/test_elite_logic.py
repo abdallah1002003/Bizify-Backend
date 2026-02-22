@@ -22,8 +22,7 @@ def test_elite_idea_lifecycle(db: Session):
     user = user_service.create_user(db, UserCreate(
         name="Elite User",
         email=f"elite_{uuid4().hex[:8]}@example.com",
-        password="strong_password",
-        role=UserRole.ENTREPRENEUR
+        password="strong_password"
     ))
     
     # 2. Create Idea (triggers initial version)

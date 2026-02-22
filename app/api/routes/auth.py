@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr, Field
+import logging
 from sqlalchemy.orm import Session
 
 import app.models as models
@@ -12,6 +13,8 @@ from app.core import dependencies, security
 from app.models.enums import UserRole
 from app.services.users import user_service
 from config.settings import settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -39,14 +42,17 @@ def login_access_token(
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
 
     if not user or not security.verify_password(form_data.password, user.password_hash):
+        logger.warning(f"Failed login attempt for email: {form_data.username}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     if not user.is_active:
+        logger.warning(f"Login attempt on inactive account: {form_data.username}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Inactive user")
 
+    logger.info(f"Successful login for user: {user.id}")
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     return {
         "access_token": security.create_access_token(

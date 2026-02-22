@@ -6,7 +6,6 @@ def _create_and_login_user(client, email: str, password: str) -> dict:
         "name": f"User {email}",
         "email": email,
         "password": password,
-        "role": "entrepreneur",
         "is_active": True,
         "is_verified": True,
     }

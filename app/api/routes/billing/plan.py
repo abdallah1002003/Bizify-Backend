@@ -2,8 +2,9 @@ from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-import app.models as models
 from app.core.dependencies import get_current_active_user
+from app.core.cache import cache
+import app.models as models
 from app.db.database import get_db
 from app.models.enums import UserRole
 from app.schemas.billing.plan import PlanCreate, PlanUpdate, PlanResponse
@@ -18,6 +19,7 @@ def _require_admin(current_user: models.User) -> None:
 
 
 @router.get("/", response_model=List[PlanResponse])
+@cache(ttl_seconds=300)
 def read_plans(
     skip: int = 0,
     limit: int = 100,

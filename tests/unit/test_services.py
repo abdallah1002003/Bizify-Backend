@@ -12,8 +12,7 @@ def test_create_user_hashes_password(db: Session):
     user_in = UserCreate(
         email="service_test@example.com",
         password="plainpassword",
-        name="Service Test",
-        role="entrepreneur"
+        name="Service Test"
     )
     user = user_service.create_user(db, user_in)
     assert user.email == "service_test@example.com"

@@ -11,8 +11,13 @@ import app.models as models
 router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 @router.get("/", response_model=List[AgentRunResponse])
-def read_agent_runs(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return service.get_agent_runs(db, skip=skip, limit=limit)
+def read_agent_runs(
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
+    return service.get_agent_runs(db, skip=skip, limit=limit, user_id=current_user.id)
 
 @router.post("/", response_model=AgentRunResponse)
 def create_agent_run(

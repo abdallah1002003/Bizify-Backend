@@ -10,6 +10,15 @@ Comprehensive documentation for this project is available in the [`docs/`](docs/
 - [Services Architecture Report](docs/SERVICES_ARCHITECTURE_REPORT.md)
 - [API Routes Index](docs/ROUTES_INDEX.md)
 
+## 🔀 API Versioning Strategy
+
+All routes currently reside under the `v1` namespace (e.g., `/api/v1/users`).
+When subsequent breaking database or contract modifications are required:
+1. Do not overwrite `v1` controllers or models directly.
+2. Scaffold a duplicate namespace in `app/api/routes_v2/` (or similar localized architectural paths).
+3. Mount the new router namespace in `main.py` under `{app.include_router(..., prefix="/api/v2")}`.
+4. Existing clients can smoothly migrate across bounded API lifecycle deprecations while maintaining backward compatibility.
+
 ## Quick Start
 
 ```bash

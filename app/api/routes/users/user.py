@@ -35,7 +35,6 @@ def read_users(
 @router.post("/", response_model=UserResponse)
 def create_user(item_in: UserCreate, db: Session = Depends(get_db)):
     # Public sign-up path: force safe defaults to prevent privilege escalation.
-    item_in.role = UserRole.ENTREPRENEUR
     item_in.is_active = True
     item_in.is_verified = False
     return service.create_user(db, obj_in=item_in)

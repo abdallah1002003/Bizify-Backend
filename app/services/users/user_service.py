@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
 from app.core.security import get_password_hash
 from app.models import AdminActionLog, User, UserProfile
+from app.models.enums import UserRole
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,7 @@ def _record_admin_action(
     action_type: str,
     target_id: Optional[UUID],
     target_entity: str = "user",
+    auto_commit: bool = True
 ) -> AdminActionLog:
     if target_id is None:
         raise ValueError("target_id is required for admin log")
@@ -49,8 +51,11 @@ def _record_admin_action(
         target_id=target_id,
     )
     db.add(log)
-    db.commit()
-    db.refresh(log)
+    if auto_commit:
+        db.commit()
+        db.refresh(log)
+    else:
+        db.flush()
     return log
 
 
@@ -70,33 +75,42 @@ def get_users(db: Session, skip: int = 0, limit: int = 100) -> List[User]:
     return db.query(User).offset(skip).limit(limit).all()
 
 
-def create_user(db: Session, obj_in: Any) -> User:
-    user_data = _to_update_dict(obj_in)
+def create_user(db: Session, obj_in: Union[Dict[str, Any], Any]) -> User:
+    try:
+        user_data = _to_update_dict(obj_in)
 
-    if "password" in user_data:
-        user_data["password_hash"] = get_password_hash(user_data.pop("password"))
-    elif "password_hash" in user_data:
-        user_data["password_hash"] = get_password_hash(user_data["password_hash"])
+        if "password" in user_data:
+            user_data["password_hash"] = get_password_hash(user_data.pop("password"))
+        elif "password_hash" in user_data:
+            user_data["password_hash"] = get_password_hash(user_data["password_hash"])
 
-    db_obj = User(**user_data)
-    db.add(db_obj)
-    db.commit()
-    db.refresh(db_obj)
+        user_data.setdefault("role", UserRole.ENTREPRENEUR)
 
-    # Ensure profile exists for new users.
-    if not db.query(UserProfile).filter(UserProfile.user_id == db_obj.id).first():
-        profile = UserProfile(user_id=db_obj.id, bio="", preferences_json={})
-        db.add(profile)
+        db_obj = User(**user_data)
+        db.add(db_obj)
+        db.flush()
+
+        # Ensure profile exists for new users.
+        if not db.query(UserProfile).filter(UserProfile.user_id == db_obj.id).first():
+            profile = UserProfile(user_id=db_obj.id, bio="", preferences_json={})
+            db.add(profile)
+
+        _record_admin_action(
+            db,
+            admin_id=db_obj.id,
+            action_type="USER_CREATED",
+            target_id=db_obj.id,
+            target_entity="user",
+            auto_commit=False,
+        )
         db.commit()
-
-    _record_admin_action(
-        db,
-        admin_id=db_obj.id,
-        action_type="USER_CREATED",
-        target_id=db_obj.id,
-        target_entity="user",
-    )
-    return db_obj
+        db.refresh(db_obj)
+        logger.info(f"Successfully created user: {db_obj.email} (ID: {db_obj.id})")
+        return db_obj
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Transaction failed during create_user: {e}")
+        raise
 
 
 def update_user(db: Session, db_obj: User, obj_in: Any) -> User:

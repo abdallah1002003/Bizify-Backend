@@ -5,7 +5,6 @@ def test_create_user_and_login(client):
         "name": "Test User 2",
         "email": "newtest@example.com",
         "password": "securepassword123",
-        "role": "entrepreneur",
         "is_active": True,
         "is_verified": False
     }
