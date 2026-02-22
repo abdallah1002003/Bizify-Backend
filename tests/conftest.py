@@ -7,8 +7,11 @@ import pytest_asyncio
 # Add project root to sys.path to allow imports from root
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Force testing database URL before any project imports
-os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+# Force testing env before any project imports
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "sqlite:///:memory:")
+os.environ["APP_ENV"] = "test"
+os.environ["DATABASE_URL"] = TEST_DATABASE_URL
+os.environ.setdefault("SECRET_KEY", "test-secret-key-for-local-tests-1234567890")
 
 from typing import AsyncGenerator, Generator  # noqa: E402
 
@@ -16,43 +19,59 @@ from fastapi.testclient import TestClient  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
 from sqlalchemy import create_engine  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
+from sqlalchemy.pool import StaticPool  # noqa: E402
 
 from app.core.security import get_password_hash  # noqa: E402
 from app.db.database import Base, get_db  # noqa: E402
 from main import app  # noqa: E402
 import app.models as models # noqa: E402
 
-# Use SQLite in-memory database for testing
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
+IS_SQLITE_TEST = TEST_DATABASE_URL.startswith("sqlite://")
+ENGINE_KWARGS = {}
+if IS_SQLITE_TEST:
+    ENGINE_KWARGS = {
+        "connect_args": {"check_same_thread": False},
+        "poolclass": StaticPool,
+    }
+test_engine = None
+TestingSessionLocal = None
+if not IS_SQLITE_TEST:
+    test_engine = create_engine(TEST_DATABASE_URL, **ENGINE_KWARGS)
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
 
-# Remove global engine instantiation to prevent memory leak across tests
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 
-@pytest.fixture(scope="session")
-def db_engine():
-    # Deprecated: Engine is now generated per function
-    pass
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_test_engine():
+    yield
+    if test_engine is not None:
+        test_engine.dispose()
 
 @pytest.fixture(scope="function")
 def db():
-    # Generate a fresh memory engine for every test
-    from sqlalchemy.pool import StaticPool
-    engine = create_engine(
-        SQLALCHEMY_DATABASE_URL,
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    
-    Base.metadata.create_all(bind=engine)
-    connection = engine.connect()
+    # Keep every test isolated regardless of backend (SQLite or PostgreSQL).
+    if IS_SQLITE_TEST:
+        sqlite_engine = create_engine(TEST_DATABASE_URL, **ENGINE_KWARGS)
+        sqlite_session_local = sessionmaker(autocommit=False, autoflush=False, bind=sqlite_engine)
+        Base.metadata.create_all(bind=sqlite_engine)
+        connection = sqlite_engine.connect()
+        session = sqlite_session_local(bind=connection)
+
+        yield session
+
+        session.close()
+        connection.close()
+        sqlite_engine.dispose()
+        return
+
+    Base.metadata.drop_all(bind=test_engine)
+    Base.metadata.create_all(bind=test_engine)
+    connection = test_engine.connect()
     session = TestingSessionLocal(bind=connection)
-    
+
     yield session
-    
+
     session.close()
     connection.close()
-    engine.dispose()
 
 @pytest.fixture(scope="function")
 def client(db) -> Generator[TestClient, None, None]:

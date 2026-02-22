@@ -4,13 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.schemas.ideation.idea_access import IdeaAccessCreate, IdeaAccessUpdate, IdeaAccessResponse
-from app.services.ideation import idea_service as service
+from app.services.ideation import idea_access as service
 
 router = APIRouter()
 
 @router.get("/", response_model=List[IdeaAccessResponse])
 def read_idea_accesss(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return service.get_idea_accesss(db, skip=skip, limit=limit)
+    return service.get_idea_accesses(db, skip=skip, limit=limit)
 
 @router.post("/", response_model=IdeaAccessResponse)
 def create_idea_access(item_in: IdeaAccessCreate, db: Session = Depends(get_db)):

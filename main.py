@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
-from app.db.database import Base, engine
+from app.db.database import Base, engine, verify_database_connection
 import app.models  # Register all models for create_all
 from app.middleware.error_handler import ErrorHandlerMiddleware
 from app.middleware.log_middleware import LogMiddleware
@@ -16,12 +16,14 @@ from app.api.api import api_router
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    if settings.VERIFY_DB_ON_STARTUP:
+        verify_database_connection()
     if settings.AUTO_CREATE_TABLES:
         Base.metadata.create_all(bind=engine)
     yield
 
 app = FastAPI(
-    title="Idea Spark API",
+    title="Bizify",
     description="API for User Profiling and Idea Management",
     version="1.0.0",
     lifespan=lifespan,
@@ -48,7 +50,7 @@ app.include_router(api_router, prefix="/api/v1")
 def read_root():
     """Root endpoint returning API information."""
     return {
-        "message": "Welcome to Idea Spark API",
+        "message": "Welcome to Bizify",
         "version": "1.0.0",
         "docs": "/docs"
     }

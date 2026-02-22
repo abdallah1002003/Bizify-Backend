@@ -1,9 +1,0 @@
-
-
-from app.services.guide.content import get_step_content
-
-def test_get_step_content():
-    """Test get_step_content function"""
-    result = get_step_content(step=1)
-    # TODO: Add proper assertions
-    assert result is not None

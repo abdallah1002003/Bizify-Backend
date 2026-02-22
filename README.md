@@ -2,6 +2,14 @@
 
 FastAPI backend for idea management, business workflows, AI agents, billing, chat, partners, and core collaboration utilities.
 
+## 📖 Documentation
+
+Comprehensive documentation for this project is available in the [`docs/`](docs/) directory:
+- [Quick Summary](docs/QUICK_SUMMARY.md)
+- [Final Assessment](docs/FINAL_ASSESSMENT.md)
+- [Services Architecture Report](docs/SERVICES_ARCHITECTURE_REPORT.md)
+- [API Routes Index](docs/ROUTES_INDEX.md)
+
 ## Quick Start
 
 ```bash
@@ -19,13 +27,21 @@ API base URL: `http://127.0.0.1:8001/api/v1`
 
 1. Create user: `POST /api/v1/users/`
 2. Login: `POST /api/v1/auth/login`
-3. Use token: `Authorization: Bearer <token>`
+3. Use token in request header:
+
+```http
+Authorization: Bearer <token>
+```
 
 Most routes require authentication.
+
+If the header is missing or malformed, protected routes will return `401`.
 
 ## Testing
 
 ```bash
+# Optional (recommended): run tests against PostgreSQL
+export TEST_DATABASE_URL="postgresql+psycopg2://postgres:postgres@localhost:5432/p7_test"
 pytest -q
 ```
 
@@ -40,10 +56,16 @@ Current status: all tests pass.
 - `alembic/`: migrations
 - `tests/`: API, integration, security, and unit tests
 
-## Notes
+## Setup Notes & Environment Variables
 
 - Default local database is PostgreSQL (`postgresql+psycopg2://localhost:5432/postgres`).
+- **`SECRET_KEY`**: You **MUST** set a strong, random `SECRET_KEY` in your `.env` for production to secure JWT tokens.
 - Set environment variables in `.env` to override defaults (database URL, JWT secret, etc).
+- `DATABASE_URL` must be a PostgreSQL SQLAlchemy URL in normal runs.
+- SQLite is supported only in automated tests (`APP_ENV=test`).
+- App startup now validates DB connectivity (`SELECT 1`) and fails fast if DB is unreachable.
+  - Ensure your DB server is running before `uvicorn main:app ...`.
+  - You can disable this only for local debugging via `VERIFY_DB_ON_STARTUP=false`.
 - `AUTO_CREATE_TABLES=false` by default. For local bootstrap either:
   - run migrations (`alembic upgrade head`), or
   - set `AUTO_CREATE_TABLES=true` in `.env`.

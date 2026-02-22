@@ -10,4 +10,3 @@ __pycache__/
 .env
 sql_app.db
 *.db
-autonomous_reports/file_index.json

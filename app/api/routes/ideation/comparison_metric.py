@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.schemas.ideation.comparison_metric import ComparisonMetricCreate, ComparisonMetricUpdate, ComparisonMetricResponse
-from app.services.ideation import idea_service as service
+from app.services.ideation import idea_comparison_metric as service
 
 router = APIRouter()
 

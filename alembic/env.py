@@ -9,9 +9,9 @@ from alembic import context
 # Add project root to sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import app.models  # noqa: F401 - Ensure models are registered
-from config.settings import settings
-from app.db.database import Base
+import app.models  # noqa: F401,E402 - Ensure models are registered
+from config.settings import settings  # noqa: E402
+from app.db.database import Base  # noqa: E402
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

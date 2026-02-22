@@ -1,11 +1,11 @@
 import pytest
 from sqlalchemy.orm import Session
 from app.models import User, BusinessRoadmap, RoadmapStage, IdeaVersion, Usage
-from app.services.ideation import idea_service
-from app.services.business import business_service
+from app.services.ideation import idea_core as idea_service
+from app.services.business import business_core as business_service
+from app.services.business import business_roadmap
 from app.services.billing import billing_service
 from app.services.ai import ai_service
-from app.services.core import evolution_service
 from app.schemas.ideation.idea import IdeaCreate, IdeaUpdate
 from app.schemas.business.business import BusinessCreate
 from app.models.enums import IdeaStatus, RoadmapStageStatus, BusinessStage
@@ -54,10 +54,10 @@ def test_business_roadmap_automation(db: Session, test_user: User):
     assert str(stages[0].stage_type.value).upper() == "READINESS"
     
     # 3. Prerequisite Violation Check
-    stage2 = business_service.add_roadmap_stage(db, roadmap.id, "MARKET", 1)
+    stage2 = business_roadmap.add_roadmap_stage(db, roadmap.id, "MARKET", 1)
     
     with pytest.raises(ValueError, match="Prerequisite stage not completed"):
-        business_service.transition_stage(db, stage2.id, RoadmapStageStatus.ACTIVE)
+        business_roadmap.transition_stage(db, stage2.id, RoadmapStageStatus.ACTIVE)
 
 def test_billing_cross_module_enforcement(db: Session, test_user: User):
     """Verifies usage limits blocking AI operations."""
@@ -83,13 +83,6 @@ def test_billing_cross_module_enforcement(db: Session, test_user: User):
     
     with pytest.raises(PermissionError, match="Insufficient AI quota"):
         ai_service.initiate_agent_run(db, agent.id, test_user.id, test_user.id, "USER", stage_id=stage.id)
-
-def test_evolution_functional_bridge():
-    """Verifies the subprocess bridge in EvolutionService."""
-    evo = evolution_service.get_service()
-    pid = evo.request_module_optimization("app/services/ideation/idea_service.py")
-    assert pid is not None
-    assert pid > 0
 
 if __name__ == "__main__":
     pytest.main([__file__])

@@ -1,14 +1,13 @@
 
 #!/usr/bin/env python3
 """
-Project Health Check Script für Idea Spark API
+Project Health Check Script für Bizify
 """
 
-import os
 import sys
 import re
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 
 # Color codes
 GREEN = '\033[92m'
@@ -61,22 +60,47 @@ class ProjectHealthCheck:
         return exists
         
     def check_secret_key(self) -> bool:
-        """Check if SECRET_KEY is properly configured"""
-        config_file = self.project_root / "config" / "settings.py"
-        if not config_file.exists():
-            return False
-            
-        content = config_file.read_text()
-        
-        # Check for default value
-        if 'SECRET_KEY: str = "change-me-in-env"' in content:
-            print(f"{RED}✗{END} {'SECRET_KEY using default value':40} SECURITY RISK")
+        """Check if SECRET_KEY is properly configured in .env."""
+        env_file = self.project_root / ".env"
+        if not env_file.exists():
+            print(f"{RED}✗{END} {'.env file':40} NOT FOUND")
             self.checks_failed += 1
             return False
-        else:
-            print(f"{GREEN}✓{END} {'SECRET_KEY configured properly':40}")
-            self.checks_passed += 1
-            return True
+
+        content = env_file.read_text()
+        app_env_match = re.search(r"^APP_ENV\s*=\s*(.+)$", content, flags=re.MULTILINE)
+        app_env = app_env_match.group(1).strip().strip('"').strip("'").lower() if app_env_match else "development"
+
+        match = re.search(r"^SECRET_KEY\s*=\s*(.+)$", content, flags=re.MULTILINE)
+        if not match:
+            print(f"{RED}✗{END} {'SECRET_KEY in .env':40} NOT SET")
+            self.checks_failed += 1
+            return False
+
+        secret_key = match.group(1).strip().strip('"').strip("'")
+        weak_values = {
+            "change-me-in-env",
+            "replace-with-a-long-random-secret",
+            "changeme",
+            "secret",
+            "default",
+        }
+        if not secret_key:
+            print(f"{RED}✗{END} {'SECRET_KEY in .env':40} EMPTY")
+            self.checks_failed += 1
+            return False
+        if app_env != "test" and secret_key.lower() in weak_values:
+            print(f"{RED}✗{END} {'SECRET_KEY in .env':40} DEFAULT/WEAK VALUE")
+            self.checks_failed += 1
+            return False
+        if app_env != "test" and len(secret_key) < 32:
+            print(f"{RED}✗{END} {'SECRET_KEY in .env':40} TOO SHORT (<32)")
+            self.checks_failed += 1
+            return False
+
+        print(f"{GREEN}✓{END} {'SECRET_KEY configured properly':40}")
+        self.checks_passed += 1
+        return True
             
     def check_requirements(self) -> Tuple[bool, List[str]]:
         """Check if all required packages are in requirements.txt"""
@@ -201,6 +225,115 @@ class ProjectHealthCheck:
             self.checks_failed += 1
             
         return True
+
+    def check_env_database_url(self) -> str:
+        """Check DATABASE_URL is present and valid in .env."""
+        env_file = self.project_root / ".env"
+        if not env_file.exists():
+            print(f"{RED}✗{END} {'.env file':40} NOT FOUND")
+            self.checks_failed += 1
+            return ""
+
+        content = env_file.read_text()
+        match = re.search(r"^DATABASE_URL\s*=\s*(.+)$", content, flags=re.MULTILINE)
+        if not match:
+            print(f"{RED}✗{END} {'DATABASE_URL in .env':40} NOT SET")
+            self.checks_failed += 1
+            return ""
+
+        database_url = match.group(1).strip().strip('"').strip("'")
+        if not database_url:
+            print(f"{RED}✗{END} {'DATABASE_URL in .env':40} EMPTY")
+            self.checks_failed += 1
+            return ""
+
+        app_env_match = re.search(r"^APP_ENV\s*=\s*(.+)$", content, flags=re.MULTILINE)
+        app_env = app_env_match.group(1).strip().strip('"').strip("'").lower() if app_env_match else "development"
+
+        allowed_prefixes = ("postgresql://", "postgresql+")
+        if app_env == "test":
+            allowed_prefixes = ("postgresql://", "postgresql+", "sqlite://")
+
+        if not database_url.startswith(allowed_prefixes):
+            print(f"{RED}✗{END} {'DATABASE_URL format':40} EXPECTED POSTGRESQL")
+            self.checks_failed += 1
+            return ""
+
+        print(f"{GREEN}✓{END} {'DATABASE_URL in .env':40}")
+        self.checks_passed += 1
+        return database_url
+
+    def should_verify_db_on_startup(self) -> bool:
+        """Read VERIFY_DB_ON_STARTUP from .env (defaults to true)."""
+        env_file = self.project_root / ".env"
+        if not env_file.exists():
+            return True
+
+        content = env_file.read_text()
+        match = re.search(r"^VERIFY_DB_ON_STARTUP\s*=\s*(.+)$", content, flags=re.MULTILINE)
+        if not match:
+            return True
+
+        value = match.group(1).strip().strip('"').strip("'").lower()
+        return value not in {"0", "false", "no", "off"}
+
+    def check_database_connection_live(self, database_url: str) -> bool:
+        """Check if database is reachable."""
+        if not database_url:
+            print(f"{RED}✗{END} {'Database connectivity':40} SKIPPED (NO URL)")
+            self.checks_failed += 1
+            return False
+
+        try:
+            from sqlalchemy import create_engine, text
+            from sqlalchemy.exc import SQLAlchemyError
+        except Exception:
+            print(f"{YELLOW}⚠{END} {'Database connectivity':40} SQLALCHEMY NOT AVAILABLE")
+            self.checks_failed += 1
+            return False
+
+        try:
+            engine = create_engine(database_url)
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            print(f"{GREEN}✓{END} {'Database connectivity':40}")
+            self.checks_passed += 1
+            return True
+        except SQLAlchemyError as exc:
+            print(f"{RED}✗{END} {'Database connectivity':40} {str(exc).splitlines()[0]}")
+            self.checks_failed += 1
+            return False
+
+    def check_legacy_service_imports(self) -> bool:
+        """Check whether legacy service modules are still referenced."""
+        patterns = (
+            "from app.services.ideation import idea_service",
+            "from app.services.business import business_service",
+        )
+        matches = []
+        scan_roots = (
+            self.project_root / "app",
+            self.project_root / "tests",
+        )
+        for root in scan_roots:
+            if not root.exists():
+                continue
+            for py_file in root.rglob("*.py"):
+                try:
+                    content = py_file.read_text()
+                except Exception:
+                    continue
+                if any(pattern in content for pattern in patterns):
+                    matches.append(py_file)
+
+        if matches:
+            print(f"{YELLOW}⚠{END} {'Legacy service imports':40} {len(matches)} file(s)")
+            self.checks_failed += 1
+            return False
+
+        print(f"{GREEN}✓{END} {'Legacy service imports':40} NONE FOUND")
+        self.checks_passed += 1
+        return True
         
     def check_auth_security(self) -> bool:
         """Check authentication security"""
@@ -280,9 +413,19 @@ class ProjectHealthCheck:
         
         # 8. Database
         self.print_section("8. DATABASE CONFIGURATION")
+        database_url = self.check_env_database_url()
         self.check_database_config()
-        
-        # 9. Summary
+        if self.should_verify_db_on_startup():
+            self.check_database_connection_live(database_url)
+        else:
+            print(f"{YELLOW}⚠{END} {'Database connectivity':40} SKIPPED (VERIFY_DB_ON_STARTUP=false)")
+            self.checks_passed += 1
+
+        # 9. Legacy Refactor
+        self.print_section("9. LEGACY SERVICE STATUS")
+        self.check_legacy_service_imports()
+
+        # 10. Summary
         self.print_header("HEALTH CHECK SUMMARY")
         
         total_checks = self.checks_passed + self.checks_failed
@@ -312,8 +455,8 @@ class ProjectHealthCheck:
         
         recommendations = [
             ("CRITICAL", [
-                "Update SECRET_KEY from default value",
-                "Add database connection pooling configuration",
+                "Use a strong non-default SECRET_KEY in .env",
+                "Keep PostgreSQL reachable when VERIFY_DB_ON_STARTUP=true",
                 "Implement comprehensive test coverage tracking",
             ]),
             ("HIGH PRIORITY", [
@@ -350,8 +493,8 @@ class ProjectHealthCheck:
         print(f"Models:         {model_count}")
         print(f"Test Files:     {test_count}")
         print(f"Test Code Size: {test_size:,} bytes")
-        print(f"\nFor detailed evaluation, see PROJECT_EVALUATION.md")
-        print(f"For improvement plan, see IMPROVEMENT_ROADMAP.md\n")
+        print("\nFor detailed evaluation, see PROJECT_EVALUATION.md")
+        print("For improvement plan, see IMPROVEMENT_ROADMAP.md\n")
         
         return percentage >= 70  # Return success if score >= 70%
 

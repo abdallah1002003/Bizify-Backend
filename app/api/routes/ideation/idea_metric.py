@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.schemas.ideation.idea_metric import IdeaMetricCreate, IdeaMetricUpdate, IdeaMetricResponse
-from app.services.ideation import idea_service as service
+from app.services.ideation import idea_metric as service
 
 router = APIRouter()
 

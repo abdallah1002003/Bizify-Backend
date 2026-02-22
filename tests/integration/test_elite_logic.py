@@ -3,8 +3,9 @@ from sqlalchemy.orm import Session
 from app.models.ideation.idea import IdeaVersion
 from app.models.business.business import BusinessRoadmap
 from app.services.users import user_service
-from app.services.ideation import idea_service
-from app.services.business import business_service
+from app.services.ideation import idea_core as idea_service
+from app.services.business import business_core as business_service
+from app.services.business import business_roadmap
 from app.services.billing import billing_service
 from app.schemas.users.user import UserCreate
 from app.schemas.ideation.idea import IdeaCreate, IdeaUpdate
@@ -84,11 +85,11 @@ def test_elite_business_roadmap(db: Session):
     assert roadmap is not None
     
     # 2. Add Stages
-    stage = business_service.add_roadmap_stage(db, roadmap.id, StageType.RESEARCH, 0)
+    stage = business_roadmap.add_roadmap_stage(db, roadmap.id, StageType.RESEARCH, 0)
     assert stage.status == RoadmapStageStatus.PLANNED
     
     # 3. Transition Stage
-    updated_stage = business_service.update_stage_status(db, stage.id, RoadmapStageStatus.ACTIVE)
+    updated_stage = business_roadmap.update_stage_status(db, stage.id, RoadmapStageStatus.ACTIVE)
     assert updated_stage.status == RoadmapStageStatus.ACTIVE
 
 def test_elite_billing_usage(db: Session):

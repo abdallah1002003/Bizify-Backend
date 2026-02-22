@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.schemas.business.business_invite import BusinessInviteCreate, BusinessInviteUpdate, BusinessInviteResponse
-from app.services.business import business_service as service
+from app.services.business import business_invite as service
 
 router = APIRouter()
 

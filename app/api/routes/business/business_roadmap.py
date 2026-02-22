@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.schemas.business.business_roadmap import BusinessRoadmapCreate, BusinessRoadmapUpdate, BusinessRoadmapResponse
-from app.services.business import business_service as service
+from app.services.business import business_roadmap as service
 
 router = APIRouter()
 

@@ -20,7 +20,7 @@ def create_validation_log(item_in: ValidationLogCreate, db: Session = Depends(ge
         db, 
         agent_run_id=item_in.agent_run_id, 
         result="SUCCESS", # Default simulation
-        details="Autonomous validation recorded via Master Service."
+        details="Validation recorded via AI service."
     )
 
 @router.get("/{id}", response_model=ValidationLogResponse)
