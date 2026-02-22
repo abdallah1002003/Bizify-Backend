@@ -6,7 +6,7 @@ import app.models as models
 from app.core.dependencies import get_current_active_user
 from app.db.database import get_db
 from app.schemas.billing.payment_method import PaymentMethodCreate, PaymentMethodUpdate, PaymentMethodResponse
-from app.services.billing import billing_service as service
+from app.services.billing import payment_method as service
 
 router = APIRouter()
 

@@ -8,7 +8,7 @@ import app.models as models
 from app.db.database import get_db
 from app.models.enums import UserRole
 from app.schemas.billing.plan import PlanCreate, PlanUpdate, PlanResponse
-from app.services.billing import billing_service as service
+from app.services.billing import plan_service as service
 
 router = APIRouter()
 

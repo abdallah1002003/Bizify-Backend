@@ -9,7 +9,10 @@ _cache: dict[str, dict[str, Any]] = {}
 def _serialize(obj: Any) -> Any:
     """Recursively serialize SQLAlchemy objects to plain dictionaries to avoid DetachedInstanceError."""
     if hasattr(obj, "__table__"):
-        return {c.name: getattr(obj, c.name) for c.name in obj.__table__.columns.keys()}
+        return {
+            column_name: getattr(obj, column_name)
+            for column_name in obj.__table__.columns.keys()
+        }
     if isinstance(obj, list):
         return [_serialize(item) for item in obj]
     if isinstance(obj, dict):

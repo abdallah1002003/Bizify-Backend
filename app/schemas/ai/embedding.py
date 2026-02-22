@@ -4,22 +4,22 @@ from typing import Optional
 from uuid import UUID
 
 class EmbeddingBase(BaseModel):
-    business_id: UUID
-    agent_id: UUID
+    business_id: Optional[UUID] = None
+    agent_id: Optional[UUID] = None
     content: str
-    vector: str
+    vector: list[float]
 
 class EmbeddingCreate(BaseModel):
-    business_id: UUID
-    agent_id: UUID
+    business_id: Optional[UUID] = None
+    agent_id: Optional[UUID] = None
     content: str
-    vector: str = Field(..., max_length=255)
+    vector: list[float] = Field(..., min_length=1)
 
 class EmbeddingUpdate(BaseModel):
     business_id: Optional[UUID] = None
     agent_id: Optional[UUID] = None
     content: Optional[str] = None
-    vector: Optional[str] = None
+    vector: Optional[list[float]] = None
     created_at: Optional[datetime] = None
 
 class EmbeddingResponse(EmbeddingBase):

@@ -6,7 +6,9 @@ import app.models as models
 from app.core.dependencies import get_current_active_user
 from app.db.database import get_db
 from app.schemas.billing.payment import PaymentCreate, PaymentUpdate, PaymentResponse
-from app.services.billing import billing_service as service
+from app.services.billing import payment_method as payment_method_service
+from app.services.billing import payment_service as service
+from app.services.billing import subscription_service
 
 router = APIRouter()
 
@@ -31,13 +33,13 @@ def create_payment(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
 ):
-    subscription = service.get_subscription(db, id=item_in.subscription_id)
+    subscription = subscription_service.get_subscription(db, id=item_in.subscription_id)
     if subscription is None:
         raise HTTPException(status_code=404, detail="Subscription not found")
     if subscription.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    payment_method = service.get_payment_method(db, id=item_in.payment_method_id)
+    payment_method = payment_method_service.get_payment_method(db, id=item_in.payment_method_id)
     if payment_method is None:
         raise HTTPException(status_code=404, detail="Payment method not found")
     if payment_method.user_id != current_user.id:
@@ -75,14 +77,17 @@ def update_payment(
     data.pop("user_id", None)
 
     if "subscription_id" in data and data["subscription_id"] is not None:
-        subscription = service.get_subscription(db, id=data["subscription_id"])
+        subscription = subscription_service.get_subscription(db, id=data["subscription_id"])
         if subscription is None:
             raise HTTPException(status_code=404, detail="Subscription not found")
         if subscription.user_id != current_user.id:
             raise HTTPException(status_code=403, detail="Access denied")
 
     if "payment_method_id" in data and data["payment_method_id"] is not None:
-        payment_method = service.get_payment_method(db, id=data["payment_method_id"])
+        payment_method = payment_method_service.get_payment_method(
+            db,
+            id=data["payment_method_id"],
+        )
         if payment_method is None:
             raise HTTPException(status_code=404, detail="Payment method not found")
         if payment_method.user_id != current_user.id:

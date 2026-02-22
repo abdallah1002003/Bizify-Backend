@@ -7,8 +7,9 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.models import Agent, AgentRun, Embedding, ValidationLog
+from app.models import Agent, AgentRun, Business, BusinessRoadmap, Embedding, RoadmapStage, ValidationLog
 from app.models.enums import AgentRunStatus
+from app.services.ai import provider_runtime
 from app.services.billing import billing_service
 
 logger = logging.getLogger(__name__)
@@ -80,8 +81,21 @@ def get_agent_run(db: Session, id: UUID) -> Optional[AgentRun]:
     return db.query(AgentRun).filter(AgentRun.id == id).first()
 
 
-def get_agent_runs(db: Session, skip: int = 0, limit: int = 100) -> List[AgentRun]:
-    return db.query(AgentRun).offset(skip).limit(limit).all()
+def get_agent_runs(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    user_id: Optional[UUID] = None,
+) -> List[AgentRun]:
+    query = db.query(AgentRun)
+    if user_id is not None:
+        query = (
+            query.join(RoadmapStage, AgentRun.stage_id == RoadmapStage.id)
+            .join(BusinessRoadmap, RoadmapStage.roadmap_id == BusinessRoadmap.id)
+            .join(Business, BusinessRoadmap.business_id == Business.id)
+            .filter(Business.owner_id == user_id)
+        )
+    return query.offset(skip).limit(limit).all()
 
 
 def initiate_agent_run(
@@ -133,65 +147,67 @@ def delete_agent_run(db: Session, id: UUID) -> Optional[AgentRun]:
 
 
 def execute_agent_run_sync(db: Session, run_id: UUID) -> Optional[AgentRun]:
-    """
-    WARNING FOR AI EXPERT:
-    This is currently MOCK LOGIC used for testing the flow.
-    You must replace this with actual AI execution logic.
-    
-    Here are two ways to do this correctly:
-    
-    Example 1: Using FastAPI BackgroundTasks (Recommended for simple setups)
-    -------------------------------------------------------------------------
-    from fastapi import BackgroundTasks
-    
-    def trigger_agent(db: Session, run_id: UUID, background_tasks: BackgroundTasks):
-        run = initiate_agent_run(...)
-        background_tasks.add_task(execute_agent_run_actual, db, run.id)
-        return run
-
-    def execute_agent_run_actual(db: Session, run_id: UUID):
-        # 1. Mark as RUNNING
-        # 2. Call your actual AI pipeline (LangChain, OpenAI API, etc)
-        # 3. Save output & mark SUCCESS or FAILED
-    
-    Example 2: Using Async Celery/Redis Queue (Recommended for Production)
-    -------------------------------------------------------------------------
-    @celery_app.task
-    def execute_agent_task(run_id_str: str):
-        with SessionLocal() as db:
-            run = db.query(AgentRun).get(UUID(run_id_str))
-            run.status = AgentRunStatus.RUNNING
-            db.commit()
-            
-            try:
-                # Call true AI logic
-                output = ai_pipeline.run(run.input_data)
-                run.output_data = output
-                run.status = AgentRunStatus.SUCCESS
-            except Exception as e:
-                run.status = AgentRunStatus.FAILED
-                
-            db.commit()
-    """
+    """Execute one agent run synchronously using configured AI runtime."""
     db_obj = get_agent_run(db, id=run_id)
     if db_obj is None:
         return None
 
-    db_obj.status = AgentRunStatus.RUNNING
+    _apply_updates(db_obj, {"status": AgentRunStatus.RUNNING})
     db.commit()
 
-    db_obj.output_data = {"summary": "Execution completed", "score": 0.92}
-    db_obj.confidence_score = 0.92
-    db_obj.status = AgentRunStatus.SUCCESS
-    db.commit()
-    db.refresh(db_obj)
+    stage = db_obj.stage
+    stage_type = None
+    if stage is not None and getattr(stage, "stage_type", None) is not None:
+        stage_type = (
+            stage.stage_type.value
+            if hasattr(stage.stage_type, "value")
+            else str(stage.stage_type)
+        )
 
-    record_validation_log(
-        db,
-        agent_run_id=db_obj.id,
-        result="SUCCESS",
-        details="Execution completed",
-    )
+    try:
+        output_data = provider_runtime.run_agent_execution(
+            db_obj.input_data,
+            agent_name=db_obj.agent.name if db_obj.agent else "agent",
+            stage_type=stage_type,
+        )
+        score = float(output_data.get("score", 0.92))
+
+        _apply_updates(
+            db_obj,
+            {
+                "output_data": output_data,
+                "confidence_score": score,
+                "status": AgentRunStatus.SUCCESS,
+            },
+        )
+        db.commit()
+        db.refresh(db_obj)
+
+        record_validation_log(
+            db,
+            agent_run_id=db_obj.id,
+            result="SUCCESS",
+            details=str(output_data.get("summary", "Execution completed")),
+        )
+    except Exception as exc:
+        logger.exception("Agent run execution failed for %s: %s", run_id, exc)
+        _apply_updates(
+            db_obj,
+            {
+                "status": AgentRunStatus.FAILED,
+                "output_data": {"mode": "error", "error": str(exc)},
+                "confidence_score": 0.0,
+            },
+        )
+        db.commit()
+        db.refresh(db_obj)
+
+        record_validation_log(
+            db,
+            agent_run_id=db_obj.id,
+            result="FAILED",
+            details=str(exc),
+        )
     return db_obj
 
 

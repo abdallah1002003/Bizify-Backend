@@ -60,4 +60,5 @@ def test_embedding_generation(db: Session, test_agent):
     content = "This is a roadmap for a new AI startup."
     embedding = generate_embedding(db, content=content, agent_id=test_agent.id)
     assert embedding.content == content
-    assert "0.123" in embedding.vector
+    assert len(embedding.vector) == 1536
+    assert -1.0 <= float(embedding.vector[0]) <= 1.0

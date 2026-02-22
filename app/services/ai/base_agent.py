@@ -1,6 +1,6 @@
-import logging
 import abc
-from typing import Dict, Any, Optional
+import logging
+from typing import Any, Callable, Dict, Optional
 from uuid import UUID
 from sqlalchemy.orm import Session
 
@@ -43,7 +43,7 @@ class BaseAgent(abc.ABC):
         _ = context
         return {"status": "neutral", "intent": intent, "insights": []}
 
-    def _safe_execute(self, func: callable, *args, **kwargs):
+    def _safe_execute(self, func: Callable[..., Any], *args: Any, **kwargs: Any):
         """Internal safety wrapper for fragile AI operations."""
         try:
             return func(*args, **kwargs)

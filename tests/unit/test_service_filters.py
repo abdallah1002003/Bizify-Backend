@@ -3,7 +3,7 @@ from uuid import uuid4
 import app.models as models
 from app.core.security import get_password_hash
 from app.models.enums import ChatRole, ChatSessionType, UserRole
-from app.services.billing import billing_service, subscription_service
+from app.services.billing import subscription_service
 from app.services.chat import chat_service
 from app.services.core import core_service
 from config.settings import Settings

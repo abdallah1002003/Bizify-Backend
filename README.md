@@ -95,6 +95,10 @@ Current status: all tests pass.
   - set `AUTO_CREATE_TABLES=true` in `.env`.
 - Configure CORS via `CORS_ALLOWED_ORIGINS` (comma-separated origins).
 - Configure request throttling via `RATE_LIMIT_PER_MINUTE`.
+- Configure AI runtime via:
+  - `AI_PROVIDER=mock|openai`
+  - `OPENAI_API_KEY` (required only when `AI_PROVIDER=openai`)
+  - `OPENAI_CHAT_MODEL`, `OPENAI_EMBEDDING_MODEL`, `OPENAI_BASE_URL`
 - For one-time admin provisioning:
   - `ALLOW_ADMIN_BOOTSTRAP` (default `false`)
   - `ADMIN_BOOTSTRAP_TOKEN` (required when bootstrap is enabled)

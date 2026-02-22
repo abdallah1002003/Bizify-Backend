@@ -20,6 +20,12 @@ class Settings(BaseSettings):
     RATE_LIMIT_PER_MINUTE: int = 120
     ALLOW_ADMIN_BOOTSTRAP: bool = False
     ADMIN_BOOTSTRAP_TOKEN: str = ""
+    AI_PROVIDER: str = "mock"
+    OPENAI_API_KEY: str = ""
+    OPENAI_BASE_URL: str = "https://api.openai.com/v1"
+    OPENAI_CHAT_MODEL: str = "gpt-4.1-mini"
+    OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
+    AI_REQUEST_TIMEOUT_SECONDS: int = 30
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
@@ -72,6 +78,22 @@ class Settings(BaseSettings):
                 raise ValueError("SECRET_KEY must be at least 32 characters")
 
         return normalized
+
+    @field_validator("AI_PROVIDER")
+    @classmethod
+    def validate_ai_provider(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        allowed = {"mock", "openai"}
+        if normalized not in allowed:
+            raise ValueError("AI_PROVIDER must be one of: mock, openai")
+        return normalized
+
+    @field_validator("AI_REQUEST_TIMEOUT_SECONDS")
+    @classmethod
+    def validate_ai_timeout(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError("AI_REQUEST_TIMEOUT_SECONDS must be greater than 0")
+        return value
 
     @property
     def cors_allowed_origins_list(self) -> list[str]:

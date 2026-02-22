@@ -7,7 +7,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.models import Payment, PaymentMethod, Plan, Subscription, Usage
+from app.models import Payment, PaymentMethod, Subscription, Usage
 from app.models.enums import SubscriptionStatus
 
 from app.services.billing.plan_service import get_plan
@@ -110,9 +110,6 @@ def _sync_plan_limits(db: Session, subscription: Subscription) -> None:
         db.add(usage)
     else:
         usage.limit_value = limit
-
-    db.commit()
-
 
     db.commit()
 
