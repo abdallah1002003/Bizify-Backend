@@ -4,7 +4,7 @@ def test_create_user_and_login(client):
     user_payload = {
         "name": "Test User 2",
         "email": "newtest@example.com",
-        "password_hash": "securepassword123",
+        "password": "securepassword123",
         "role": "entrepreneur",
         "is_active": True,
         "is_verified": False

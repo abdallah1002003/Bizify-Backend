@@ -23,7 +23,6 @@ class IdeaCreate(BaseModel):
     is_archived: Optional[bool] = None
 
 class IdeaUpdate(BaseModel):
-    owner_id: Optional[UUID] = None
     business_id: Optional[UUID] = None
     title: Optional[str] = None
     description: Optional[str] = None
@@ -31,9 +30,6 @@ class IdeaUpdate(BaseModel):
     ai_score: Optional[float] = None
     is_archived: Optional[bool] = None
     archived_at: Optional[datetime] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    converted_at: Optional[datetime] = None
 
 class IdeaResponse(IdeaBase):
     id: UUID

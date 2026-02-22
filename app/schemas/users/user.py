@@ -15,7 +15,7 @@ class UserBase(BaseModel):
 class UserCreate(BaseModel):
     name: str = Field(..., max_length=255)
     email: EmailStr
-    password_hash: str = Field(..., min_length=8)
+    password: str = Field(..., min_length=8)
     role: UserRole
     is_active: Optional[bool] = None
     is_verified: Optional[bool] = None
@@ -23,12 +23,7 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
-    password_hash: Optional[str] = None
-    role: Optional[UserRole] = None
-    is_active: Optional[bool] = None
-    is_verified: Optional[bool] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    password: Optional[str] = None
 
 class UserResponse(UserBase):
     id: UUID

@@ -1,5 +1,5 @@
+import asyncio
 from collections import defaultdict, deque
-from threading import Lock
 import time
 from typing import Optional
 
@@ -16,24 +16,23 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
         self.requests_per_minute = requests_per_minute or settings.RATE_LIMIT_PER_MINUTE
         self.window_size = 60  # seconds
         self.request_counts: defaultdict[str, deque[float]] = defaultdict(deque)
-        self._lock = Lock()
+        self._lock = None
 
     def _get_client_ip(self, request: Request) -> str:
-        forwarded_for = request.headers.get("X-Forwarded-For")
-        if forwarded_for:
-            first_hop = forwarded_for.split(",")[0].strip()
-            if first_hop:
-                return first_hop
+        # X-Forwarded-For is forgeable by clients. Rely strictly on client connection IP.
         return request.client.host if request.client else "127.0.0.1"
 
     async def dispatch(self, request: Request, call_next):
-        if request.headers.get("X-Skip-Rate-Limit", "").lower() == "true":
+        if settings.APP_ENV == "test":
             return await call_next(request)
 
         client_ip = self._get_client_ip(request)
         current_time = time.time()
 
-        with self._lock:
+        if self._lock is None:
+            self._lock = asyncio.Lock()
+
+        async with self._lock:
             bucket = self.request_counts[client_ip]
             cutoff = current_time - self.window_size
             while bucket and bucket[0] <= cutoff:

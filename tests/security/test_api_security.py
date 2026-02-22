@@ -12,7 +12,7 @@ def _signup(client, email: str, role: str = "entrepreneur"):
         json={
             "name": f"user_{uuid4().hex[:6]}",
             "email": email,
-            "password_hash": "securepassword123",
+            "password": "securepassword123",
             "role": role,
             "is_active": False,
             "is_verified": True,

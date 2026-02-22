@@ -10,6 +10,9 @@ from sqlalchemy.orm import Session
 from app.models import Payment, PaymentMethod, Plan, Subscription, Usage
 from app.models.enums import SubscriptionStatus
 
+from app.services.billing.plan_service import get_plan
+from app.services.billing.subscription_service import get_subscription
+
 logger = logging.getLogger(__name__)
 
 
@@ -64,61 +67,11 @@ def record_usage(db: Session, user_id: UUID, resource_type: str, quantity: int =
 
 
 # ----------------------------
-# Plan
+# (Plan CRUD removed)
 # ----------------------------
-
-def get_plan(db: Session, id: UUID) -> Optional[Plan]:
-    return db.query(Plan).filter(Plan.id == id).first()
-
-
-def get_plans(db: Session, skip: int = 0, limit: int = 100) -> List[Plan]:
-    return db.query(Plan).offset(skip).limit(limit).all()
-
-
-def create_plan(db: Session, obj_in: Any) -> Plan:
-    db_obj = Plan(**_to_update_dict(obj_in))
-    db.add(db_obj)
-    db.commit()
-    db.refresh(db_obj)
-    return db_obj
-
-
-def update_plan(db: Session, db_obj: Plan, obj_in: Any) -> Plan:
-    _apply_updates(db_obj, _to_update_dict(obj_in))
-    db.add(db_obj)
-    db.commit()
-    db.refresh(db_obj)
-    return db_obj
-
-
-def delete_plan(db: Session, id: UUID) -> Optional[Plan]:
-    db_obj = get_plan(db, id=id)
-    if not db_obj:
-        return None
-
-    db.delete(db_obj)
-    db.commit()
-    return db_obj
-
-
 # ----------------------------
-# Subscription
+# Subscription (Partial CRUD removed)
 # ----------------------------
-
-def get_subscription(db: Session, id: UUID) -> Optional[Subscription]:
-    return db.query(Subscription).filter(Subscription.id == id).first()
-
-
-def get_subscriptions(
-    db: Session,
-    skip: int = 0,
-    limit: int = 100,
-    user_id: Optional[UUID] = None,
-) -> List[Subscription]:
-    query = db.query(Subscription)
-    if user_id is not None:
-        query = query.filter(Subscription.user_id == user_id)
-    return query.offset(skip).limit(limit).all()
 
 
 def get_active_subscription(db: Session, user_id: UUID) -> Optional[Subscription]:
@@ -161,38 +114,7 @@ def _sync_plan_limits(db: Session, subscription: Subscription) -> None:
     db.commit()
 
 
-def create_subscription(db: Session, obj_in: Any) -> Subscription:
-    data = _to_update_dict(obj_in)
-    data.setdefault("status", SubscriptionStatus.PENDING)
-    data.setdefault("start_date", _utc_now())
-
-    db_obj = Subscription(**data)
-    db.add(db_obj)
     db.commit()
-    db.refresh(db_obj)
-
-    _sync_plan_limits(db, db_obj)
-    return db_obj
-
-
-def update_subscription(db: Session, db_obj: Subscription, obj_in: Any) -> Subscription:
-    _apply_updates(db_obj, _to_update_dict(obj_in))
-    db.add(db_obj)
-    db.commit()
-    db.refresh(db_obj)
-
-    _sync_plan_limits(db, db_obj)
-    return db_obj
-
-
-def delete_subscription(db: Session, id: UUID) -> Optional[Subscription]:
-    db_obj = get_subscription(db, id=id)
-    if not db_obj:
-        return None
-
-    db.delete(db_obj)
-    db.commit()
-    return db_obj
 
 
 # ----------------------------

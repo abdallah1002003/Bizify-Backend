@@ -20,13 +20,10 @@ class BusinessCreate(BaseModel):
 
 class BusinessUpdate(BaseModel):
     idea_id: Optional[UUID] = None
-    owner_id: Optional[UUID] = None
     stage: Optional[BusinessStage] = None
     context_json: Optional[dict] = None
     is_archived: Optional[bool] = None
     archived_at: Optional[datetime] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
 
 class BusinessResponse(BusinessBase):
     id: UUID

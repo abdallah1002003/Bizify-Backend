@@ -20,7 +20,11 @@ def create_agent_run(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user)
 ):
-    """Elite API: Initiates an AI agent run with usage enforcement."""
+    """
+    **Notice:** This AI Route is currently using Mock Logic. Actual AI execution is pending integration.
+    
+    Elite API: Initiates an AI agent run with usage enforcement.
+    """
     return service.initiate_agent_run(
         db, 
         agent_id=item_in.agent_id, 

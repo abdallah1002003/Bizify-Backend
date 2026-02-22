@@ -73,7 +73,9 @@ def get_users(db: Session, skip: int = 0, limit: int = 100) -> List[User]:
 def create_user(db: Session, obj_in: Any) -> User:
     user_data = _to_update_dict(obj_in)
 
-    if user_data.get("password_hash"):
+    if "password" in user_data:
+        user_data["password_hash"] = get_password_hash(user_data.pop("password"))
+    elif "password_hash" in user_data:
         user_data["password_hash"] = get_password_hash(user_data["password_hash"])
 
     db_obj = User(**user_data)
@@ -100,7 +102,9 @@ def create_user(db: Session, obj_in: Any) -> User:
 def update_user(db: Session, db_obj: User, obj_in: Any) -> User:
     update_data = _to_update_dict(obj_in)
 
-    if update_data.get("password_hash"):
+    if "password" in update_data:
+        update_data["password_hash"] = get_password_hash(update_data.pop("password"))
+    elif "password_hash" in update_data:
         update_data["password_hash"] = get_password_hash(update_data["password_hash"])
 
     _apply_updates(db_obj, update_data)

@@ -14,7 +14,11 @@ def read_agents(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
 
 @router.post("/", response_model=AgentResponse)
 def create_agent(item_in: AgentCreate, db: Session = Depends(get_db)):
-    """Elite API: Registers a new AI agent template with phase logic."""
+    """
+    **Notice:** This AI Route is currently using Mock Logic. Actual AI execution is pending integration.
+    
+    Elite API: Registers a new AI agent template with phase logic.
+    """
     return service.create_agent(db, name=item_in.name, phase=item_in.phase, config={})
 
 @router.get("/{id}", response_model=AgentResponse)

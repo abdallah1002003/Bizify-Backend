@@ -3,7 +3,7 @@ from uuid import uuid4
 import app.models as models
 from app.core.security import get_password_hash
 from app.models.enums import ChatRole, ChatSessionType, UserRole
-from app.services.billing import billing_service
+from app.services.billing import billing_service, subscription_service
 from app.services.chat import chat_service
 from app.services.core import core_service
 from config.settings import Settings
@@ -33,14 +33,14 @@ def test_billing_get_subscriptions_filters_by_user(db):
     db.commit()
     db.refresh(plan)
 
-    billing_service.create_subscription(db, {"user_id": user_a.id, "plan_id": plan.id})
-    billing_service.create_subscription(db, {"user_id": user_b.id, "plan_id": plan.id})
+    subscription_service.create_subscription(db, {"user_id": user_a.id, "plan_id": plan.id})
+    subscription_service.create_subscription(db, {"user_id": user_b.id, "plan_id": plan.id})
 
-    filtered = billing_service.get_subscriptions(db, user_id=user_a.id)
+    filtered = subscription_service.get_subscriptions(db, user_id=user_a.id)
     assert len(filtered) == 1
     assert filtered[0].user_id == user_a.id
 
-    all_subscriptions = billing_service.get_subscriptions(db)
+    all_subscriptions = subscription_service.get_subscriptions(db)
     assert len(all_subscriptions) == 2
 
 

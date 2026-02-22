@@ -5,7 +5,7 @@ def _create_and_login_user(client, email: str, password: str) -> dict:
     user_payload = {
         "name": f"User {email}",
         "email": email,
-        "password_hash": password,
+        "password": password,
         "role": "entrepreneur",
         "is_active": True,
         "is_verified": True,

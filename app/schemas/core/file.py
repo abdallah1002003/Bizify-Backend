@@ -16,7 +16,6 @@ class FileCreate(BaseModel):
     size: int
 
 class FileUpdate(BaseModel):
-    owner_id: Optional[UUID] = None
     file_path: Optional[str] = None
     file_type: Optional[str] = None
     size: Optional[int] = None

@@ -11,7 +11,7 @@ import uuid
 def test_create_user_hashes_password(db: Session):
     user_in = UserCreate(
         email="service_test@example.com",
-        password_hash="plainpassword",
+        password="plainpassword",
         name="Service Test",
         role="entrepreneur"
     )

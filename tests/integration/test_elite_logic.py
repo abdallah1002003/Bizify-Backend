@@ -22,7 +22,7 @@ def test_elite_idea_lifecycle(db: Session):
     user = user_service.create_user(db, UserCreate(
         name="Elite User",
         email=f"elite_{uuid4().hex[:8]}@example.com",
-        password_hash="strong_password",
+        password="strong_password",
         role=UserRole.ENTREPRENEUR
     ))
     
@@ -54,7 +54,7 @@ def test_elite_idea_lifecycle(db: Session):
     another_user = user_service.create_user(db, UserCreate(
         name="Hacker User",
         email=f"hacker_{uuid4().hex[:8]}@example.com",
-        password_hash="strong_password",
+        password="strong_password",
         role=UserRole.ENTREPRENEUR
     ))
     
@@ -71,7 +71,7 @@ def test_elite_business_roadmap(db: Session):
     user = user_service.create_user(db, UserCreate(
         name="Biz Owner",
         email=f"biz_{uuid4().hex[:8]}@example.com",
-        password_hash="strong_password",
+        password="strong_password",
         role=UserRole.ENTREPRENEUR
     ))
     
@@ -101,7 +101,7 @@ def test_elite_billing_usage(db: Session):
     user = user_service.create_user(db, UserCreate(
         name="Billing User",
         email=f"billing_{uuid4().hex[:8]}@example.com",
-        password_hash="strong_password",
+        password="strong_password",
         role=UserRole.ENTREPRENEUR
     ))
     

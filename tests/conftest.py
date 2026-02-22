@@ -79,7 +79,7 @@ def client(db) -> Generator[TestClient, None, None]:
     Synchronous client for backward compatibility or simple tests
     """
     app.dependency_overrides[get_db] = lambda: db
-    with TestClient(app, headers={"X-Skip-Rate-Limit": "true"}) as c:
+    with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
 
@@ -91,8 +91,7 @@ async def async_client(db) -> AsyncGenerator[AsyncClient, None]:
     app.dependency_overrides[get_db] = lambda: db
     async with AsyncClient(
         transport=ASGITransport(app=app), 
-        base_url="http://test",
-        headers={"X-Skip-Rate-Limit": "true"}
+        base_url="http://test"
     ) as ac:
         yield ac
     app.dependency_overrides.clear()
