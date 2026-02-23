@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.core.pagination import LimitParam, SkipParam
 from sqlalchemy.orm import Session
 from app.core.dependencies import get_current_active_user
-from app.core.cache import cache
 import app.models as models
 from app.db.database import get_db
 from app.models.enums import UserRole
@@ -20,7 +19,6 @@ def _require_admin(current_user: models.User) -> None:
 
 
 @router.get("/", response_model=List[PlanResponse])
-@cache(ttl_seconds=300)
 def read_plans(
     skip: SkipParam = 0,
     limit: LimitParam = 20,

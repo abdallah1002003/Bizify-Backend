@@ -18,7 +18,7 @@ from app.api.api import api_router
 async def lifespan(_: FastAPI):
     if settings.VERIFY_DB_ON_STARTUP:
         verify_database_connection()
-    if settings.AUTO_CREATE_TABLES:
+    if settings.AUTO_CREATE_TABLES and settings.APP_ENV != "production":
         Base.metadata.create_all(bind=engine)
     yield
 

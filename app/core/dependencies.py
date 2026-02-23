@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 from pydantic import ValidationError
 from typing import Any
 
-from app.core.cache import cache
 from app.db.database import get_db
 from config.settings import settings
 import app.models as models
@@ -15,6 +14,14 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)) -> models.User:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        
+        if payload.get("type") == "refresh":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh token cannot be used as an access token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+            
         user_id: str = payload.get("sub")
         if user_id is None:
             raise HTTPException(
