@@ -80,3 +80,17 @@ class RefreshToken(Base):
     created_at = Column(DateTime(timezone=True), default=utc_now)
 
     user = relationship("User", foreign_keys=[user_id])
+
+
+class PasswordResetToken(Base):
+    """Stores password reset tokens for one-time use tracking."""
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    user_id = Column(GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    jti = Column(String, unique=True, index=True, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used = Column(Boolean, default=False, index=True)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+
+    user = relationship("User", foreign_keys=[user_id])

@@ -32,7 +32,6 @@ class ForgotPasswordRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str = Field(..., min_length=8)
-    token_type: str
 
 
 class RefreshTokenRequest(BaseModel):
@@ -259,17 +258,27 @@ def forgot_password(
     payload: ForgotPasswordRequest,
     db: Session = Depends(dependencies.get_db),
 ):
-    """Generate a password reset token and 'send' it via email."""
+    """Generate a password reset token and persist it in DB."""
     user = db.query(models.User).filter(models.User.email == payload.email).first()
     if not user:
-        # We return success even if user doesn't exist for security (avoid enumeration)
         return {"message": "If the account exists, a reset link has been sent"}
     
     token = security.create_password_reset_token(user.email)
     
-    # In a real app, send the email here. We'll just log it for now.
-    logger.info(f"Password reset token for {user.email}: {token}")
+    # Store token in DB for one-time use tracking
+    from datetime import datetime, timezone
+    from jose import jwt
+    token_data = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
     
+    db_token = models.PasswordResetToken(
+        user_id=user.id,
+        jti=token_data["jti"],
+        expires_at=datetime.fromtimestamp(token_data["exp"], tz=timezone.utc)
+    )
+    db.add(db_token)
+    db.commit()
+    
+    # In a real app, send the email here. LOGGING TOKEN IS REMOVED FOR SECURITY.
     return {"message": "If the account exists, a reset link has been sent"}
 
 
@@ -278,14 +287,25 @@ def reset_password(
     payload: ResetPasswordRequest,
     db: Session = Depends(dependencies.get_db),
 ):
-    """Verify reset token and update password."""
-    email = security.verify_password_reset_token(payload.token)
-    if not email:
+    """Verify reset token against DB revocation and update password."""
+    token_payload = security.verify_password_reset_token(payload.token)
+    if not token_payload:
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+    
+    email = token_payload.get("sub")
+    jti = token_payload.get("jti")
+    
+    # Check if token was already used in DB
+    stored_token = db.query(models.PasswordResetToken).filter(models.PasswordResetToken.jti == jti).first()
+    if not stored_token or stored_token.used:
+        raise HTTPException(status_code=400, detail="Token has already been used or is invalid")
     
     user = db.query(models.User).filter(models.User.email == email).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    # Mark token as used
+    stored_token.used = True
     
     # Update password
     user.password_hash = security.get_password_hash(payload.new_password)
