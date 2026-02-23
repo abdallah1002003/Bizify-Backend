@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Optional
 from uuid import UUID
 
@@ -14,12 +14,42 @@ class PlanCreate(BaseModel):
     price: float
     features_json: Optional[dict] = None
     is_active: Optional[bool] = None
+    
+    @field_validator('features_json', mode='before')
+    @classmethod
+    def validate_features_json(cls, v):
+        """Validate features_json at input time."""
+        if v is None:
+            return {}
+        if not isinstance(v, dict):
+            raise ValueError(f"features_json must be a dictionary, got {type(v).__name__}")
+        try:
+            import json
+            json.dumps(v)
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"features_json contains non-serializable values: {e}")
+        return v
 
 class PlanUpdate(BaseModel):
     name: Optional[str] = None
     price: Optional[float] = None
     features_json: Optional[dict] = None
     is_active: Optional[bool] = None
+    
+    @field_validator('features_json', mode='before')
+    @classmethod
+    def validate_features_json(cls, v):
+        """Validate features_json at input time."""
+        if v is None:
+            return None
+        if not isinstance(v, dict):
+            raise ValueError(f"features_json must be a dictionary, got {type(v).__name__}")
+        try:
+            import json
+            json.dumps(v)
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"features_json contains non-serializable values: {e}")
+        return v
 
 class PlanResponse(PlanBase):
     id: UUID

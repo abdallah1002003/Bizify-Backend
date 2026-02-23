@@ -1,6 +1,6 @@
 from app.models.enums import ApprovalStatus, PartnerType
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Optional
 from uuid import UUID
 
@@ -23,6 +23,21 @@ class PartnerProfileCreate(BaseModel):
     experience_json: Optional[dict] = None
     approval_status: ApprovalStatus = ApprovalStatus.PENDING
     approved_by: Optional[UUID] = None
+    
+    @field_validator('services_json', 'experience_json', mode='before')
+    @classmethod
+    def validate_json_fields(cls, v):
+        """Validate JSON fields at input time."""
+        if v is None:
+            return {}
+        if not isinstance(v, dict):
+            raise ValueError(f"JSON field must be a dictionary, got {type(v).__name__}")
+        try:
+            import json
+            json.dumps(v)
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"JSON field contains non-serializable values: {e}")
+        return v
 
 class PartnerProfileUpdate(BaseModel):
     user_id: Optional[UUID] = None
@@ -35,6 +50,21 @@ class PartnerProfileUpdate(BaseModel):
     approved_by: Optional[UUID] = None
     approved_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
+    
+    @field_validator('services_json', 'experience_json', mode='before')
+    @classmethod
+    def validate_json_fields(cls, v):
+        """Validate JSON fields at input time."""
+        if v is None:
+            return None
+        if not isinstance(v, dict):
+            raise ValueError(f"JSON field must be a dictionary, got {type(v).__name__}")
+        try:
+            import json
+            json.dumps(v)
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"JSON field contains non-serializable values: {e}")
+        return v
 
 class PartnerProfileResponse(PartnerProfileBase):
     id: UUID

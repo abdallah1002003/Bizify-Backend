@@ -7,9 +7,9 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.core.security import get_password_hash
+from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
 from app.models import AdminActionLog, User, UserProfile
 from app.models.enums import UserRole
-from app.services.billing.billing_service import _utc_now, _to_update_dict, _apply_updates
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +114,7 @@ def delete_user(db: Session, id: UUID) -> Optional[User]:
     if not db_obj:
         return None
 
+    _record_admin_action(db, admin_id=None, action_type="USER_DELETED", target_id=id, auto_commit=False)
     db.delete(db_obj)
     db.commit()
     return db_obj

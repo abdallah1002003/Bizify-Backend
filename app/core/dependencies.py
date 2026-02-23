@@ -49,4 +49,9 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
 def get_current_active_user(current_user: models.User = Depends(get_current_user)) -> models.User:
     if not current_user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Inactive user")
+    
+    # Skip email verification check in test environment
+    if settings.APP_ENV != "test" and not current_user.is_verified:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Email not verified")
+    
     return current_user

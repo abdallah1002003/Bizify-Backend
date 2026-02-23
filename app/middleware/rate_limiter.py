@@ -1,13 +1,19 @@
 import asyncio
 from collections import defaultdict, deque
 import time
-from typing import Optional
+from typing import Optional, Dict
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from config.settings import settings
+
+# Paths with stricter rate limit requirements
+STRICT_RATE_LIMIT_PATHS: Dict[str, int] = {
+    "/api/v1/auth/login": 5,  # 5 login attempts per minute max
+    "/api/v1/auth/bootstrap-admin": 3,  # 3 bootstrap attempts per minute max
+}
 
 
 class RateLimiterMiddleware(BaseHTTPMiddleware):
@@ -53,6 +59,9 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
 
         client_ip = self._get_client_ip(request)
         current_time = time.time()
+        
+        # Check if this path has a stricter limit
+        limit = STRICT_RATE_LIMIT_PATHS.get(request.url.path, self.requests_per_minute)
 
         async with self._locks[client_ip]:
             bucket = self.request_counts[client_ip]
@@ -60,7 +69,7 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
             while bucket and bucket[0] <= cutoff:
                 bucket.popleft()
 
-            if len(bucket) >= self.requests_per_minute:
+            if len(bucket) >= limit:
                 retry_after = max(1, int(self.window_size - (current_time - bucket[0])))
                 return JSONResponse(
                     status_code=429,
@@ -74,6 +83,11 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
             stale_ips = [ip for ip, times in self.request_counts.items() if not times]
             for ip in stale_ips:
                 self.request_counts.pop(ip, None)
+                self._locks.pop(ip, None)
+            
+            # Cleanup old locks that have no corresponding requests
+            stale_locks = [ip for ip in self._locks.keys() if ip not in self.request_counts or not self.request_counts[ip]]
+            for ip in stale_locks:
                 self._locks.pop(ip, None)
 
         return await call_next(request)

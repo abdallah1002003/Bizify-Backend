@@ -5,9 +5,7 @@ from app.db.guid import GUID
 from sqlalchemy.orm import relationship
 from app.db.database import Base
 from app.models.enums import UserRole
-
-def utc_now():
-    return datetime.now(timezone.utc)
+from app.core.crud_utils import _utc_now as utc_now
 
 class User(Base):
     __tablename__ = "users"
@@ -68,3 +66,17 @@ class AdminActionLog(Base):
     created_at = Column(DateTime(timezone=True), default=utc_now)
 
     admin = relationship("User", back_populates="admin_actions")
+
+
+class RefreshToken(Base):
+    """Stores refresh tokens in database for revocation and validation."""
+    __tablename__ = "refresh_tokens"
+
+    id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    user_id = Column(GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    jti = Column(String, unique=True, index=True, nullable=False)  # JWT ID for unique identification
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    revoked = Column(Boolean, default=False, index=True)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+
+    user = relationship("User", foreign_keys=[user_id])

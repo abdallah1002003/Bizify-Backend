@@ -4,10 +4,8 @@ from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text, Enum
 from app.db.guid import GUID
 from sqlalchemy.orm import relationship
 from app.db.database import Base
-from app.models.enums import IdeaStatus
-
-def utc_now():
-    return datetime.now(timezone.utc)
+from app.models.enums import IdeaStatus, ExperimentStatus, MetricType
+from app.core.crud_utils import _utc_now as utc_now
 
 class Idea(Base):
     __tablename__ = "ideas"
@@ -58,7 +56,7 @@ class IdeaMetric(Base):
     created_by = Column(GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     name = Column(String, nullable=False)
     value = Column(Float, nullable=False)
-    type = Column(String, nullable=False)
+    type = Column(Enum(MetricType), nullable=False, default=MetricType.CUSTOM)
     recorded_at = Column(DateTime(timezone=True), default=utc_now)
 
     idea = relationship("Idea", back_populates="metrics")
@@ -71,7 +69,7 @@ class Experiment(Base):
     idea_id = Column(GUID, ForeignKey("ideas.id", ondelete="CASCADE"), nullable=False)
     created_by = Column(GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     hypothesis = Column(String, nullable=False)
-    status = Column(String, nullable=False)
+    status = Column(Enum(ExperimentStatus), nullable=False, default=ExperimentStatus.RUNNING)
     result_summary = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=utc_now)
 

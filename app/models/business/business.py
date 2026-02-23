@@ -5,9 +5,7 @@ from app.db.guid import GUID
 from sqlalchemy.orm import relationship
 from app.db.database import Base
 from app.models.enums import BusinessStage, CollaboratorRole, InviteStatus, StageType, RoadmapStageStatus
-
-def utc_now():
-    return datetime.now(timezone.utc)
+from app.core.crud_utils import _utc_now as utc_now
 
 class Business(Base):
     __tablename__ = "businesses"

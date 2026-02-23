@@ -11,6 +11,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.models import Idea, IdeaMetric
+from app.models.enums import MetricType
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,8 @@ def create_idea_metric(db: Session, obj_in: Any) -> IdeaMetric:
     db.commit()
     db.refresh(db_obj)
 
-    if db_obj.type == "AI_ANALYSIS":
+    # Check if the metric type is AI_ANALYSIS and update idea's AI score
+    if db_obj.type == MetricType.AI_ANALYSIS or db_obj.type == "AI_ANALYSIS":
         idea = db.query(Idea).filter(Idea.id == db_obj.idea_id).first()
         if idea is not None:
             idea.ai_score = db_obj.value

@@ -5,7 +5,7 @@ from app.db.database import Base
 from .enums import *  # noqa: F403
 
 # Users
-from .users.user import User, UserProfile, AdminActionLog
+from .users.user import User, UserProfile, AdminActionLog, RefreshToken
 
 # Partners
 from .partners.partner import PartnerProfile, PartnerRequest

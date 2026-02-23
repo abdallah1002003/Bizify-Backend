@@ -37,6 +37,9 @@ def read_users(
 def create_user(item_in: UserCreate, db: Session = Depends(get_db)):
     data = item_in.model_dump()
     data["is_active"] = True
+    # Enforce is_verified = False for public signup (via regular API)
+    # Email verification must be completed via separate endpoint or admin action
+    data["is_verified"] = False
     return service.create_user(db, obj_in=data)
 
 @router.get("/me", response_model=UserResponse)

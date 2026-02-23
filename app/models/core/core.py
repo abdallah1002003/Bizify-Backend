@@ -4,9 +4,7 @@ from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text, Inte
 from app.db.guid import GUID
 from sqlalchemy.orm import relationship
 from app.db.database import Base
-
-def utc_now():
-    return datetime.now(timezone.utc)
+from app.core.crud_utils import _utc_now as utc_now
 
 class File(Base):
     __tablename__ = "files"

@@ -93,3 +93,20 @@ class PaymentStatus(str, enum.Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     REFUNDED = "refunded"
+
+class ExperimentStatus(str, enum.Enum):
+    """Status values for experiments."""
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+class MetricType(str, enum.Enum):
+    """Types of metrics for ideas."""
+    REVENUE = "revenue"
+    USERS = "users"
+    CONVERSION = "conversion"
+    ENGAGEMENT = "engagement"
+    RETENTION = "retention"
+    MANUAL = "manual"
+    AI_ANALYSIS = "ai_analysis"
+    CUSTOM = "custom"
