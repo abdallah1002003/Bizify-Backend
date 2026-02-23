@@ -27,8 +27,9 @@ def test_create_and_read_plan(client: TestClient, db, auth_headers: dict, test_u
 
     list_res = client.get("/api/v1/plans/", headers=auth_headers)
     assert list_res.status_code == 200
-    plans = list_res.json()
-    assert any(plan["id"] == created["id"] for plan in plans)
+    plans_payload = list_res.json()
+    assert any(p["id"] == created["id"] for p in plans_payload["items"])
+    assert plans_payload["total"] >= 1
 
 
 def test_subscription_routes_are_user_scoped(client: TestClient, db, auth_headers: dict, test_user):

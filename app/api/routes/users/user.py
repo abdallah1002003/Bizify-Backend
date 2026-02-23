@@ -1,7 +1,7 @@
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
-from app.core.pagination import LimitParam, SkipParam
+from app.core.pagination import LimitParam, SkipParam, PageResponse
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.models.enums import UserRole
@@ -9,6 +9,7 @@ from app.schemas.users.user import UserCreate, UserUpdate, UserResponse
 from app.services.users import user_service as service
 from app.core.dependencies import get_current_active_user
 import app.models as models
+from app.models.users.user import User
 
 router = APIRouter()
 
@@ -23,7 +24,7 @@ def _require_admin_or_self(current_user: models.User, target_user_id: UUID) -> N
         return
     raise HTTPException(status_code=403, detail="Access denied")
 
-@router.get("/", response_model=List[UserResponse])
+@router.get("/", response_model=PageResponse[UserResponse])
 def read_users(
     skip: SkipParam = 0,
     limit: LimitParam = 100,
@@ -31,7 +32,9 @@ def read_users(
     current_user: models.User = Depends(get_current_active_user),
 ):
     _require_admin(current_user)
-    return service.get_users(db, skip=skip, limit=limit)
+    total = db.query(User).count()
+    items = service.get_users(db, skip=skip, limit=limit)
+    return {"items": items, "total": total, "skip": skip, "limit": limit}
 
 @router.post("/", response_model=UserResponse)
 def create_user(item_in: UserCreate, db: Session = Depends(get_db)):
@@ -84,3 +87,16 @@ def delete_user(
     if not db_obj:
         raise HTTPException(status_code=404, detail="User not found")
     return service.delete_user(db, id=id)
+
+@router.post("/{id}/verify", response_model=UserResponse)
+def verify_user(
+    id: UUID,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+):
+    """Manually verify a user's email (Admin only)."""
+    _require_admin(current_user)
+    db_obj = service.get_user(db, id=id)
+    if not db_obj:
+        raise HTTPException(status_code=404, detail="User not found")
+    return service.update_user(db, db_obj=db_obj, obj_in={"is_verified": True})

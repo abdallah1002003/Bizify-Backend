@@ -1,10 +1,11 @@
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
-from app.core.pagination import LimitParam, SkipParam
+from app.core.pagination import LimitParam, SkipParam, PageResponse
 from sqlalchemy.orm import Session
 from app.core.dependencies import get_current_active_user
 import app.models as models
+from app.models.billing.billing import Plan
 from app.db.database import get_db
 from app.models.enums import UserRole
 from app.schemas.billing.plan import PlanCreate, PlanUpdate, PlanResponse
@@ -18,7 +19,7 @@ def _require_admin(current_user: models.User) -> None:
         raise HTTPException(status_code=403, detail="Admin role required")
 
 
-@router.get("/", response_model=List[PlanResponse])
+@router.get("/", response_model=PageResponse[PlanResponse])
 def read_plans(
     skip: SkipParam = 0,
     limit: LimitParam = 20,
@@ -32,10 +33,12 @@ def read_plans(
         limit: Number of records to return (default: 20, max: 100)
         
     Returns:
-        List of Plan records (cached for 5 minutes)
+        List of Plan records (PageResponse)
     """
     _ = current_user
-    return service.get_plans(db, skip=skip, limit=limit)
+    total = db.query(Plan).count()
+    items = service.get_plans(db, skip=skip, limit=limit)
+    return {"items": items, "total": total, "skip": skip, "limit": limit}
 
 @router.post("/", response_model=PlanResponse)
 def create_plan(

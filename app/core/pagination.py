@@ -32,3 +32,15 @@ def get_pagination_params(skip: SkipParam = 0, limit: LimitParam = 20) -> tuple[
     """Return validated `(skip, limit)` values for callers using tuple semantics."""
 
     return skip, limit
+
+
+from typing import Generic, TypeVar, List
+
+T = TypeVar("T")
+
+class PageResponse(BaseModel, Generic[T]):
+    """Generic Pydantic model for paginated list responses."""
+    items: List[T]
+    total: int
+    skip: int
+    limit: int

@@ -27,6 +27,22 @@ def create_refresh_token(subject: Union[str, Any], expires_delta: Optional[timed
     to_encode = {"exp": expire, "sub": str(subject), "jti": str(uuid4()), "type": "refresh"}
     return cast(str, jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM))
 
+def create_password_reset_token(email: str) -> str:
+    """Create a short-lived token for password reset (15 mins)."""
+    expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    to_encode = {"exp": expire, "sub": email, "type": "password_reset"}
+    return cast(str, jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM))
+
+def verify_password_reset_token(token: str) -> Optional[str]:
+    """Verify reset token and return email if valid."""
+    try:
+        decoded_token = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        if decoded_token.get("type") != "password_reset":
+            return None
+        return decoded_token.get("sub")
+    except jwt.JWTError:
+        return None
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return cast(bool, pwd_context.verify(plain_password, hashed_password))
 

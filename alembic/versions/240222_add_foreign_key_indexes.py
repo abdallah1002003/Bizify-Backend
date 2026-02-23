@@ -9,7 +9,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = '240222_add_foreign_key_indexes'
-down_revision = '239000f30fd1_sync_with_guid'
+down_revision = '239000f30fd1'
 branch_labels = None
 depends_on = None
 
@@ -30,7 +30,7 @@ def upgrade() -> None:
     op.create_index('idx_business_collaborators_business_id', 'business_collaborators', ['business_id'])
     op.create_index('idx_business_collaborators_user_id', 'business_collaborators', ['user_id'])
     op.create_index('idx_business_invites_business_id', 'business_invites', ['business_id'])
-    op.create_index('idx_business_invites_user_id', 'business_invites', ['user_id'])
+    op.create_index('idx_business_invites_invited_by', 'business_invites', ['invited_by'])
     
     # Idea-related indexes
     op.create_index('idx_ideas_owner_id', 'ideas', ['owner_id'])
@@ -55,8 +55,9 @@ def upgrade() -> None:
     
     # Partner-related indexes
     op.create_index('idx_partner_profiles_user_id', 'partner_profiles', ['user_id'])
-    op.create_index('idx_partner_requests_sender_id', 'partner_requests', ['sender_id'])
-    op.create_index('idx_partner_requests_receiver_id', 'partner_requests', ['receiver_id'])
+    op.create_index('idx_partner_requests_business_id', 'partner_requests', ['business_id'])
+    op.create_index('idx_partner_requests_partner_id', 'partner_requests', ['partner_id'])
+    op.create_index('idx_partner_requests_requested_by', 'partner_requests', ['requested_by'])
     
     # Core-related indexes
     op.create_index('idx_files_owner_id', 'files', ['owner_id'])
@@ -75,9 +76,10 @@ def downgrade() -> None:
     op.drop_index('idx_share_links_created_by', table_name='share_links')
     op.drop_index('idx_notifications_user_id', table_name='notifications')
     op.drop_index('idx_files_owner_id', table_name='files')
-    op.drop_index('idx_partner_requests_receiver_id', table_name='partner_requests')
-    op.drop_index('idx_partner_requests_sender_id', table_name='partner_requests')
     op.drop_index('idx_partner_profiles_user_id', table_name='partner_profiles')
+    op.drop_index('idx_partner_requests_requested_by', table_name='partner_requests')
+    op.drop_index('idx_partner_requests_partner_id', table_name='partner_requests')
+    op.drop_index('idx_partner_requests_business_id', table_name='partner_requests')
     op.drop_index('idx_chat_messages_session_id', table_name='chat_messages')
     op.drop_index('idx_chat_sessions_idea_id', table_name='chat_sessions')
     op.drop_index('idx_chat_sessions_business_id', table_name='chat_sessions')
@@ -93,7 +95,7 @@ def downgrade() -> None:
     op.drop_index('idx_idea_accesses_idea_id', table_name='idea_accesses')
     op.drop_index('idx_idea_versions_idea_id', table_name='idea_versions')
     op.drop_index('idx_ideas_owner_id', table_name='ideas')
-    op.drop_index('idx_business_invites_user_id', table_name='business_invites')
+    op.drop_index('idx_business_invites_invited_by', table_name='business_invites')
     op.drop_index('idx_business_invites_business_id', table_name='business_invites')
     op.drop_index('idx_business_collaborators_user_id', table_name='business_collaborators')
     op.drop_index('idx_business_collaborators_business_id', table_name='business_collaborators')

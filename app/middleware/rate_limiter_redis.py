@@ -22,6 +22,11 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from config.settings import settings
 
 logger = logging.getLogger(__name__)
+# Paths with stricter rate limit requirements
+STRICT_RATE_LIMIT_PATHS = {
+    "/api/v1/auth/login": 5,  # 5 login attempts per minute max
+    "/api/v1/auth/bootstrap-admin": 3,  # 3 bootstrap attempts per minute max
+}
 
 
 class RedisRateLimiterMiddleware(BaseHTTPMiddleware):
@@ -69,7 +74,7 @@ class RedisRateLimiterMiddleware(BaseHTTPMiddleware):
         """Extract client IP from request."""
         return request.client.host if request.client else "127.0.0.1"
 
-    async def _check_rate_limit_redis(self, client_ip: str) -> tuple[bool, int]:
+    async def _check_rate_limit_redis(self, client_ip: str, request_path: str) -> tuple[bool, int, int]:
         """Check rate limit using Redis."""
         try:
             key = f"rate_limit:{client_ip}"
@@ -88,16 +93,19 @@ class RedisRateLimiterMiddleware(BaseHTTPMiddleware):
             results = await pipe.execute()
             count = results[2]  # zcard result
             
-            remaining = max(0, self.requests_per_minute - count)
-            is_allowed = count <= self.requests_per_minute
+            # Check if this path has a stricter limit
+            limit = STRICT_RATE_LIMIT_PATHS.get(request_path, self.requests_per_minute)
             
-            return is_allowed, remaining
+            remaining = max(0, limit - count)
+            is_allowed = count <= limit
+            
+            return is_allowed, remaining, limit
         except Exception as e:
             logger.warning(f"Redis check failed for {client_ip}, falling back to in-memory: {e}")
             self._redis_available = False
             return await self._check_rate_limit_memory(client_ip)
 
-    async def _check_rate_limit_memory(self, client_ip: str) -> tuple[bool, int]:
+    async def _check_rate_limit_memory(self, client_ip: str, limit: int) -> tuple[bool, int]:
         """Fallback in-memory rate limit check."""
         async with self._lock:
             now = time.time()
@@ -111,8 +119,8 @@ class RedisRateLimiterMiddleware(BaseHTTPMiddleware):
             # Remove old requests
             requests[:] = [t for t in requests if t > cutoff]
             
-            is_allowed = len(requests) < self.requests_per_minute
-            remaining = max(0, self.requests_per_minute - len(requests))
+            is_allowed = len(requests) < limit
+            remaining = max(0, limit - len(requests))
             
             if is_allowed:
                 requests.append(now)
@@ -136,9 +144,14 @@ class RedisRateLimiterMiddleware(BaseHTTPMiddleware):
         
         # Check rate limit
         if self._redis_available and self.redis_client:
-            is_allowed, remaining = await self._check_rate_limit_redis(client_ip)
+            is_allowed, remaining, limit = await self._check_rate_limit_redis(client_ip, request.url.path)
         else:
-            is_allowed, remaining = await self._check_rate_limit_memory(client_ip)
+            # For memory fallback, we need to handle limit manually as in Redis
+            # (Simplifying here by using Redis check signature)
+            limit = STRICT_RATE_LIMIT_PATHS.get(request.url.path, self.requests_per_minute)
+            # Temporarily monkey-patch requests_per_minute for memory check or handle explicitly
+            # Let's adjust _check_rate_limit_memory signature for consistency
+            is_allowed, remaining = await self._check_rate_limit_memory(client_ip, limit)
         
         if not is_allowed:
             retry_after = self.window_size
@@ -155,7 +168,7 @@ class RedisRateLimiterMiddleware(BaseHTTPMiddleware):
         
         # Add rate limit headers to response
         response = await call_next(request)
-        response.headers["X-RateLimit-Limit"] = str(self.requests_per_minute)
+        response.headers["X-RateLimit-Limit"] = str(limit)
         response.headers["X-RateLimit-Remaining"] = str(remaining)
         response.headers["X-RateLimit-Window"] = str(self.window_size)
         

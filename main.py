@@ -8,10 +8,16 @@ from app import models as _models  # noqa: F401 - register models for metadata s
 from app.middleware.error_handler import ErrorHandlerMiddleware
 from app.middleware.log_middleware import LogMiddleware
 from app.middleware.rate_limiter import RateLimiterMiddleware
+from app.middleware.rate_limiter_redis import RedisRateLimiterMiddleware
 from config.settings import settings
 
 # import central router
 from app.api.api import api_router
+from app.db.database import SessionLocal
+from app.services.core.cleanup_service import cleanup_expired_tokens
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -20,6 +26,16 @@ async def lifespan(_: FastAPI):
         verify_database_connection()
     if settings.AUTO_CREATE_TABLES and settings.APP_ENV != "production":
         Base.metadata.create_all(bind=engine)
+    
+    # Cleanup expired tokens on startup
+    db = SessionLocal()
+    try:
+        cleaned = cleanup_expired_tokens(db)
+        if cleaned:
+            logger.info(f"Cleaned {cleaned} expired refresh tokens on startup")
+    finally:
+        db.close()
+        
     yield
 
 app = FastAPI(
@@ -39,7 +55,10 @@ app.add_middleware(
 )
 
 # Custom middleware - Order matters (first added = last executed)
-app.add_middleware(RateLimiterMiddleware)
+if settings.REDIS_ENABLED:
+    app.add_middleware(RedisRateLimiterMiddleware)
+else:
+    app.add_middleware(RateLimiterMiddleware)
 app.add_middleware(ErrorHandlerMiddleware)
 app.add_middleware(LogMiddleware)
 
@@ -53,6 +72,24 @@ def read_root():
         "message": "Welcome to Bizify",
         "version": "1.0.0",
         "docs": "/docs"
+    }
+
+@app.get("/health")
+def health_check():
+    """Health check endpoint for monitoring and load balancers."""
+    from sqlalchemy import text
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        db_status = "ok"
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        db_status = "error"
+    
+    return {
+        "status": "ok" if db_status == "ok" else "degraded",
+        "database": db_status,
+        "version": "1.0.0"
     }
 
 if __name__ == "__main__":
