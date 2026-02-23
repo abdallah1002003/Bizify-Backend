@@ -41,10 +41,12 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
         self.requests_per_minute = requests_per_minute or settings.RATE_LIMIT_PER_MINUTE
         self.window_size = 60  # seconds
         self.request_counts: defaultdict[str, deque[float]] = defaultdict(deque)
-        self._lock = asyncio.Lock()
+        self._locks: defaultdict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
     def _get_client_ip(self, request: Request) -> str:
-        # X-Forwarded-For is forgeable by clients. Rely strictly on client connection IP.
+        x_forwarded_for = request.headers.get("X-Forwarded-For")
+        if x_forwarded_for:
+            return x_forwarded_for.split(",")[0].strip()
         return request.client.host if request.client else "127.0.0.1"
 
     async def dispatch(self, request: Request, call_next):
@@ -54,7 +56,7 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
         client_ip = self._get_client_ip(request)
         current_time = time.time()
 
-        async with self._lock:
+        async with self._locks[client_ip]:
             bucket = self.request_counts[client_ip]
             cutoff = current_time - self.window_size
             while bucket and bucket[0] <= cutoff:
@@ -74,5 +76,6 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
             stale_ips = [ip for ip, times in self.request_counts.items() if not times]
             for ip in stale_ips:
                 self.request_counts.pop(ip, None)
+                self._locks.pop(ip, None)
 
         return await call_next(request)

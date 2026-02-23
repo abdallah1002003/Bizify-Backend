@@ -172,7 +172,7 @@ def delete_agent_run(db: Session, id: UUID) -> Optional[AgentRun]:
     return db_obj
 
 
-def execute_agent_run_sync(db: Session, run_id: UUID) -> Optional[AgentRun]:
+async def execute_agent_run_sync(db: Session, run_id: UUID) -> Optional[AgentRun]:
     """Execute an agent run synchronously using the configured AI provider.
     
     Transitions AgentRun through lifecycle (PENDING -> RUNNING -> SUCCESS/FAILED).
@@ -206,7 +206,7 @@ def execute_agent_run_sync(db: Session, run_id: UUID) -> Optional[AgentRun]:
         )
 
     try:
-        output_data = provider_runtime.run_agent_execution(
+        output_data = await provider_runtime.run_agent_execution(
             db_obj.input_data,
             agent_name=db_obj.agent.name if db_obj.agent else "agent",
             stage_type=stage_type,
@@ -336,7 +336,7 @@ def delete_embedding(db: Session, id: UUID) -> Optional[Embedding]:
     return db_obj
 
 
-def trigger_vectorization(
+async def trigger_vectorization(
     db: Session,
     target_id: UUID,
     target_type: str,
@@ -347,7 +347,10 @@ def trigger_vectorization(
         return None
 
     business_id = target_id if target_type.upper() == "BUSINESS" else None
-    vector = [0.123] * 1536
+    vector = await provider_runtime.generate_embedding_vector(content)
+    if vector is None:
+        return None
+
     return create_embedding(
         db,
         {

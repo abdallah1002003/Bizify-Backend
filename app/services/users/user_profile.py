@@ -67,51 +67,12 @@ def create_user_profile(db: Session, obj_in: Any) -> UserProfile:
 
 def update_user_profile(
     db: Session,
-    db_obj: Optional[UserProfile] = None,
-    obj_in: Any = None,
-    user_id: Optional[UUID] = None,
-    profile_data: Optional[Dict[str, Any]] = None,
+    db_obj: UserProfile,
+    obj_in: Any,
     performer_id: Optional[UUID] = None,
 ) -> UserProfile:
-    # Backward-compat signature support:
-    # update_user_profile(db, user_id, profile_data, performer_id)
-    if isinstance(db_obj, UUID):
-        legacy_user_id = db_obj
-        legacy_profile_data = obj_in if isinstance(obj_in, dict) else {}
-        legacy_performer_id = user_id
-
-        db_obj = get_user_profile(db, user_id=legacy_user_id)
-        if db_obj is None:
-            db_obj = UserProfile(user_id=legacy_user_id, bio="", preferences_json={})
-            db.add(db_obj)
-            db.commit()
-            db.refresh(db_obj)
-
-        _apply_updates(db_obj, legacy_profile_data)
-        db.add(db_obj)
-        db.commit()
-        db.refresh(db_obj)
-
-        _record_admin_action(
-            db,
-            admin_id=legacy_performer_id,
-            action_type="PROFILE_UPDATED",
-            target_id=legacy_user_id,
-            target_entity="user_profile",
-        )
-        return db_obj
-
-    if db_obj is None:
-        if user_id is None:
-            raise ValueError("Either db_obj or user_id must be provided")
-        db_obj = get_user_profile(db, user_id=user_id)
-        if db_obj is None:
-            db_obj = UserProfile(user_id=user_id, bio="", preferences_json={})
-            db.add(db_obj)
-            db.commit()
-            db.refresh(db_obj)
-
-    update_data = profile_data if profile_data is not None else _to_update_dict(obj_in)
+    """Update a user profile explicitly by passing the UserProfile db object."""
+    update_data = _to_update_dict(obj_in)
     _apply_updates(db_obj, update_data)
 
     db.add(db_obj)
@@ -127,6 +88,35 @@ def update_user_profile(
             target_entity="user_profile",
         )
 
+    return db_obj
+
+
+def update_user_profile_by_user_id(
+    db: Session,
+    user_id: UUID,
+    profile_data: Dict[str, Any],
+    performer_id: Optional[UUID] = None,
+) -> UserProfile:
+    """Update a user profile by resolving the user_id first."""
+    db_obj = get_user_profile(db, user_id=user_id)
+    if db_obj is None:
+        db_obj = UserProfile(user_id=user_id, bio="", preferences_json={})
+        db.add(db_obj)
+        db.commit()
+        db.refresh(db_obj)
+
+    _apply_updates(db_obj, profile_data)
+    db.add(db_obj)
+    db.commit()
+    db.refresh(db_obj)
+
+    _record_admin_action(
+        db,
+        admin_id=performer_id,
+        action_type="PROFILE_UPDATED",
+        target_id=user_id,
+        target_entity="user_profile",
+    )
     return db_obj
 
 

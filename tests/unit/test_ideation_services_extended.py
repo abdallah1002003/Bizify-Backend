@@ -136,12 +136,12 @@ def test_idea_metric_trends_ai_score_and_delete(db):
             idea_id=idea.id,
             created_by=owner.id,
             name="ai_score",
-            value=88.0,
+            value=0.88,
             type="AI_ANALYSIS",
         ),
     )
     db.refresh(idea)
-    assert idea.ai_score == 88.0
+    assert idea.ai_score == 0.88
     assert idea_metric.get_idea_metric(db, ai_metric.id).id == ai_metric.id
 
     updated = idea_metric.update_idea_metric(db, first, {"value": 9.0})

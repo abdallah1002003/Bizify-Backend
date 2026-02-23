@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy.orm import Session
 from app.models.billing.billing import Plan, Subscription, PaymentMethod
-from app.models.enums import SubscriptionStatus
+from app.models.enums import SubscriptionStatus, PaymentStatus
 from app.schemas.billing.subscription import SubscriptionCreate
 from app.services.billing.subscription_service import create_subscription, get_active_subscription
 from app.services.billing.payment_service import process_subscription_payment
@@ -52,6 +52,6 @@ def test_subscription_activation_via_payment(db: Session, test_user, test_plan, 
         payment_method_id=test_payment_method.id
     )
     
-    assert payment.status == "succeeded"
+    assert payment.status == PaymentStatus.COMPLETED
     db.refresh(sub)
     assert sub.status == SubscriptionStatus.ACTIVE

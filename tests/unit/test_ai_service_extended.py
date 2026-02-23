@@ -33,7 +33,10 @@ def _create_business_stage(db, owner_id):
     return business, roadmap, stage
 
 
-def test_ai_service_success_paths_and_crud(db, test_user, monkeypatch):
+import pytest
+
+@pytest.mark.asyncio
+async def test_ai_service_success_paths_and_crud(db, test_user, monkeypatch):
     business, _, stage = _create_business_stage(db, test_user.id)
     other_user = _create_user(db, "ai_other")
     _, _, other_stage = _create_business_stage(db, other_user.id)
@@ -71,17 +74,18 @@ def test_ai_service_success_paths_and_crud(db, test_user, monkeypatch):
     assert len(filtered_runs) == 1
     assert filtered_runs[0].id == run.id
 
+    async def mock_run_agent(*_args, **_kwargs): return {"summary": "done", "score": 0.88, "mode": "mock"}
     monkeypatch.setattr(
         ai_service.provider_runtime,
         "run_agent_execution",
-        lambda *_args, **_kwargs: {"summary": "done", "score": 0.88, "mode": "mock"},
+        mock_run_agent,
     )
-    executed = ai_service.execute_agent_run_sync(db, run.id)
+    executed = await ai_service.execute_agent_run_sync(db, run.id)
     assert executed is not None
     assert executed.status == AgentRunStatus.SUCCESS
     assert executed.confidence_score == 0.88
 
-    assert ai_service.execute_agent_run_sync(db, uuid4()) is None
+    assert await ai_service.execute_agent_run_sync(db, uuid4()) is None
 
     validation_logs = ai_service.get_validation_logs(db, skip=0, limit=20)
     assert any(log.agent_run_id == run.id for log in validation_logs)
@@ -97,7 +101,7 @@ def test_ai_service_success_paths_and_crud(db, test_user, monkeypatch):
     assert deleted_log is not None
     assert ai_service.delete_validation_log(db, extra_log.id) is None
 
-    assert ai_service.trigger_vectorization(
+    assert await ai_service.trigger_vectorization(
         db,
         target_id=business.id,
         target_type="BUSINESS",
@@ -105,7 +109,7 @@ def test_ai_service_success_paths_and_crud(db, test_user, monkeypatch):
         agent_id=agent.id,
     ) is None
 
-    embedding = ai_service.trigger_vectorization(
+    embedding = await ai_service.trigger_vectorization(
         db,
         target_id=business.id,
         target_type="BUSINESS",
@@ -152,7 +156,8 @@ def test_ai_service_success_paths_and_crud(db, test_user, monkeypatch):
     ai_service.reset_internal_state()
 
 
-def test_ai_service_failure_path_marks_run_failed(db, test_user, monkeypatch):
+@pytest.mark.asyncio
+async def test_ai_service_failure_path_marks_run_failed(db, test_user, monkeypatch):
     business, _, stage = _create_business_stage(db, test_user.id)
     agent = ai_service.create_agent(db, "Failure Agent", "validation")
     run = ai_service.initiate_agent_run(
@@ -169,7 +174,7 @@ def test_ai_service_failure_path_marks_run_failed(db, test_user, monkeypatch):
         raise RuntimeError("provider failure")
 
     monkeypatch.setattr(ai_service.provider_runtime, "run_agent_execution", _raise)
-    failed = ai_service.execute_agent_run_sync(db, run.id)
+    failed = await ai_service.execute_agent_run_sync(db, run.id)
     assert failed is not None
     assert failed.status == AgentRunStatus.FAILED
     assert failed.confidence_score == 0.0

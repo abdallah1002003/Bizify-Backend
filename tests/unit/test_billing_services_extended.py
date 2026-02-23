@@ -5,7 +5,7 @@ import pytest
 
 import app.models as models
 from app.core.security import get_password_hash
-from app.models.enums import SubscriptionStatus, UserRole
+from app.models.enums import SubscriptionStatus, PaymentStatus, UserRole
 from app.services.billing import billing_service
 from app.services.billing import payment_method as payment_method_service
 from app.services.billing import payment_service
@@ -153,14 +153,14 @@ def test_payment_method_usage_and_payment_services_paths(db, test_user):
         method_id=payment_method.id,
         currency="usd",
     )
-    assert payment.status == "succeeded"
+    assert payment.status == PaymentStatus.COMPLETED
 
     db.refresh(subscription)
     assert subscription.status == SubscriptionStatus.ACTIVE
     assert subscription.end_date is not None
 
-    payment = payment_service.update_payment(db, payment, {"status": "captured"})
-    assert payment.status == "captured"
+    payment = payment_service.update_payment(db, payment, {"status": PaymentStatus.COMPLETED})
+    assert payment.status == PaymentStatus.COMPLETED
     assert payment_service.get_payment(db, payment.id) is not None
     assert len(payment_service.get_payments(db, user_id=test_user.id)) >= 1
 
@@ -174,12 +174,12 @@ def test_payment_method_usage_and_payment_services_paths(db, test_user):
         amount=9.0,
         payment_method_id=payment_method.id,
     )
-    assert wrapped_payment.status == "succeeded"
+    assert wrapped_payment.status == PaymentStatus.COMPLETED
 
     payment_service.handle_payment_reversal(db, payment.id)
     db.refresh(payment)
     db.refresh(subscription)
-    assert payment.status == "reversed"
+    assert payment.status == PaymentStatus.REFUNDED
     assert subscription.status == SubscriptionStatus.CANCELED
 
     usage_rows = db.query(models.Usage).filter(models.Usage.user_id == test_user.id).all()
@@ -260,13 +260,13 @@ def test_billing_service_monolith_paths(db, test_user):
             "payment_method_id": payment_method.id,
             "amount": 5.0,
             "currency": "usd",
-            "status": "pending",
+            "status": PaymentStatus.PENDING,
         },
     )
     assert billing_service.get_payment(db, draft_payment.id) is not None
 
-    draft_payment = billing_service.update_payment(db, draft_payment, {"status": "authorized"})
-    assert draft_payment.status == "authorized"
+    draft_payment = billing_service.update_payment(db, draft_payment, {"status": PaymentStatus.PENDING})
+    assert draft_payment.status == PaymentStatus.PENDING
     assert len(billing_service.get_payments(db, user_id=test_user.id)) >= 1
 
     processed_payment = billing_service.process_payment(
@@ -275,12 +275,12 @@ def test_billing_service_monolith_paths(db, test_user):
         amount=100.0,
         method_id=payment_method.id,
     )
-    assert processed_payment.status == "succeeded"
+    assert processed_payment.status == PaymentStatus.COMPLETED
 
     billing_service.handle_payment_reversal(db, processed_payment.id)
     db.refresh(processed_payment)
     db.refresh(subscription)
-    assert processed_payment.status == "reversed"
+    assert processed_payment.status == PaymentStatus.REFUNDED
     assert subscription.status == SubscriptionStatus.CANCELED
 
     billing_service.handle_payment_reversal(db, uuid4())

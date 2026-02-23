@@ -7,7 +7,7 @@ def test_create_idea(client: TestClient, auth_headers: dict, test_user: dict):
         "title": "Test Idea",
         "description": "This is a test description",
         "status": "draft",
-        "ai_score": 8.5
+        "ai_score": 0.85
     }
     response = client.post("/api/v1/ideas/", json=payload, headers=auth_headers)
     assert response.status_code == 200
@@ -28,7 +28,7 @@ def test_read_single_idea(client: TestClient, auth_headers: dict, test_user: dic
         "title": "Single Idea",
         "description": "Desc",
         "status": "draft",
-        "ai_score": 5.0
+        "ai_score": 0.5
     }
     create_res = client.post("/api/v1/ideas/", json=payload, headers=auth_headers)
     idea_id = create_res.json()["id"]
@@ -45,7 +45,7 @@ def test_update_idea(client: TestClient, auth_headers: dict, test_user: dict):
         "title": "Update Me",
         "description": "Desc",
         "status": "draft",
-        "ai_score": 5.0
+        "ai_score": 0.5
     }
     create_res = client.post("/api/v1/ideas/", json=payload, headers=auth_headers)
     idea_id = create_res.json()["id"]
@@ -63,7 +63,7 @@ def test_delete_idea(client: TestClient, auth_headers: dict, test_user: dict):
         "title": "Delete Me",
         "description": "Desc",
         "status": "draft",
-        "ai_score": 5.0
+        "ai_score": 0.5
     }
     create_res = client.post("/api/v1/ideas/", json=payload, headers=auth_headers)
     idea_id = create_res.json()["id"]

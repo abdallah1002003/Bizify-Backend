@@ -11,7 +11,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.models import Payment, Usage
-from app.models.enums import SubscriptionStatus
+from app.models.enums import SubscriptionStatus, PaymentStatus
 from app.services.billing.crud_utils import get_by_id, list_records
 from app.services.billing import subscription_service
 from app.services.billing.billing_service import _utc_now, _to_update_dict, _apply_updates
@@ -97,7 +97,7 @@ def process_payment(
         payment_method_id=method_id,
         amount=amount,
         currency=currency,
-        status="succeeded",
+        status=PaymentStatus.COMPLETED,
     )
     db.add(db_payment)
 
@@ -127,7 +127,7 @@ def handle_payment_reversal(db: Session, payment_id: UUID) -> None:
     if payment is None:
         return
 
-    payment.status = "reversed"
+    payment.status = PaymentStatus.REFUNDED
     if payment.subscription_id is not None:
         subscription = subscription_service.get_subscription(db, id=payment.subscription_id)
         if subscription is not None:

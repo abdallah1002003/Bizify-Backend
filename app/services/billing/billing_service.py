@@ -8,29 +8,11 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.models import Payment, PaymentMethod, Subscription, Usage
-from app.models.enums import SubscriptionStatus
+from app.models.enums import SubscriptionStatus, PaymentStatus
 
 logger = logging.getLogger(__name__)
 
-
-def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-def _to_update_dict(obj_in: Any) -> Dict[str, Any]:
-    if obj_in is None:
-        return {}
-    if hasattr(obj_in, "model_dump"):
-        return obj_in.model_dump(exclude_unset=True)
-    return dict(obj_in)
-
-
-def _apply_updates(db_obj: Any, update_data: Dict[str, Any]) -> Any:
-    for field, value in update_data.items():
-        if hasattr(db_obj, field):
-            setattr(db_obj, field, value)
-    return db_obj
-
+from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
 
 # ----------------------------
 # Usage enforcement
@@ -77,6 +59,7 @@ def record_usage(db: Session, user_id: UUID, resource_type: str, quantity: int =
     usage = (
         db.query(Usage)
         .filter(Usage.user_id == user_id, Usage.resource_type == resource_type)
+        .with_for_update()
         .first()
     )
     if usage is None:
@@ -250,7 +233,7 @@ def process_payment(
         payment_method_id=method_id,
         amount=amount,
         currency=currency,
-        status="succeeded",
+        status=PaymentStatus.COMPLETED,
     )
     db.add(db_payment)
 
@@ -270,7 +253,7 @@ def handle_payment_reversal(db: Session, payment_id: UUID) -> None:
     if payment is None:
         return
 
-    payment.status = "reversed"
+    payment.status = PaymentStatus.REFUNDED
     if payment.subscription_id is not None:
         subscription = get_subscription(db, id=payment.subscription_id)
         if subscription is not None:

@@ -36,7 +36,8 @@ def test_roadmap_stage(db: Session, test_user):
     db.refresh(stage)
     return stage
 
-def test_agent_run_lifecycle(db: Session, test_agent, test_roadmap_stage):
+@pytest.mark.asyncio
+async def test_agent_run_lifecycle(db: Session, test_agent, test_roadmap_stage):
     # 1. Start run (PENDING)
     obj_in = AgentRunCreate(
         stage_id=test_roadmap_stage.id,
@@ -47,7 +48,7 @@ def test_agent_run_lifecycle(db: Session, test_agent, test_roadmap_stage):
     assert run.status == AgentRunStatus.PENDING
     
     # 2. Execute run (Transition SUCCESS)
-    updated_run = execute_agent_run(db, run.id)
+    updated_run = await execute_agent_run(db, run.id)
     assert updated_run.status == AgentRunStatus.SUCCESS
     assert updated_run.confidence_score == 0.92
     
@@ -56,9 +57,10 @@ def test_agent_run_lifecycle(db: Session, test_agent, test_roadmap_stage):
     assert log.threshold_passed is True
     assert log.agent_run_id == updated_run.id
 
-def test_embedding_generation(db: Session, test_agent):
+@pytest.mark.asyncio
+async def test_embedding_generation(db: Session, test_agent):
     content = "This is a roadmap for a new AI startup."
-    embedding = generate_embedding(db, content=content, agent_id=test_agent.id)
+    embedding = await generate_embedding(db, content=content, agent_id=test_agent.id)
     assert embedding.content == content
     assert len(embedding.vector) == 1536
     assert -1.0 <= float(embedding.vector[0]) <= 1.0

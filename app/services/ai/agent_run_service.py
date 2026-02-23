@@ -18,5 +18,5 @@ def create_agent_run(db: Session, obj_in: Any) -> AgentRun:
     )
 
 
-def execute_agent_run(db: Session, run_id):
-    return ai_service.execute_agent_run_sync(db, run_id)
+async def execute_agent_run(db: Session, run_id):
+    return await ai_service.execute_agent_run_sync(db, run_id)

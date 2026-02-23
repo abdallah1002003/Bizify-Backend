@@ -44,7 +44,7 @@ class AgentRun(Base):
     input_data = Column(JSON, nullable=True)
     output_data = Column(JSON, nullable=True)
     confidence_score = Column(Float, nullable=True)
-    status = Column(Enum(AgentRunStatus), default=AgentRunStatus.WARNING)
+    status = Column(Enum(AgentRunStatus), default=AgentRunStatus.PENDING)
     execution_time_ms = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), default=utc_now)
 

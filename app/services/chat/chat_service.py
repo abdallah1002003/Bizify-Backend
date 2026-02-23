@@ -12,25 +12,7 @@ from app.models.enums import ChatRole, ChatSessionType
 
 logger = logging.getLogger(__name__)
 
-
-def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-def _to_update_dict(obj_in: Any) -> Dict[str, Any]:
-    if obj_in is None:
-        return {}
-    if hasattr(obj_in, "model_dump"):
-        return obj_in.model_dump(exclude_unset=True)
-    return dict(obj_in)
-
-
-def _apply_updates(db_obj: Any, update_data: Dict[str, Any]) -> Any:
-    for field, value in update_data.items():
-        if hasattr(db_obj, field):
-            setattr(db_obj, field, value)
-    return db_obj
-
+from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
 
 # ----------------------------
 # ChatSession
@@ -126,8 +108,6 @@ def add_message(db: Session, session_id: UUID, role: ChatRole, content: str) -> 
     db.add(db_obj)
     db.commit()
     db.refresh(db_obj)
-
-    _check_summarization_trigger(db, session_id)
     return db_obj
 
 
@@ -159,27 +139,7 @@ def get_session_history(db: Session, session_id: UUID, limit: int = 50) -> List[
     )
 
 
-def summarize_session(db: Session, session_id: UUID) -> str:
-    messages = get_session_history(db, session_id=session_id, limit=1000)
-    if len(messages) < 5:
-        return "Session too brief for summary."
 
-    summary = f"Discussion includes {len(messages)} messages."
-    session = get_chat_session(db, id=session_id)
-    if session is not None:
-        session.conversation_summary_json = {
-            "summary": summary,
-            "last_summarized_at": _utc_now().isoformat(),
-        }
-        db.commit()
-
-    return summary
-
-
-def _check_summarization_trigger(db: Session, session_id: UUID) -> None:
-    count = db.query(ChatMessage).filter(ChatMessage.session_id == session_id).count()
-    if count > 0 and count % 10 == 0:
-        summarize_session(db, session_id=session_id)
 
 
 def get_detailed_status() -> Dict[str, Any]:

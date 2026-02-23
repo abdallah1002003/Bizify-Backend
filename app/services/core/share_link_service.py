@@ -16,9 +16,7 @@ from app.models import ShareLink
 logger = logging.getLogger(__name__)
 
 
-def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
-
+from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
 
 def _is_expired(expires_at: datetime) -> bool:
     now = _utc_now()
@@ -26,21 +24,6 @@ def _is_expired(expires_at: datetime) -> bool:
     if expires_at.tzinfo is None and now.tzinfo is not None:
         now = now.replace(tzinfo=None)
     return expires_at < now
-
-
-def _to_update_dict(obj_in: Any) -> Dict[str, Any]:
-    if obj_in is None:
-        return {}
-    if hasattr(obj_in, "model_dump"):
-        return obj_in.model_dump(exclude_unset=True)
-    return dict(obj_in)
-
-
-def _apply_updates(db_obj: Any, update_data: Dict[str, Any]) -> Any:
-    for field, value in update_data.items():
-        if hasattr(db_obj, field):
-            setattr(db_obj, field, value)
-    return db_obj
 
 
 # ----------------------------

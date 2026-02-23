@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text, Enum, JSON, Float
+from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text, Enum, JSON, Float, CheckConstraint
 from app.db.guid import GUID
 from sqlalchemy.orm import relationship
 from app.db.database import Base
@@ -11,6 +11,9 @@ def utc_now():
 
 class Idea(Base):
     __tablename__ = "ideas"
+    __table_args__ = (
+        CheckConstraint('ai_score >= 0 AND ai_score <= 1', name='check_ai_score_range'),
+    )
 
     id = Column(GUID, primary_key=True, default=uuid.uuid4)
     owner_id = Column(GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)

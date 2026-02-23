@@ -8,7 +8,6 @@ from app import models as _models  # noqa: F401 - register models for metadata s
 from app.middleware.error_handler import ErrorHandlerMiddleware
 from app.middleware.log_middleware import LogMiddleware
 from app.middleware.rate_limiter import RateLimiterMiddleware
-from app.middleware.session_activity import SessionActivityMiddleware
 from config.settings import settings
 
 # import central router
@@ -42,7 +41,6 @@ app.add_middleware(
 # Custom middleware - Order matters (first added = last executed)
 app.add_middleware(RateLimiterMiddleware)
 app.add_middleware(ErrorHandlerMiddleware)
-app.add_middleware(SessionActivityMiddleware)
 app.add_middleware(LogMiddleware)
 
 # Include routers

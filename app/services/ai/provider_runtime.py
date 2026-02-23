@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -64,7 +65,7 @@ def _mock_agent_response(
     }
 
 
-def _call_openai_embeddings(content: str) -> Optional[list[float]]:
+async def _call_openai_embeddings(content: str) -> Optional[list[float]]:
     if not _is_openai_enabled():
         return None
 
@@ -77,31 +78,41 @@ def _call_openai_embeddings(content: str) -> Optional[list[float]]:
         "Content-Type": "application/json",
     }
     url = f"{settings.OPENAI_BASE_URL.rstrip('/')}/embeddings"
-    try:
-        response = httpx.post(
-            url,
-            headers=headers,
-            json=payload,
-            timeout=settings.AI_REQUEST_TIMEOUT_SECONDS,
-        )
-        response.raise_for_status()
-        data = response.json()
-        raw_vector = data["data"][0]["embedding"]
-        vector = [float(x) for x in raw_vector]
-        return _normalize_vector(vector, DEFAULT_VECTOR_DIMENSION)
-    except Exception as exc:  # pragma: no cover
-        logger.warning("OpenAI embedding call failed; using deterministic fallback: %s", exc)
-        return None
+    max_retries = 3
+    base_delay = 1.0
+
+    for attempt in range(max_retries):
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    url,
+                    headers=headers,
+                    json=payload,
+                    timeout=settings.AI_REQUEST_TIMEOUT_SECONDS,
+                )
+            response.raise_for_status()
+            data = response.json()
+            raw_vector = data["data"][0]["embedding"]
+            vector = [float(x) for x in raw_vector]
+            return _normalize_vector(vector, DEFAULT_VECTOR_DIMENSION)
+        except Exception as exc:  # pragma: no cover
+            if attempt < max_retries - 1:
+                delay = base_delay * (2 ** attempt)
+                logger.warning("OpenAI embedding call failed (attempt %d/%d): %s. Retrying in %ss...", attempt + 1, max_retries, exc, delay)
+                await asyncio.sleep(delay)
+            else:
+                logger.warning("OpenAI embedding call failed after %d retries; using deterministic fallback: %s", max_retries, exc)
+                return None
 
 
-def generate_embedding_vector(content: str, dimensions: int = DEFAULT_VECTOR_DIMENSION) -> list[float]:
-    vector = _call_openai_embeddings(content)
+async def generate_embedding_vector(content: str, dimensions: int = DEFAULT_VECTOR_DIMENSION) -> list[float]:
+    vector = await _call_openai_embeddings(content)
     if vector is not None:
         return _normalize_vector(vector, dimensions)
     return _normalize_vector(_deterministic_vector(content, dimensions), dimensions)
 
 
-def _call_openai_agent_response(
+async def _call_openai_agent_response(
     input_data: Optional[Dict[str, Any]],
     *,
     agent_name: str,
@@ -135,40 +146,50 @@ def _call_openai_agent_response(
         "Content-Type": "application/json",
     }
     url = f"{settings.OPENAI_BASE_URL.rstrip('/')}/chat/completions"
-    try:
-        response = httpx.post(
-            url,
-            headers=headers,
-            json=payload,
-            timeout=settings.AI_REQUEST_TIMEOUT_SECONDS,
-        )
-        response.raise_for_status()
-        data = response.json()
-        content = data["choices"][0]["message"]["content"]
-        if not isinstance(content, str) or not content.strip():
-            raise ValueError("OpenAI response content is empty")
+    max_retries = 3
+    base_delay = 1.0
 
+    for attempt in range(max_retries):
         try:
-            parsed = json.loads(content)
-            output: Dict[str, Any] = parsed if isinstance(parsed, dict) else {"summary": str(parsed)}
-        except json.JSONDecodeError:
-            output = {"summary": content.strip()}
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    url,
+                    headers=headers,
+                    json=payload,
+                    timeout=settings.AI_REQUEST_TIMEOUT_SECONDS,
+                )
+            response.raise_for_status()
+            data = response.json()
+            content = data["choices"][0]["message"]["content"]
+            if not isinstance(content, str) or not content.strip():
+                raise ValueError("OpenAI response content is empty")
 
-        output.setdefault("mode", "openai")
-        output["score"] = _normalize_score(output.get("score"))
-        return output
-    except Exception as exc:  # pragma: no cover
-        logger.warning("OpenAI agent call failed; using mock fallback: %s", exc)
-        return None
+            try:
+                parsed = json.loads(content)
+                output: Dict[str, Any] = parsed if isinstance(parsed, dict) else {"summary": str(parsed)}
+            except json.JSONDecodeError:
+                output = {"summary": content.strip()}
+
+            output.setdefault("mode", "openai")
+            output["score"] = _normalize_score(output.get("score"))
+            return output
+        except Exception as exc:  # pragma: no cover
+            if attempt < max_retries - 1:
+                delay = base_delay * (2 ** attempt)
+                logger.warning("OpenAI agent call failed (attempt %d/%d): %s. Retrying in %ss...", attempt + 1, max_retries, exc, delay)
+                await asyncio.sleep(delay)
+            else:
+                logger.warning("OpenAI agent call failed after %d retries; using mock fallback: %s", max_retries, exc)
+                return None
 
 
-def run_agent_execution(
+async def run_agent_execution(
     input_data: Optional[Dict[str, Any]],
     *,
     agent_name: str,
     stage_type: Optional[str],
 ) -> Dict[str, Any]:
-    output = _call_openai_agent_response(
+    output = await _call_openai_agent_response(
         input_data,
         agent_name=agent_name,
         stage_type=stage_type,
