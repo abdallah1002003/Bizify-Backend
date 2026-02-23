@@ -44,9 +44,7 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
         self._locks: defaultdict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
     def _get_client_ip(self, request: Request) -> str:
-        x_forwarded_for = request.headers.get("X-Forwarded-For")
-        if x_forwarded_for:
-            return x_forwarded_for.split(",")[0].strip()
+        # X-Forwarded-For is forgeable by clients. Rely strictly on client connection IP.
         return request.client.host if request.client else "127.0.0.1"
 
     async def dispatch(self, request: Request, call_next):

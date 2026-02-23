@@ -12,10 +12,6 @@ import app.models as models
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
-@cache(ttl_seconds=300)
-def _get_cached_user_dict(user_id: str, db: Session) -> Any:
-    return db.query(models.User).filter(models.User.id == user_id).first()
-
 def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)) -> models.User:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
@@ -32,19 +28,14 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         ) from exc
-    
-    user_data = _get_cached_user_dict(user_id, db)
-    if not user_data:
+
+    user_model = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user_model:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-        
-    if isinstance(user_data, dict):
-        user_model = models.User(**user_data)
-    else:
-        user_model = user_data
         
     return user_model
 
