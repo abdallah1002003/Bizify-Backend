@@ -111,3 +111,17 @@ def delete_agent_run(
         raise HTTPException(status_code=404, detail="AgentRun not found")
     _ensure_agent_run_owner(db_obj, current_user)
     return service.delete_agent_run(db, id=id)
+
+@router.post("/{id}/execute", response_model=AgentRunResponse)
+async def execute_agent_run(
+    id: UUID,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+):
+    db_obj = service.get_agent_run(db, id=id)
+    if not db_obj:
+        raise HTTPException(status_code=404, detail="AgentRun not found")
+    _ensure_agent_run_owner(db_obj, current_user)
+    
+    from app.services.ai import agent_run_service
+    return await agent_run_service.execute_agent_run(db, run_id=id)
