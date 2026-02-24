@@ -172,22 +172,21 @@ def delete_agent_run(db: Session, id: UUID) -> Optional[AgentRun]:
     return db_obj
 
 
-async def execute_agent_run_sync(db: Session, run_id: UUID) -> Optional[AgentRun]:
-    """Execute an agent run synchronously using the configured AI provider.
-    
-    Transitions AgentRun through lifecycle (PENDING -> RUNNING -> SUCCESS/FAILED).
-    Supports fallback to mock AI when the configured provider is unavailable.
-    
+async def execute_agent_run_async(db: Session, run_id: UUID) -> Optional[AgentRun]:
+    """Execute an agent run using the configured AI provider.
+
+    Transitions AgentRun through lifecycle: PENDING → RUNNING → SUCCESS/FAILED.
+    This coroutine is CPU/IO bound for the AI inference duration and must
+    NEVER be awaited directly inside an HTTP handler — use
+    ``run_agent_in_background`` with FastAPI's BackgroundTasks instead.
+
     Args:
-        db: Database session
+        db: Database session (owned by the background task)
         run_id: UUID of the AgentRun to execute
-        
+
     Returns:
-        Updated AgentRun with output_data, confidence_score, and final status
-        None if AgentRun not found
-        
-    Raises:
-        Exception: Caught and logged; run marked as FAILED with error details
+        Updated AgentRun with output_data, confidence_score, and final status.
+        None if AgentRun not found.
     """
     db_obj = get_agent_run(db, id=run_id)
     if db_obj is None:
@@ -250,6 +249,27 @@ async def execute_agent_run_sync(db: Session, run_id: UUID) -> Optional[AgentRun
             details=str(exc),
         )
     return db_obj
+
+
+# Backward-compat alias (old name was misleading — function is async, not sync)
+execute_agent_run_sync = execute_agent_run_async
+
+
+def run_agent_in_background(db: Session, run_id: UUID) -> None:
+    """Sync wrapper for use with FastAPI BackgroundTasks.
+
+    BackgroundTasks runs callables in a thread pool executor; using
+    ``asyncio.run()`` here is safe because we are NOT inside the event loop
+    when BackgroundTasks executes the callable.
+
+    The caller must pass its own ``db`` session — do NOT reuse the
+    request-scoped session after the response has been sent.
+    """
+    import asyncio
+    try:
+        asyncio.run(execute_agent_run_async(db, run_id))
+    finally:
+        db.close()
 
 
 # ----------------------------

@@ -1,9 +1,9 @@
 from typing import List
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from app.core.pagination import LimitParam, SkipParam
 from sqlalchemy.orm import Session
-from app.db.database import get_db
+from app.db.database import get_db, SessionLocal
 from app.schemas.ai.agent_run import AgentRunCreate, AgentRunUpdate, AgentRunResponse
 from app.core.dependencies import get_current_active_user
 from app.services.ai import ai_service as service
@@ -112,16 +112,36 @@ def delete_agent_run(
     _ensure_agent_run_owner(db_obj, current_user)
     return service.delete_agent_run(db, id=id)
 
-@router.post("/{id}/execute", response_model=AgentRunResponse)
-async def execute_agent_run(
+@router.post(
+    "/{id}/execute",
+    status_code=202,
+    response_model=AgentRunResponse,
+)
+def execute_agent_run(
     id: UUID,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
 ):
+    """
+    Queue an agent run for asynchronous execution.
+
+    Returns **202 Accepted** immediately after the run is queued.
+    The actual AI inference happens in a background thread so the HTTP
+    worker is never blocked for the duration of the model call.
+
+    Poll ``GET /{id}`` to check the run's status (PENDING → RUNNING →
+    SUCCESS / FAILED).
+    """
     db_obj = service.get_agent_run(db, id=id)
     if not db_obj:
         raise HTTPException(status_code=404, detail="AgentRun not found")
     _ensure_agent_run_owner(db_obj, current_user)
-    
-    from app.services.ai import agent_run_service
-    return await agent_run_service.execute_agent_run(db, run_id=id)
+
+    # Create a dedicated DB session that the background task owns.
+    # We MUST NOT pass the request-scoped `db` because it will be
+    # closed before the background task finishes.
+    bg_db = SessionLocal()
+
+    background_tasks.add_task(service.run_agent_in_background, bg_db, id)
+    return db_obj

@@ -34,11 +34,16 @@ def check_usage_limit(db: Session, user_id: UUID, resource_type: str) -> bool:
 
 
 def record_usage(db: Session, user_id: UUID, resource_type: str, quantity: int = 1) -> Usage:
-    """Increment usage for a resource, creating the row when needed."""
+    """Atomically increment usage for a resource, creating the row when needed.
+
+    Uses SELECT FOR UPDATE to prevent a race condition where two concurrent
+    requests both read ``usage is None`` and both try to INSERT the same row.
+    """
 
     usage = (
         db.query(Usage)
         .filter(Usage.user_id == user_id, Usage.resource_type == resource_type)
+        .with_for_update()  # row-level lock — prevents concurrent phantom inserts
         .first()
     )
     if usage is None:
@@ -79,9 +84,33 @@ def get_usages(
 
 
 def create_usage(db: Session, obj_in: Any) -> Usage:
-    """Create a usage row."""
+    """Create or update a usage row for a given (user_id, resource_type) pair.
 
-    db_obj = Usage(**_to_update_dict(obj_in))
+    Uses SELECT FOR UPDATE so that two concurrent callers converge on a single
+    row rather than both INSERTing duplicates and hitting a constraint error.
+    If a row already exists the caller's ``limit_value`` (and optional ``used``)
+    values are merged in.
+    """
+
+    data = _to_update_dict(obj_in)
+    user_id = data.get("user_id")
+    resource_type = data.get("resource_type")
+
+    if user_id and resource_type:
+        existing = (
+            db.query(Usage)
+            .filter(Usage.user_id == user_id, Usage.resource_type == resource_type)
+            .with_for_update()  # prevent concurrent phantom inserts
+            .first()
+        )
+        if existing is not None:
+            # Merge supplied fields onto the existing row instead of inserting a duplicate
+            _apply_updates(existing, data)
+            db.commit()
+            db.refresh(existing)
+            return existing
+
+    db_obj = Usage(**data)
     db.add(db_obj)
     db.commit()
     db.refresh(db_obj)

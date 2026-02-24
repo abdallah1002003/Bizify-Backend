@@ -39,19 +39,21 @@ class ErrorResponse:
 class ErrorHandlerMiddleware(BaseHTTPMiddleware):
     """
     Enhanced error handler middleware with error classification and observability.
-    
+
     Catches and classifies different exception types:
-    - ValidationError: 422 (VALIDATION_ERROR)
-    - IntegrityError: 409 (CONFLICT)
-    - SQLAlchemyError: 500 (DATABASE_ERROR)
+    - ValidationError:  422 (VALIDATION_ERROR)
+    - IntegrityError:   409 (CONFLICT)
+    - SQLAlchemyError:  500 (DATABASE_ERROR)
+    - ValueError:       400 (INVALID_VALUE)
+    - PermissionError:  403 (FORBIDDEN)
     - Generic Exception: 500 (INTERNAL_ERROR)
     """
-    
+
     async def dispatch(self, request: Request, call_next):
         try:
             response = await call_next(request)
             return response
-            
+
         except ValidationError as exc:
             """Handle Pydantic validation errors."""
             logger.warning(
@@ -68,7 +70,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
                 status_code=422,
                 content=error.to_dict()
             )
-            
+
         except IntegrityError as exc:
             """Handle database integrity constraint violations."""
             logger.warning(
@@ -85,7 +87,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
                 status_code=409,
                 content=error.to_dict()
             )
-            
+
         except SQLAlchemyError as exc:
             """Handle database errors."""
             logger.error(
@@ -102,7 +104,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
                 status_code=500,
                 content=error.to_dict()
             )
-            
+
         except ValueError as exc:
             """Handle value errors (e.g., from business logic)."""
             logger.warning(
@@ -117,7 +119,22 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
                 status_code=400,
                 content=error.to_dict()
             )
-            
+
+        except PermissionError as exc:
+            """Handle authorization / access-control denials."""
+            logger.warning(
+                f"Permission denied on {request.method} {request.url.path}: {exc}"
+            )
+            error = ErrorResponse(
+                status_code=403,
+                error_code="FORBIDDEN",
+                message=str(exc) or "You do not have permission to perform this action"
+            )
+            return JSONResponse(
+                status_code=403,
+                content=error.to_dict()
+            )
+
         except Exception as exc:
             """Catch-all for unexpected exceptions."""
             logger.error(

@@ -226,8 +226,8 @@ def test_billing_service_monolith_paths(db, test_user):
     db.commit()
     db.refresh(subscription)
 
-    assert billing_service.get_active_subscription(db, test_user.id).id == subscription.id
-    billing_service._sync_plan_limits(db, subscription)
+    assert subscription_service.get_active_subscription(db, test_user.id).id == subscription.id
+    subscription_service._sync_plan_limits(db, subscription)
 
     usage = (
         db.query(models.Usage)

@@ -77,3 +77,6 @@ zipp==3.23.0
 zope.event==6.0
 zope.interface==8.0.1
 pgvector==0.2.4
+fastapi-mail==1.4.1
+aiosmtplib==2.0.2
+stripe>=8.0.0

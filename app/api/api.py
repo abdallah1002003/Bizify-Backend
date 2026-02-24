@@ -27,6 +27,7 @@ from app.api.routes.billing import subscription
 from app.api.routes.billing import payment_method
 from app.api.routes.billing import payment
 from app.api.routes.billing import usage
+from app.api.routes.billing import stripe_webhook
 from app.api.routes.core import file
 from app.api.routes.core import notification
 from app.api.routes.core import share_link
@@ -222,4 +223,10 @@ api_router.include_router(
     prefix="/comparison_metrics",
     tags=["ComparisonMetric"],
     dependencies=[Depends(get_current_active_user)],
+)
+
+api_router.include_router(
+    stripe_webhook.router,
+    prefix="/billing/webhooks",
+    tags=["Stripe Webhooks"],
 )

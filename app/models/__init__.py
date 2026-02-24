@@ -5,7 +5,7 @@ from app.db.database import Base
 from .enums import *  # noqa: F403
 
 # Users
-from .users.user import User, UserProfile, AdminActionLog, RefreshToken
+from .users.user import User, UserProfile, AdminActionLog, RefreshToken, PasswordResetToken, EmailVerificationToken
 
 # Partners
 from .partners.partner import PartnerProfile, PartnerRequest
@@ -34,7 +34,8 @@ from .core.core import File, Notification, ShareLink
 
 # This ensures Base.metadata.create_all(bind=engine) will create all tables
 __all__ = [
-    "Base", "User", "UserProfile", "AdminActionLog",
+    "Base", "User", "UserProfile", "AdminActionLog", "RefreshToken",
+    "PasswordResetToken", "EmailVerificationToken",
     "PartnerProfile", "PartnerRequest",
     "Idea", "IdeaVersion", "IdeaMetric", "Experiment", "IdeaAccess",
     "IdeaComparison", "ComparisonItem", "ComparisonMetric",

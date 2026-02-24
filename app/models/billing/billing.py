@@ -28,6 +28,7 @@ class Subscription(Base):
     status = Column(Enum(SubscriptionStatus), default=SubscriptionStatus.ACTIVE)
     start_date = Column(DateTime(timezone=True), nullable=False)
     end_date = Column(DateTime(timezone=True), nullable=True)
+    stripe_subscription_id = Column(String, unique=True, nullable=True, index=True)  # e.g. sub_Xyz...
 
     user = relationship("User", foreign_keys=[user_id], back_populates="subscriptions")
     plan = relationship("Plan", back_populates="subscriptions")

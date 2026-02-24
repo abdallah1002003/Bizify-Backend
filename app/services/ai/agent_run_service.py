@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.models import AgentRun
@@ -18,5 +19,6 @@ def create_agent_run(db: Session, obj_in: Any) -> AgentRun:
     )
 
 
-async def execute_agent_run(db: Session, run_id):
-    return await ai_service.execute_agent_run_sync(db, run_id)
+async def execute_agent_run(db: Session, run_id: UUID) -> AgentRun:
+    """Kept for backward compatibility. Delegates to ai_service."""
+    return await ai_service.execute_agent_run_async(db, run_id)

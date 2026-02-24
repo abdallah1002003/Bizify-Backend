@@ -1,0 +1,75 @@
+version: "3.9"
+
+# =============================================================================
+# Bizify — local development stack
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL database
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bizify}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bizify_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-bizify}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bizify} -d ${POSTGRES_DB:-bizify}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Bizify API
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      # Override DATABASE_URL to point at the compose db service
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-bizify}:${POSTGRES_PASSWORD:-bizify_secret}@db:5432/${POSTGRES_DB:-bizify}
+      APP_ENV: development
+    ports:
+      - "8001:8001"
+    volumes:
+      # Hot-reload source in development (remove in production)
+      - .:/app
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8001/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # pgAdmin — optional, only started with: docker-compose --profile debug up
+  # ---------------------------------------------------------------------------
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    profiles: [debug]
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@bizify.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+
+volumes:
+  postgres_data:

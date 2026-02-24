@@ -74,20 +74,29 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
                 return JSONResponse(
                     status_code=429,
                     content={"detail": "Too many requests"},
-                    headers={"Retry-After": str(retry_after)},
+                    headers={
+                        "Retry-After": str(retry_after),
+                        "X-RateLimit-Limit": str(limit),
+                        "X-RateLimit-Remaining": "0",
+                        "X-RateLimit-Window": str(self.window_size),
+                    },
                 )
 
             bucket.append(current_time)
+            remaining = limit - len(bucket)
 
             # Opportunistic cleanup to avoid unbounded growth.
             stale_ips = [ip for ip, times in self.request_counts.items() if not times]
             for ip in stale_ips:
                 self.request_counts.pop(ip, None)
                 self._locks.pop(ip, None)
-            
-            # Cleanup old locks that have no corresponding requests
+
             stale_locks = [ip for ip in self._locks.keys() if ip not in self.request_counts or not self.request_counts[ip]]
             for ip in stale_locks:
                 self._locks.pop(ip, None)
 
-        return await call_next(request)
+        response = await call_next(request)
+        response.headers["X-RateLimit-Limit"] = str(limit)
+        response.headers["X-RateLimit-Remaining"] = str(remaining)
+        response.headers["X-RateLimit-Window"] = str(self.window_size)
+        return response

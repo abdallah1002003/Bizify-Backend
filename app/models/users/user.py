@@ -17,6 +17,7 @@ class User(Base):
     role = Column(Enum(UserRole), nullable=False)
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
+    stripe_customer_id = Column(String, unique=True, nullable=True, index=True)  # e.g. cus_Xyz...
     created_at = Column(DateTime(timezone=True), default=utc_now)
     updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
@@ -94,3 +95,18 @@ class PasswordResetToken(Base):
     created_at = Column(DateTime(timezone=True), default=utc_now)
 
     user = relationship("User", foreign_keys=[user_id])
+
+
+class EmailVerificationToken(Base):
+    """Stores email verification tokens for one-time account confirmation."""
+    __tablename__ = "email_verification_tokens"
+
+    id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    user_id = Column(GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    jti = Column(String, unique=True, index=True, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used = Column(Boolean, default=False, index=True)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+
+    user = relationship("User", foreign_keys=[user_id])
+

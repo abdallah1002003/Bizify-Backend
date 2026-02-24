@@ -1,0 +1,79 @@
+"""
+Stripe Webhook endpoint.
+
+POST /api/v1/billing/webhooks/stripe
+
+- No authentication header required (Stripe calls this unauthenticated).
+- Signature is verified via stripe.Webhook.construct_event using
+  STRIPE_WEBHOOK_SECRET from settings.
+- Returns 400 on invalid payload/signature, 200 {"status": "ok"} on success.
+- Unknown event types return 200 silently (forward-compatible).
+"""
+
+import logging
+
+import stripe
+from fastapi import APIRouter, Header, HTTPException, Request
+from sqlalchemy.orm import Session
+
+from app.db.database import SessionLocal
+from app.services.billing import stripe_webhook_service
+from config.settings import settings
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter()
+
+
+@router.post(
+    "/stripe",
+    summary="Stripe Webhook Receiver",
+    status_code=200,
+    # Stripe docs recommend returning 200 quickly; let the router handle errors.
+)
+async def stripe_webhook(
+    request: Request,
+    stripe_signature: str = Header(..., alias="Stripe-Signature"),
+):
+    """
+    Receive and process Stripe webhook events.
+
+    Verifies the ``Stripe-Signature`` header before processing to prevent
+    spoofed events. Returns **400** if the signature is invalid.
+
+    Poll this endpoint with the Stripe CLI for local development:
+
+    ```
+    stripe listen --forward-to localhost:8001/api/v1/billing/webhooks/stripe
+    ```
+    """
+    if not settings.STRIPE_ENABLED:
+        logger.debug("STRIPE_ENABLED=False — webhook call ignored")
+        return {"status": "disabled"}
+
+    raw_body = await request.body()
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload=raw_body,
+            sig_header=stripe_signature,
+            secret=settings.STRIPE_WEBHOOK_SECRET,
+        )
+    except stripe.error.SignatureVerificationError as exc:
+        logger.warning("Stripe webhook signature verification failed: %s", exc)
+        raise HTTPException(status_code=400, detail="Invalid Stripe signature")
+    except Exception as exc:
+        logger.error("Stripe webhook payload error: %s", exc)
+        raise HTTPException(status_code=400, detail="Invalid webhook payload")
+
+    db: Session = SessionLocal()
+    try:
+        stripe_webhook_service.dispatch(db, event)
+    except Exception:
+        logger.exception("Stripe webhook dispatch error for event %s", event.get("type"))
+        # Return 500 — Stripe will retry automatically
+        raise HTTPException(status_code=500, detail="Webhook processing failed")
+    finally:
+        db.close()
+
+    return {"status": "ok", "event_type": event.get("type")}

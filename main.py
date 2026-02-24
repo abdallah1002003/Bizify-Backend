@@ -14,10 +14,28 @@ from config.settings import settings
 # import central router
 from app.api.api import api_router
 from app.db.database import SessionLocal
-from app.services.core.cleanup_service import cleanup_expired_tokens
+from app.services.core.cleanup_service import cleanup_all, cleanup_expired_tokens
 import logging
+import asyncio
 
 logger = logging.getLogger(__name__)
+
+
+_CLEANUP_INTERVAL_SECONDS = 24 * 60 * 60  # 24 hours
+
+
+async def _periodic_cleanup() -> None:
+    """Background task: runs cleanup_all every 24 hours."""
+    while True:
+        await asyncio.sleep(_CLEANUP_INTERVAL_SECONDS)
+        db = SessionLocal()
+        try:
+            summary = cleanup_all(db)
+            logger.info("Periodic cleanup completed: %s", summary)
+        except Exception:
+            logger.exception("Periodic cleanup failed")
+        finally:
+            db.close()
 
 
 @asynccontextmanager
@@ -26,17 +44,28 @@ async def lifespan(_: FastAPI):
         verify_database_connection()
     if settings.AUTO_CREATE_TABLES and settings.APP_ENV != "production":
         Base.metadata.create_all(bind=engine)
-    
-    # Cleanup expired tokens on startup
+
+    # One-shot cleanup on startup
     db = SessionLocal()
     try:
-        cleaned = cleanup_expired_tokens(db)
-        if cleaned:
-            logger.info(f"Cleaned {cleaned} expired refresh tokens on startup")
+        summary = cleanup_all(db)
+        if any(v > 0 for v in summary.values()):
+            logger.info("Startup cleanup: %s", summary)
     finally:
         db.close()
-        
+
+    # Launch the 24-hour periodic cleanup task
+    cleanup_task = asyncio.create_task(_periodic_cleanup())
+    logger.info("Periodic cleanup task started (interval: %ds)", _CLEANUP_INTERVAL_SECONDS)
+
     yield
+
+    # Gracefully cancel the background task on shutdown
+    cleanup_task.cancel()
+    try:
+        await cleanup_task
+    except asyncio.CancelledError:
+        pass
 
 app = FastAPI(
     title="Bizify",

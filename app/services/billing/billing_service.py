@@ -72,55 +72,7 @@ def record_usage(db: Session, user_id: UUID, resource_type: str, quantity: int =
     return usage
 
 
-# ----------------------------
-# (Plan CRUD removed)
-# ----------------------------
-# ----------------------------
-# Subscription (Partial CRUD removed)
-# ----------------------------
-
-
-def get_active_subscription(db: Session, user_id: UUID) -> Optional[Subscription]:
-    return (
-        db.query(Subscription)
-        .filter(Subscription.user_id == user_id, Subscription.status == SubscriptionStatus.ACTIVE)
-        .first()
-    )
-
-
-def _sync_plan_limits(db: Session, subscription: Subscription) -> None:
-    from app.services.billing.plan_service import get_plan
-
-    plan = get_plan(db, id=subscription.plan_id)
-    if plan is None:
-        return
-
-    level = (plan.name or "").upper()
-    limit_by_plan = {
-        "FREE": 10,
-        "PRO": 100,
-        "ENTERPRISE": 1000,
-    }
-    limit = limit_by_plan.get(level, 10)
-
-    usage = (
-        db.query(Usage)
-        .filter(Usage.user_id == subscription.user_id, Usage.resource_type == "AI_REQUEST")
-        .first()
-    )
-    if usage is None:
-        usage = Usage(
-            user_id=subscription.user_id,
-            resource_type="AI_REQUEST",
-            used=0,
-            limit_value=limit,
-        )
-        db.add(usage)
-    else:
-        usage.limit_value = limit
-
-    db.commit()
-
+# (Subscription helpers consolidated in subscription_service.py)
 
 # ----------------------------
 # PaymentMethod
