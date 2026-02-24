@@ -5,7 +5,7 @@ from app.core.pagination import LimitParam, SkipParam
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.schemas.ideation.idea import IdeaCreate, IdeaUpdate, IdeaResponse
-from app.services.ideation import idea_core as service
+from app.services.ideation.idea_service import IdeaService, get_idea_service
 from app.core.dependencies import get_current_active_user
 import app.models as models
 
@@ -15,38 +15,30 @@ router = APIRouter()
 def read_ideas(
     skip: SkipParam = 0,
     limit: LimitParam = 20,
-    db: Session = Depends(get_db),
+    service: IdeaService = Depends(get_idea_service),
     current_user: models.User = Depends(get_current_active_user)
 ):
-    """List ideas visible to current user with pagination.
-    
-    Query Parameters:
-        skip: Number of records to skip (default: 0)
-        limit: Number of records to return (default: 20, max: 100)
-        
-    Returns:
-        List of Idea records the user has access to
-    """
-    return service.get_ideas(db, skip=skip, limit=limit, user_id=current_user.id)
+    """List ideas visible to current user with pagination."""
+    return service.get_ideas(skip=skip, limit=limit, user_id=current_user.id)
 
 @router.post("/", response_model=IdeaResponse)
 def create_idea(
     item_in: IdeaCreate, 
-    db: Session = Depends(get_db),
+    service: IdeaService = Depends(get_idea_service),
     current_user: models.User = Depends(get_current_active_user)
 ):
     """Elite API: Secure idea creation with auto-versioning."""
     item_in.owner_id = current_user.id or item_in.owner_id
-    return service.create_idea(db, obj_in=item_in)
+    return service.create_idea(obj_in=item_in)
 
 @router.get("/{id}", response_model=IdeaResponse)
 def read_idea(
     id: UUID, 
-    db: Session = Depends(get_db),
+    service: IdeaService = Depends(get_idea_service),
     current_user: models.User = Depends(get_current_active_user)
 ):
     """Elite API: RBAC-verified retrieval."""
-    db_obj = service.get_idea(db, id=id, user_id=current_user.id)
+    db_obj = service.get_idea(id=id, user_id=current_user.id)
     if not db_obj: 
         raise HTTPException(status_code=404, detail="Idea not found")
     return db_obj
@@ -55,22 +47,22 @@ def read_idea(
 def update_idea(
     id: UUID, 
     item_in: IdeaUpdate, 
-    db: Session = Depends(get_db),
+    service: IdeaService = Depends(get_idea_service),
     current_user: models.User = Depends(get_current_active_user)
 ):
     """Elite API: Protected mutation with lineage tracking."""
-    db_obj = service.get_idea(db, id=id)
+    db_obj = service.get_idea(id=id)
     if not db_obj:
          raise HTTPException(status_code=404, detail="Idea not found")
-    return service.update_idea(db, db_obj=db_obj, obj_in=item_in, performer_id=current_user.id)
+    return service.update_idea(db_obj=db_obj, obj_in=item_in, performer_id=current_user.id)
 
 @router.delete("/{id}", response_model=IdeaResponse)
 def delete_idea(
     id: UUID, 
-    db: Session = Depends(get_db),
+    service: IdeaService = Depends(get_idea_service),
     current_user: models.User = Depends(get_current_active_user)
 ):
     """Elite API: Secure deletion with ownership verification."""
-    if not service.check_idea_access(db, id, current_user.id, "delete"):
+    if not service.check_idea_access(id, current_user.id, "delete"):
         raise HTTPException(status_code=403, detail="Ownership required for deletion")
-    return service.delete_idea(db, id=id)
+    return service.delete_idea(id=id)

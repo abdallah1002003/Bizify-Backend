@@ -124,37 +124,19 @@ def initiate_agent_run(
         target_id: Optional target object ID
         target_type: Optional target object type
         stage_id: UUID of the RoadmapStage to process
-        input_data: Optional context data for the agent
-        
-    Returns:
-        Created AgentRun with PENDING status
-        
-    Raises:
-        PermissionError: If user has exhausted AI request quota
-        SQLAlchemyError: If database operations fail
     """
-    # Keep quota checks used by existing flow.
-    if user_id is not None:
-        if not billing_service.check_usage_limit(db, user_id, "AI_REQUEST"):
-            raise PermissionError("Insufficient AI quota")
-        billing_service.record_usage(db, user_id, "AI_REQUEST")
-
-    _ = target_id
-    _ = target_type
-
-    db_obj = AgentRun(
-        stage_id=stage_id,
+    billing = UsageService(db)
+    return AgentRunService(db, billing).initiate_agent_run(
         agent_id=agent_id,
-        status=AgentRunStatus.PENDING,
-        input_data=input_data,
+        user_id=user_id,
+        stage_id=stage_id,
+        input_data=input_data
     )
-    db.add(db_obj)
-    db.commit()
-    db.refresh(db_obj)
-    return db_obj
 
 
 def update_agent_run(db: Session, db_obj: AgentRun, obj_in: Any) -> AgentRun:
+    # Adding missing generic update if needed, but AgentRunService should probably have it
+    from app.services.billing.billing_service import _to_update_dict, _apply_updates
     _apply_updates(db_obj, _to_update_dict(obj_in))
     db.add(db_obj)
     db.commit()
@@ -163,92 +145,17 @@ def update_agent_run(db: Session, db_obj: AgentRun, obj_in: Any) -> AgentRun:
 
 
 def delete_agent_run(db: Session, id: UUID) -> Optional[AgentRun]:
-    db_obj = get_agent_run(db, id=id)
+    db_obj = get_agent_run(db, id)
     if not db_obj:
         return None
-
     db.delete(db_obj)
     db.commit()
     return db_obj
 
 
 async def execute_agent_run_async(db: Session, run_id: UUID) -> Optional[AgentRun]:
-    """Execute an agent run using the configured AI provider.
-
-    Transitions AgentRun through lifecycle: PENDING → RUNNING → SUCCESS/FAILED.
-    This coroutine is CPU/IO bound for the AI inference duration and must
-    NEVER be awaited directly inside an HTTP handler — use
-    ``run_agent_in_background`` with FastAPI's BackgroundTasks instead.
-
-    Args:
-        db: Database session (owned by the background task)
-        run_id: UUID of the AgentRun to execute
-
-    Returns:
-        Updated AgentRun with output_data, confidence_score, and final status.
-        None if AgentRun not found.
-    """
-    db_obj = get_agent_run(db, id=run_id)
-    if db_obj is None:
-        return None
-
-    _apply_updates(db_obj, {"status": AgentRunStatus.RUNNING})
-    db.commit()
-
-    stage = db_obj.stage
-    stage_type = None
-    if stage is not None and getattr(stage, "stage_type", None) is not None:
-        stage_type = (
-            stage.stage_type.value
-            if hasattr(stage.stage_type, "value")
-            else str(stage.stage_type)
-        )
-
-    try:
-        output_data = await provider_runtime.run_agent_execution(
-            db_obj.input_data,
-            agent_name=db_obj.agent.name if db_obj.agent else "agent",
-            stage_type=stage_type,
-        )
-        score = float(output_data.get("score", 0.92))
-
-        _apply_updates(
-            db_obj,
-            {
-                "output_data": output_data,
-                "confidence_score": score,
-                "status": AgentRunStatus.SUCCESS,
-            },
-        )
-        db.commit()
-        db.refresh(db_obj)
-
-        record_validation_log(
-            db,
-            agent_run_id=db_obj.id,
-            result="SUCCESS",
-            details=str(output_data.get("summary", "Execution completed")),
-        )
-    except Exception as exc:
-        logger.exception("Agent run execution failed for %s: %s", run_id, exc)
-        _apply_updates(
-            db_obj,
-            {
-                "status": AgentRunStatus.FAILED,
-                "output_data": {"mode": "error", "error": str(exc)},
-                "confidence_score": 0.0,
-            },
-        )
-        db.commit()
-        db.refresh(db_obj)
-
-        record_validation_log(
-            db,
-            agent_run_id=db_obj.id,
-            result="FAILED",
-            details=str(exc),
-        )
-    return db_obj
+    billing = UsageService(db)
+    return await AgentRunService(db, billing).execute_agent_run_async(run_id)
 
 
 # Backward-compat alias (old name was misleading — function is async, not sync)
@@ -256,104 +163,56 @@ execute_agent_run_sync = execute_agent_run_async
 
 
 def run_agent_in_background(db: Session, run_id: UUID) -> None:
-    """Sync wrapper for use with FastAPI BackgroundTasks.
-
-    BackgroundTasks runs callables in a thread pool executor; using
-    ``asyncio.run()`` here is safe because we are NOT inside the event loop
-    when BackgroundTasks executes the callable.
-
-    The caller must pass its own ``db`` session — do NOT reuse the
-    request-scoped session after the response has been sent.
-    """
+    """Helper for background tasks."""
     import asyncio
+    billing = UsageService(db)
+    service = AgentRunService(db, billing)
     try:
-        asyncio.run(execute_agent_run_async(db, run_id))
+        # Since this is likely called from a background task (synchronous context in FastAPI)
+        # we might need to handle the loop correctly or it might already be in an async thread.
+        # But FastAPI BackgroundTasks usually runs in a worker thread.
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+        if loop.is_running():
+            asyncio.ensure_future(service.execute_agent_run_async(run_id))
+        else:
+            loop.run_until_complete(service.execute_agent_run_async(run_id))
     finally:
         db.close()
 
 
-# ----------------------------
-# ValidationLog
-# ----------------------------
+# --- Validation Log Delegation ---
 
 def get_validation_log(db: Session, id: UUID) -> Optional[ValidationLog]:
-    return db.query(ValidationLog).filter(ValidationLog.id == id).first()
-
-
-def get_validation_logs(db: Session, skip: int = 0, limit: int = 100) -> List[ValidationLog]:
-    return db.query(ValidationLog).offset(skip).limit(limit).all()
+    billing = UsageService(db)
+    return AgentRunService(db, billing).get_validation_log(id)
 
 
 def record_validation_log(db: Session, agent_run_id: UUID, result: str, details: str) -> ValidationLog:
-    confidence = 0.9 if result.upper() == "SUCCESS" else 0.4
-    threshold_passed = confidence >= 0.8
-
-    db_obj = ValidationLog(
-        agent_run_id=agent_run_id,
-        confidence_score=confidence,
-        critique_json={"message": details},
-        threshold_passed=threshold_passed,
-    )
-    db.add(db_obj)
-    db.commit()
-    db.refresh(db_obj)
-    return db_obj
+    billing = UsageService(db)
+    return AgentRunService(db, billing).record_validation_log(agent_run_id, result, details)
 
 
-def update_validation_log(db: Session, db_obj: ValidationLog, obj_in: Any) -> ValidationLog:
-    _apply_updates(db_obj, _to_update_dict(obj_in))
-    db.add(db_obj)
-    db.commit()
-    db.refresh(db_obj)
-    return db_obj
-
-
-def delete_validation_log(db: Session, id: UUID) -> Optional[ValidationLog]:
-    db_obj = get_validation_log(db, id=id)
-    if not db_obj:
-        return None
-
-    db.delete(db_obj)
-    db.commit()
-    return db_obj
-
-
-# ----------------------------
-# Embedding
-# ----------------------------
+# --- Embedding Delegation ---
 
 def get_embedding(db: Session, id: UUID) -> Optional[Embedding]:
-    return db.query(Embedding).filter(Embedding.id == id).first()
+    return EmbeddingService(db).get_embedding(id)
 
 
 def get_embeddings(db: Session, skip: int = 0, limit: int = 100) -> List[Embedding]:
-    return db.query(Embedding).offset(skip).limit(limit).all()
+    return EmbeddingService(db).get_embeddings(skip, limit)
 
 
 def create_embedding(db: Session, obj_in: Any) -> Embedding:
-    db_obj = Embedding(**_to_update_dict(obj_in))
-    db.add(db_obj)
-    db.commit()
-    db.refresh(db_obj)
-    return db_obj
-
-
-def update_embedding(db: Session, db_obj: Embedding, obj_in: Any) -> Embedding:
-    _apply_updates(db_obj, _to_update_dict(obj_in))
-    db.add(db_obj)
-    db.commit()
-    db.refresh(db_obj)
-    return db_obj
+    return EmbeddingService(db).create_embedding(obj_in)
 
 
 def delete_embedding(db: Session, id: UUID) -> Optional[Embedding]:
-    db_obj = get_embedding(db, id=id)
-    if not db_obj:
-        return None
-
-    db.delete(db_obj)
-    db.commit()
-    return db_obj
+    return EmbeddingService(db).delete_embedding(id)
 
 
 async def trigger_vectorization(
@@ -363,26 +222,11 @@ async def trigger_vectorization(
     content: str,
     agent_id: Optional[UUID] = None,
 ) -> Optional[Embedding]:
-    if len(content) < 10:
-        return None
-
-    business_id = target_id if target_type.upper() == "BUSINESS" else None
-    vector = await provider_runtime.generate_embedding_vector(content)
-    if vector is None:
-        return None
-
-    return create_embedding(
-        db,
-        {
-            "business_id": business_id,
-            "agent_id": agent_id,
-            "content": content,
-            "vector": vector,
-        },
-    )
+    return await EmbeddingService(db).trigger_vectorization(target_id, target_type, content, agent_id)
 
 
 def get_detailed_status() -> Dict[str, Any]:
+    from app.services.billing.billing_service import _utc_now
     return {
         "module": "ai_service",
         "status": "operational",

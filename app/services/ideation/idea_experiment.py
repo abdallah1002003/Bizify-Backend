@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Experiment, Idea
 from app.models.enums import IdeaStatus
-from app.services.ideation import idea_core
+from app.services.ideation import idea_service
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ def delete_experiment(db: Session, id: UUID) -> Optional[Experiment]:
 
 
 def initiate_experiment(db: Session, idea_id: UUID, hypothesis: str, creator_id: UUID) -> Experiment:
-    if not idea_core.check_idea_access(db, idea_id, creator_id, "experiment"):
+    if not idea_service.check_idea_access(db, idea_id, creator_id, "experiment"):
         raise PermissionError("Not authorized to experiment on this idea")
 
     return create_experiment(

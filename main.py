@@ -14,6 +14,8 @@ from app.api.api import api_router
 from app.db.database import SessionLocal
 from app.services.core.cleanup_service import cleanup_all, cleanup_expired_tokens
 from app.core.structured_logging import configure_structured_logging, get_logger
+from app.core.event_handlers import register_all_handlers
+from app.core.metrics import REGISTRY
 from app.middleware.prometheus import setup_prometheus
 import logging
 import asyncio
@@ -64,6 +66,9 @@ async def lifespan(_: FastAPI):
         verify_database_connection()
     if settings.AUTO_CREATE_TABLES and settings.APP_ENV != "production":
         Base.metadata.create_all(bind=engine)
+
+    # Register internal event handlers
+    register_all_handlers()
 
     # One-shot cleanup on startup
     db = SessionLocal()
@@ -171,6 +176,18 @@ def health_check():
             results["status"] = "degraded"
             
     return results
+
+@app.get("/metrics")
+def get_metrics():
+    """
+    Prometheus metrics endpoint.
+    
+    Returns metrics in Prometheus text format for scraping.
+    Access at http://localhost:8001/metrics
+    """
+    from prometheus_client import REGISTRY as prom_registry, generate_latest
+    
+    return generate_latest(REGISTRY).decode("utf-8")
 
 # Initialize Prometheus instrumentation (after all routes are defined)
 setup_prometheus(app)
