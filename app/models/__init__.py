@@ -28,6 +28,7 @@ from .chat.chat import ChatSession, ChatMessage
 
 # Billing
 from .billing.billing import Plan, Subscription, PaymentMethod, Payment, Usage
+from .billing.processed_event import ProcessedEvent
 
 # Core / Shared
 from .core.core import File, Notification, ShareLink
@@ -43,6 +44,6 @@ __all__ = [
     "BusinessRoadmap", "RoadmapStage",
     "Agent", "AgentRun", "ValidationLog", "Embedding",
     "ChatSession", "ChatMessage",
-    "Plan", "Subscription", "PaymentMethod", "Payment", "Usage",
+    "Plan", "Subscription", "PaymentMethod", "Payment", "Usage", "ProcessedEvent",
     "File", "Notification", "ShareLink"
 ]

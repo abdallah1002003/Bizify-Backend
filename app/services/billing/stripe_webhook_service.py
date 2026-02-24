@@ -166,11 +166,13 @@ _HANDLERS = {
 def dispatch(db: Session, event: Any) -> bool:
     """
     Route a verified Stripe event to its handler.
+    Includes idempotency checks to prevent duplicate processing.
 
-    Returns True if a handler was found, False if the event type is unknown
-    (which is not an error — forward-compatible by design).
+    Returns True if a handler was found or if the event was already processed,
+    False if the event type is unknown (which is not an error — forward-compatible by design).
     """
     event_type: str = event.get("type", "")
+    event_id: str = event.get("id", "")
     data = event.get("data", {}).get("object", {})
 
     handler = _HANDLERS.get(event_type)
@@ -178,9 +180,38 @@ def dispatch(db: Session, event: Any) -> bool:
         logger.debug("Stripe: unhandled event type '%s' — ignoring", event_type)
         return False
 
+    if not event_id:
+        logger.warning("Stripe event missing 'id'. Proceeding without idempotency check.")
+    else:
+        from app.models.billing.processed_event import ProcessedEvent
+        from sqlalchemy.exc import IntegrityError
+        
+        # Check if already processed (Read-before-write optimization)
+        existing = db.query(ProcessedEvent).filter_by(event_id=event_id, source="stripe").first()
+        if existing:
+            logger.info("Stripe event %s already processed. Ignoring duplicate.", event_id)
+            return True
+
+        # Try to reserve the event ID
+        try:
+            db.begin_nested() # Savepoint for SQLite/Postgres
+            processed_event_record = ProcessedEvent(event_id=event_id, source="stripe")
+            db.add(processed_event_record)
+            db.flush()
+        except IntegrityError:
+            db.rollback()
+            logger.info("Stripe event %s already processed (caught via constraint). Ignoring duplicate.", event_id)
+            return True
+        except Exception as e:
+            db.rollback()
+            logger.error("Failed to record idempotency key for event %s: %s", event_id, e)
+            raise
+
     try:
         handler(db, data)
+        db.commit() # Commit the handler changes and the ProcessedEvent record
     except Exception:
+        db.rollback() # Rollback everything, including the ProcessedEvent record
         logger.exception("Error handling Stripe event '%s'", event_type)
         raise  # re-raise so the route can return 500 and Stripe will retry
 

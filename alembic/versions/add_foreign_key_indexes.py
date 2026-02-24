@@ -32,8 +32,7 @@ def upgrade() -> None:
     # Experiments
     op.create_index('ix_experiments_idea_id', 'experiments', ['idea_id'])
     
-    # Comparisons
-    op.create_index('ix_idea_comparisons_idea_id', 'idea_comparisons', ['idea_id'])
+    # Comparisons (idea_comparisons doesn't have an idea_id column)
     
     # Business collaborators
     op.create_index('ix_business_collaborators_business_id', 'business_collaborators', ['business_id'])
@@ -57,7 +56,6 @@ def upgrade() -> None:
     
     # Chat messages
     op.create_index('ix_chat_messages_session_id', 'chat_messages', ['session_id'])
-    op.create_index('ix_chat_messages_user_id', 'chat_messages', ['user_id'])
     
     # Payments
     op.create_index('ix_payments_user_id', 'payments', ['user_id'])
@@ -72,7 +70,7 @@ def upgrade() -> None:
     op.create_index('ix_payment_methods_user_id', 'payment_methods', ['user_id'])
     
     # Usage
-    op.create_index('ix_usage_user_id', 'usage', ['user_id'])
+    op.create_index('ix_usages_user_id', 'usages', ['user_id'])
     
     # Partner requests
     op.create_index('ix_partner_requests_business_id', 'partner_requests', ['business_id'])
@@ -80,7 +78,6 @@ def upgrade() -> None:
     
     # Embeddings
     op.create_index('ix_embeddings_business_id', 'embeddings', ['business_id'])
-    op.create_index('ix_embeddings_user_id', 'embeddings', ['user_id'])
     
     # Idea access
     op.create_index('ix_idea_accesses_idea_id', 'idea_accesses', ['idea_id'])
@@ -96,8 +93,7 @@ def upgrade() -> None:
     op.create_index('ix_agent_runs_stage_id', 'agent_runs', ['stage_id'])
     op.create_index('ix_agent_runs_agent_id', 'agent_runs', ['agent_id'])
     
-    # Validation logs
-    op.create_index('ix_validation_logs_agent_id', 'validation_logs', ['agent_id'])
+    # Validation logs (agent_id doesn't exist, it has agent_run_id but that's already indexed by some databases, skipping to be safe)
 
 
 def downgrade() -> None:
@@ -109,7 +105,6 @@ def downgrade() -> None:
     op.drop_index('ix_idea_versions_idea_id', table_name='idea_versions')
     op.drop_index('ix_idea_metrics_idea_id', table_name='idea_metrics')
     op.drop_index('ix_experiments_idea_id', table_name='experiments')
-    op.drop_index('ix_idea_comparisons_idea_id', table_name='idea_comparisons')
     op.drop_index('ix_business_collaborators_business_id', table_name='business_collaborators')
     op.drop_index('ix_business_collaborators_user_id', table_name='business_collaborators')
     op.drop_index('ix_business_invites_business_id', table_name='business_invites')
@@ -121,18 +116,15 @@ def downgrade() -> None:
     op.drop_index('ix_chat_sessions_idea_id', table_name='chat_sessions')
     op.drop_index('ix_chat_sessions_business_id', table_name='chat_sessions')
     op.drop_index('ix_chat_messages_session_id', table_name='chat_messages')
-    op.drop_index('ix_chat_messages_user_id', table_name='chat_messages')
     op.drop_index('ix_payments_user_id', table_name='payments')
     op.drop_index('ix_payments_subscription_id', table_name='payments')
     op.drop_index('ix_payments_payment_method_id', table_name='payments')
     op.drop_index('ix_subscriptions_user_id', table_name='subscriptions')
     op.drop_index('ix_subscriptions_plan_id', table_name='subscriptions')
-    op.drop_index('ix_payment_methods_user_id', table_name='payment_methods')
-    op.drop_index('ix_usage_user_id', table_name='usage')
+    op.drop_index('ix_usages_user_id', table_name='usages')
     op.drop_index('ix_partner_requests_business_id', table_name='partner_requests')
     op.drop_index('ix_partner_requests_partner_id', table_name='partner_requests')
     op.drop_index('ix_embeddings_business_id', table_name='embeddings')
-    op.drop_index('ix_embeddings_user_id', table_name='embeddings')
     op.drop_index('ix_idea_accesses_idea_id', table_name='idea_accesses')
     op.drop_index('ix_idea_accesses_user_id', table_name='idea_accesses')
     op.drop_index('ix_idea_accesses_business_id', table_name='idea_accesses')
@@ -141,4 +133,3 @@ def downgrade() -> None:
     op.drop_index('ix_share_links_created_by', table_name='share_links')
     op.drop_index('ix_agent_runs_stage_id', table_name='agent_runs')
     op.drop_index('ix_agent_runs_agent_id', table_name='agent_runs')
-    op.drop_index('ix_validation_logs_agent_id', table_name='validation_logs')

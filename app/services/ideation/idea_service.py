@@ -57,7 +57,12 @@ class IdeaService(BaseService):
         user_id: Optional[UUID] = None,
     ) -> List[Idea]:
         """Retrieve ideas with optional user-based filtering."""
-        query = self.db.query(Idea)
+        from sqlalchemy.orm import selectinload
+        
+        query = self.db.query(Idea).options(
+            selectinload(Idea.owner),
+            selectinload(Idea.business)
+        )
         if user_id is not None:
             query = query.outerjoin(IdeaAccess).filter(
                 (Idea.owner_id == user_id) | (IdeaAccess.user_id == user_id)

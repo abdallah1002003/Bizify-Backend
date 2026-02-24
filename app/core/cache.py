@@ -35,27 +35,27 @@ class CacheBackend(ABC, Generic[T]):
     """Abstract base for cache backends."""
 
     @abstractmethod
-    async def get(self, key: str) -> Optional[T]:
+    def get(self, key: str) -> Optional[T]:
         """Retrieve value from cache."""
         pass
 
     @abstractmethod
-    async def set(self, key: str, value: T, ttl_seconds: Optional[int] = None) -> bool:
+    def set(self, key: str, value: T, ttl_seconds: Optional[int] = None) -> bool:
         """Store value in cache with optional TTL."""
         pass
 
     @abstractmethod
-    async def delete(self, key: str) -> bool:
+    def delete(self, key: str) -> bool:
         """Delete key from cache."""
         pass
 
     @abstractmethod
-    async def exists(self, key: str) -> bool:
+    def exists(self, key: str) -> bool:
         """Check if key exists."""
         pass
 
     @abstractmethod
-    async def clear(self) -> bool:
+    def clear(self) -> bool:
         """Clear all cache entries."""
         pass
 
@@ -79,7 +79,7 @@ class InMemoryCache(CacheBackend[T]):
         self._hits = 0
         self._misses = 0
 
-    async def get(self, key: str) -> Optional[T]:
+    def get(self, key: str) -> Optional[T]:
         """
         Retrieve value from in-memory cache.
         
@@ -98,7 +98,7 @@ class InMemoryCache(CacheBackend[T]):
         self._hits += 1
         return value
 
-    async def set(self, key: str, value: T, ttl_seconds: Optional[int] = None) -> bool:
+    def set(self, key: str, value: T, ttl_seconds: Optional[int] = None) -> bool:
         """Store value with optional TTL."""
         expiration = None
         if ttl_seconds is not None:
@@ -107,14 +107,14 @@ class InMemoryCache(CacheBackend[T]):
         self._cache[key] = (value, expiration)
         return True
 
-    async def delete(self, key: str) -> bool:
+    def delete(self, key: str) -> bool:
         """Delete key from cache."""
         if key in self._cache:
             del self._cache[key]
             return True
         return False
 
-    async def exists(self, key: str) -> bool:
+    def exists(self, key: str) -> bool:
         """Check if key exists and hasn't expired."""
         if key not in self._cache:
             return False
@@ -126,7 +126,7 @@ class InMemoryCache(CacheBackend[T]):
 
         return True
 
-    async def clear(self) -> bool:
+    def clear(self) -> bool:
         """Clear all cache entries."""
         self._cache.clear()
         return True
@@ -194,7 +194,7 @@ class RedisCache(CacheBackend[T]):
             self.client = None  # type: ignore
             self._healthy = False
 
-    async def get(self, key: str) -> Optional[T]:
+    def get(self, key: str) -> Optional[T]:
         """Retrieve value from Redis."""
         if not self.client:
             return None
@@ -214,7 +214,7 @@ class RedisCache(CacheBackend[T]):
             logger.error(f"Redis get failed for {key}: {e}")
             return None
 
-    async def set(self, key: str, value: T, ttl_seconds: Optional[int] = None) -> bool:
+    def set(self, key: str, value: T, ttl_seconds: Optional[int] = None) -> bool:
         """Store value in Redis with optional TTL."""
         if not self.client:
             return False
@@ -237,7 +237,7 @@ class RedisCache(CacheBackend[T]):
             logger.error(f"Redis set failed for {key}: {e}")
             return False
 
-    async def delete(self, key: str) -> bool:
+    def delete(self, key: str) -> bool:
         """Delete key from Redis."""
         if not self.client:
             return False
@@ -248,7 +248,7 @@ class RedisCache(CacheBackend[T]):
             logger.error(f"Redis delete failed for {key}: {e}")
             return False
 
-    async def exists(self, key: str) -> bool:
+    def exists(self, key: str) -> bool:
         """Check if key exists in Redis."""
         if not self.client:
             return False
@@ -259,7 +259,7 @@ class RedisCache(CacheBackend[T]):
             logger.error(f"Redis exists check failed for {key}: {e}")
             return False
 
-    async def clear(self) -> bool:
+    def clear(self) -> bool:
         """Clear all keys in current database."""
         if not self.client:
             return False
@@ -322,25 +322,49 @@ class CacheManager:
         else:
             logger.info("Cache manager using in-memory backend")
 
-    async def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Optional[Any]:
         """Get value from cache."""
-        return await self.backend.get(key)
+        return self.backend.get(key)
 
-    async def set(self, key: str, value: Any, ttl_seconds: Optional[int] = None) -> bool:
+    def set(self, key: str, value: Any, ttl_seconds: Optional[int] = None) -> bool:
         """Set value in cache."""
-        return await self.backend.set(key, value, ttl_seconds)
+        return self.backend.set(key, value, ttl_seconds)
 
-    async def delete(self, key: str) -> bool:
+    def delete(self, key: str) -> bool:
         """Delete value from cache."""
-        return await self.backend.delete(key)
+        return self.backend.delete(key)
 
-    async def exists(self, key: str) -> bool:
+    def exists(self, key: str) -> bool:
         """Check if key exists."""
-        return await self.backend.exists(key)
+        return self.backend.exists(key)
 
-    async def clear(self) -> bool:
+    def clear(self) -> bool:
         """Clear cache."""
-        return await self.backend.clear()
+        return self.backend.clear()
+
+    def get_generation_key(self, namespace: str) -> int:
+        """Get the current generation (version) for a namespace."""
+        gen = self.get(f"generation:{namespace}")
+        if gen is None:
+            gen = 0
+            self.set(f"generation:{namespace}", gen)
+        return gen
+
+    def increment_generation_key(self, namespace: str) -> int:
+        """Increment the generation for a namespace to invalidate all associated cached items."""
+        if hasattr(self.backend, "client") and self.backend.client:
+            # Atomic increment in Redis
+            try:
+                new_gen = self.backend.client.incr(f"generation:{namespace}")
+                return int(new_gen)
+            except Exception:
+                pass
+        
+        # Fallback for in-memory or error
+        gen = self.get_generation_key(namespace)
+        new_gen = gen + 1
+        self.set(f"generation:{namespace}", new_gen)
+        return new_gen
 
     def is_healthy(self) -> bool:
         """Check backend health."""
@@ -348,34 +372,41 @@ class CacheManager:
 
     def setup_caching_decorator(self, ttl_seconds: int = 3600):
         """
-        Create a caching decorator for functions.
+        Create a caching decorator for synchronous functions.
         
         Example:
             @cache_manager.setup_caching_decorator(ttl_seconds=300)
-            async def get_user_profile(user_id: UUID):
+            def get_user_profile(user_id: UUID):
                 # Expensive operation
                 pass
         """
         def decorator(func):
-            @wraps(func)
-            async def wrapper(*args, **kwargs):
-                # Create cache key from function name and arguments
-                cache_key = f"{func.__name__}:{json.dumps([str(arg) for arg in args] + [f'{k}={v}' for k, v in kwargs.items()], sort_keys=True, default=str)}"
-
-                # Try to get from cache
-                cached = await self.get(cache_key)
-                if cached is not None:
-                    logger.debug(f"Cache hit for {func.__name__}")
-                    return cached
-
-                # Execute function
-                result = await func(*args, **kwargs)
-
-                # Store in cache
-                await self.set(cache_key, result, ttl_seconds)
-                return result
-
-            return wrapper
+            import inspect
+            
+            if inspect.iscoroutinefunction(func):
+                @wraps(func)
+                async def async_wrapper(*args, **kwargs):
+                    cache_key = f"{func.__name__}:{json.dumps([str(arg) for arg in args] + [f'{k}={v}' for k, v in kwargs.items()], sort_keys=True, default=str)}"
+                    cached = self.get(cache_key)
+                    if cached is not None:
+                        logger.debug(f"Cache hit for {func.__name__}")
+                        return cached
+                    result = await func(*args, **kwargs)
+                    self.set(cache_key, result, ttl_seconds)
+                    return result
+                return async_wrapper
+            else:
+                @wraps(func)
+                def sync_wrapper(*args, **kwargs):
+                    cache_key = f"{func.__name__}:{json.dumps([str(arg) for arg in args] + [f'{k}={v}' for k, v in kwargs.items()], sort_keys=True, default=str)}"
+                    cached = self.get(cache_key)
+                    if cached is not None:
+                        logger.debug(f"Cache hit for {func.__name__}")
+                        return cached
+                    result = func(*args, **kwargs)
+                    self.set(cache_key, result, ttl_seconds)
+                    return result
+                return sync_wrapper
 
         return decorator
 

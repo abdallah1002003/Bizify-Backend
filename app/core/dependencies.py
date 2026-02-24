@@ -55,7 +55,8 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
             headers={"WWW-Authenticate": "Bearer"},
         ) from exc
 
-    user_model = db.query(models.User).filter(models.User.id == user_id).first()
+    from sqlalchemy.orm import selectinload
+    user_model = db.query(models.User).options(selectinload(models.User.profile)).filter(models.User.id == user_id).first()
     if not user_model:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

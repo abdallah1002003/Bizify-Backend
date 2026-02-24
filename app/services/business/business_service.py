@@ -46,7 +46,13 @@ class BusinessService(BaseService):
         owner_id: Optional[UUID] = None,
     ) -> List[Business]:
         """Retrieve businesses with optional owner filtering."""
-        query = self.db.query(Business)
+        from sqlalchemy.orm import selectinload
+        
+        query = self.db.query(Business).options(
+            selectinload(Business.owner),
+            selectinload(Business.collaborators).selectinload(BusinessCollaborator.user),
+            selectinload(Business.roadmap)
+        )
         if owner_id is not None:
             query = query.filter(Business.owner_id == owner_id)
         return query.offset(skip).limit(limit).all()

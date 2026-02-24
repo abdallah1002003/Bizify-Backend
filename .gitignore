@@ -10,3 +10,14 @@ __pycache__/
 .env
 sql_app.db
 *.db
+
+# Logs
+logs/
+
+# Temporary files
+*.db
+*.sqlite
+*.sqlite3
+
+# Verification scripts
+verify_files.py
