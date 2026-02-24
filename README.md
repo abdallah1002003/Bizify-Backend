@@ -2,15 +2,6 @@
 
 FastAPI backend for idea management, business workflows, AI agents, billing, chat, partners, and core collaboration utilities.
 
-## 📖 Documentation
-
-Comprehensive documentation for this project is available in the [`docs/`](docs/) directory:
-- [Quick Summary](docs/QUICK_SUMMARY.md)
-- [Final Assessment](docs/FINAL_ASSESSMENT.md)
-- [Services Architecture Report](docs/SERVICES_ARCHITECTURE_REPORT.md)
-- [API Routes Index](docs/ROUTES_INDEX.md)
-- [AI Expert Handoff](docs/AI_EXPERT_HANDOFF.md)
-
 ## 🔀 API Versioning Strategy
 
 All routes currently reside under the `v1` namespace (e.g., `/api/v1/users`).
