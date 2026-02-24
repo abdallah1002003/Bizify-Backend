@@ -5,6 +5,12 @@ from typing import Any, Dict, List, Optional, Union, cast
 from uuid import UUID
 
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
+from fastapi import HTTPException, Depends
+
+from app.db.database import get_db
+from app.models.users import user as models
+from app.schemas.users import user as schemas
 
 from app.core.security import get_password_hash
 from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates

@@ -9,7 +9,10 @@ from sqlalchemy.orm import Session
 from app.models import Agent, AgentRun, Business, BusinessRoadmap, Embedding, RoadmapStage, ValidationLog
 from app.models.enums import AgentRunStatus
 from app.services.ai import provider_runtime
-from app.services.billing import billing_service
+from app.services.ai.agent_service import AgentService
+from app.services.ai.agent_run_service import AgentRunService
+from app.services.ai.embedding_service import EmbeddingService
+from app.services.billing.usage_service import UsageService
 from app.services.billing.billing_service import _utc_now, _to_update_dict, _apply_updates
 
 logger = logging.getLogger(__name__)
@@ -168,19 +171,11 @@ def run_agent_in_background(db: Session, run_id: UUID) -> None:
     billing = UsageService(db)
     service = AgentRunService(db, billing)
     try:
-        # Since this is likely called from a background task (synchronous context in FastAPI)
-        # we might need to handle the loop correctly or it might already be in an async thread.
-        # But FastAPI BackgroundTasks usually runs in a worker thread.
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            
-        if loop.is_running():
-            asyncio.ensure_future(service.execute_agent_run_async(run_id))
-        else:
-            loop.run_until_complete(service.execute_agent_run_async(run_id))
+        # Background tasks in FastAPI run in a separate thread.
+        # Using asyncio.run is safer here since it's a one-off task.
+        asyncio.run(service.execute_agent_run_async(run_id))
+    except Exception:
+        logger.exception("Failed to execute agent run in background")
     finally:
         db.close()
 
@@ -197,6 +192,28 @@ def record_validation_log(db: Session, agent_run_id: UUID, result: str, details:
     return AgentRunService(db, billing).record_validation_log(agent_run_id, result, details)
 
 
+def get_validation_logs(db: Session, skip: int = 0, limit: int = 100) -> List[ValidationLog]:
+    return db.query(ValidationLog).offset(skip).limit(limit).all()
+
+
+def update_validation_log(db: Session, db_obj: ValidationLog, obj_in: Any) -> ValidationLog:
+    from app.services.billing.billing_service import _to_update_dict, _apply_updates
+    _apply_updates(db_obj, _to_update_dict(obj_in))
+    db.add(db_obj)
+    db.commit()
+    db.refresh(db_obj)
+    return db_obj
+
+
+def delete_validation_log(db: Session, id: UUID) -> Optional[ValidationLog]:
+    db_obj = get_validation_log(db, id)
+    if not db_obj:
+        return None
+    db.delete(db_obj)
+    db.commit()
+    return db_obj
+
+
 # --- Embedding Delegation ---
 
 def get_embedding(db: Session, id: UUID) -> Optional[Embedding]:
@@ -209,6 +226,15 @@ def get_embeddings(db: Session, skip: int = 0, limit: int = 100) -> List[Embeddi
 
 def create_embedding(db: Session, obj_in: Any) -> Embedding:
     return EmbeddingService(db).create_embedding(obj_in)
+
+
+def update_embedding(db: Session, db_obj: Embedding, obj_in: Any) -> Embedding:
+    from app.services.billing.billing_service import _to_update_dict, _apply_updates
+    _apply_updates(db_obj, _to_update_dict(obj_in))
+    db.add(db_obj)
+    db.commit()
+    db.refresh(db_obj)
+    return db_obj
 
 
 def delete_embedding(db: Session, id: UUID) -> Optional[Embedding]:

@@ -4,7 +4,9 @@ from uuid import uuid4
 import app.models as models
 from app.core.security import get_password_hash
 from app.models.enums import IdeaStatus, UserRole
-from app.services.ideation import idea_access, idea_metric, idea_version
+from app.services.ideation.idea_access import IdeaAccessService
+from app.services.ideation import idea_metric
+from app.services.ideation.idea_version import IdeaVersionService
 
 
 class DummyModel:
@@ -45,6 +47,8 @@ def _create_idea(db, owner_id, title: str) -> models.Idea:
 
 
 def test_idea_access_crud_and_owner_filter(db):
+    access_service = IdeaAccessService(db)
+    
     owner = _create_user(db, "owner")
     other_owner = _create_user(db, "other_owner")
     collaborator = _create_user(db, "collaborator")
@@ -52,37 +56,35 @@ def test_idea_access_crud_and_owner_filter(db):
     owner_idea = _create_idea(db, owner.id, "Owner Idea")
     other_idea = _create_idea(db, other_owner.id, "Other Idea")
 
-    access_a = idea_access.create_idea_access(
-        db,
+    access_a = access_service.create_idea_access(
         {"idea_id": owner_idea.id, "user_id": collaborator.id, "can_edit": True},
     )
-    access_b = idea_access.create_idea_access(
-        db,
+    access_b = access_service.create_idea_access(
         DummyModel(idea_id=other_idea.id, user_id=collaborator.id, can_edit=False),
     )
 
-    assert idea_access.get_idea_access(db, access_a.id).id == access_a.id
-    assert len(idea_access.get_idea_accesses(db, skip=0, limit=10)) == 2
+    assert access_service.get_idea_access(access_a.id).id == access_a.id
+    assert len(access_service.get_idea_accesses(skip=0, limit=10)) == 2
 
-    owner_accesses = idea_access.get_idea_accesses_by_owner(db, owner.id, skip=0, limit=10)
+    owner_accesses = access_service.get_idea_accesses_by_owner(owner.id, skip=0, limit=10)
     assert len(owner_accesses) == 1
     assert owner_accesses[0].idea_id == owner_idea.id
 
-    updated = idea_access.update_idea_access(db, access_a, {"can_delete": True, "unknown_field": "ignored"})
+    updated = access_service.update_idea_access(access_a, {"can_delete": True, "unknown_field": "ignored"})
     assert updated.can_delete is True
     assert not hasattr(updated, "unknown_field")
 
-    deleted = idea_access.delete_idea_access(db, access_b.id)
+    deleted = access_service.delete_idea_access(access_b.id)
     assert deleted is not None
-    assert idea_access.delete_idea_access(db, uuid4()) is None
+    assert access_service.delete_idea_access(uuid4()) is None
 
 
 def test_idea_version_crud_and_ordering(db):
+    version_service = IdeaVersionService(db)
     owner = _create_user(db, "version_owner")
     idea = _create_idea(db, owner.id, "Versioned Idea")
 
-    older = idea_version.create_idea_version(
-        db,
+    older = version_service.create_idea_version(
         {
             "idea_id": idea.id,
             "created_by": owner.id,
@@ -90,8 +92,7 @@ def test_idea_version_crud_and_ordering(db):
             "created_at": datetime.utcnow() - timedelta(days=2),
         },
     )
-    newer = idea_version.create_idea_version(
-        db,
+    newer = version_service.create_idea_version(
         DummyModel(
             idea_id=idea.id,
             created_by=owner.id,
@@ -100,17 +101,17 @@ def test_idea_version_crud_and_ordering(db):
         ),
     )
 
-    assert idea_version.get_idea_version(db, older.id).id == older.id
-    ordered = idea_version.get_idea_versions(db, idea_id=idea.id, skip=0, limit=10)
+    assert version_service.get_idea_version(older.id).id == older.id
+    ordered = version_service.get_idea_versions(idea_id=idea.id, skip=0, limit=10)
     assert len(ordered) == 2
     assert ordered[0].id == newer.id
     assert ordered[1].id == older.id
 
-    updated = idea_version.update_idea_version(db, older, {"snapshot_json": {"version": 1, "patched": True}})
+    updated = version_service.update_idea_version(older, {"snapshot_json": {"version": 1, "patched": True}})
     assert updated.snapshot_json["patched"] is True
 
-    assert idea_version.delete_idea_version(db, uuid4()) is None
-    assert idea_version.delete_idea_version(db, newer.id) is not None
+    assert version_service.delete_idea_version(uuid4()) is None
+    assert version_service.delete_idea_version(newer.id) is not None
 
 
 def test_idea_metric_trends_ai_score_and_delete(db):

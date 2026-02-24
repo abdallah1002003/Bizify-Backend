@@ -5,7 +5,7 @@ from app.core.security import get_password_hash
 from app.models.enums import AgentRunStatus, BusinessStage, StageType, UserRole
 from app.schemas.business.business import BusinessCreate
 from app.services.ai import ai_service
-from app.services.business import business_core, business_roadmap
+from app.services.business import business_service, business_roadmap
 
 
 def _create_user(db, prefix: str) -> models.User:
@@ -24,7 +24,7 @@ def _create_user(db, prefix: str) -> models.User:
 
 
 def _create_business_stage(db, owner_id):
-    business = business_core.create_business(
+    business = business_service.create_business(
         db,
         BusinessCreate(owner_id=owner_id, stage=BusinessStage.EARLY),
     )

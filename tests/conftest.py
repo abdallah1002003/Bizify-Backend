@@ -122,3 +122,54 @@ def auth_token(test_user):
 @pytest.fixture(scope="function")
 def auth_headers(auth_token):
     return {"Authorization": f"Bearer {auth_token}"}
+@pytest.fixture(scope="function")
+def user_token(auth_token):
+    """Alias for auth_token for backward compatibility."""
+    return auth_token
+
+@pytest.fixture(scope="function")
+def another_user(db):
+    """Create a second test user for multi-user scenarios."""
+    from app.core.security import get_password_hash
+    user_data = {
+        "email": "another@example.com",
+        "password_hash": get_password_hash("anotherpass123"),
+        "name": "Another User",
+        "role": "entrepreneur",
+        "is_active": True,
+        "is_verified": True
+    }
+    user = models.User(**user_data)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+@pytest.fixture(scope="function")
+def another_user_token(another_user):
+    """Create a token for another user."""
+    from app.core.security import create_access_token
+    return create_access_token(subject=str(another_user.id))
+
+@pytest.fixture(scope="function")
+def user_subscription(test_user, db):
+    """Create a subscription for the test user."""
+    from app.services.billing import billing_service
+    from app.schemas.billing.plan import PlanCreate
+    from app.schemas.billing.subscription import SubscriptionCreate
+    
+    # Create a plan first
+    plan = billing_service.create_plan(db, obj_in=PlanCreate(
+        name="Test Plan",
+        description="Test subscription plan",
+        price=29.99,
+        billing_cycle="monthly",
+        features=[]
+    ))
+    
+    # Create a subscription for the test user
+    subscription = billing_service.create_subscription(db, obj_in=SubscriptionCreate(
+        user_id=test_user.id,
+        plan_id=plan.id
+    ))
+    return subscription

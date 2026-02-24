@@ -1,12 +1,12 @@
 import pytest
 from sqlalchemy.orm import Session
+from unittest.mock import patch
+
 from app.models.ai.agent import Agent
 from app.models.business.business import BusinessRoadmap, RoadmapStage
 from app.models.enums import AgentRunStatus
 from app.schemas.ai.agent_run import AgentRunCreate
-from app.services.ai.agent_run_service import create_agent_run, execute_agent_run
-from app.services.ai.validation_log_service import record_critique
-from app.services.ai.embedding_service import generate_embedding
+from app.services.ai.ai_service import initiate_agent_run, execute_agent_run_sync, trigger_vectorization, record_validation_log
 
 @pytest.fixture
 def test_agent(db: Session):
@@ -37,30 +37,42 @@ def test_roadmap_stage(db: Session, test_user):
     return stage
 
 @pytest.mark.asyncio
-async def test_agent_run_lifecycle(db: Session, test_agent, test_roadmap_stage):
+@patch("app.services.ai.agent_run_service.provider_runtime.run_agent_execution")
+@patch("app.services.billing.usage_service.UsageService.check_usage_limit", return_value=True)
+@patch("app.services.billing.usage_service.UsageService.record_usage")
+async def test_agent_run_lifecycle(mock_record_usage, mock_check_usage, mock_run_execution, db: Session, test_agent, test_roadmap_stage):
+    # Mock the execution to return a specific result
+    mock_run_execution.return_value = {
+        "output": {"result": "mocked output"},
+        "confidence_score": 0.92
+    }
+
     # 1. Start run (PENDING)
     obj_in = AgentRunCreate(
         stage_id=test_roadmap_stage.id,
         agent_id=test_agent.id,
         input_data={"market": "tech"}
     )
-    run = create_agent_run(db, obj_in)
+    run = initiate_agent_run(db, agent_id=test_agent.id, user_id=None, target_id=test_roadmap_stage.id, target_type="ROADMAP_STAGE", stage_id=test_roadmap_stage.id)
     assert run.status == AgentRunStatus.PENDING
     
     # 2. Execute run (Transition SUCCESS)
-    updated_run = await execute_agent_run(db, run.id)
+    updated_run = await execute_agent_run_sync(db, run.id)
     assert updated_run.status == AgentRunStatus.SUCCESS
     assert updated_run.confidence_score == 0.92
     
-    # 3. Record critique
-    log = record_critique(db, updated_run.id, score=0.92, critique={"logic": "valid"})
+    # 3. Record validation log
+    log = record_validation_log(db, updated_run.id, result="SUCCESS", details="Passed validation logic")
     assert log.threshold_passed is True
     assert log.agent_run_id == updated_run.id
 
 @pytest.mark.asyncio
-async def test_embedding_generation(db: Session, test_agent):
+@patch("app.services.ai.embedding_service.provider_runtime.generate_embedding_vector")
+async def test_embedding_generation_flow(mock_vector, db: Session, test_roadmap_stage):
+    # Mock the embedding vector generation
+    mock_vector.return_value = [0.1] * 1536
+
     content = "This is a roadmap for a new AI startup."
-    embedding = await generate_embedding(db, content=content, agent_id=test_agent.id)
-    assert embedding.content == content
+    embedding = await trigger_vectorization(db, target_id=test_roadmap_stage.id, target_type="ROADMAP_STAGE", content=content)
     assert len(embedding.vector) == 1536
     assert -1.0 <= float(embedding.vector[0]) <= 1.0

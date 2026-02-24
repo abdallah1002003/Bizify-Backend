@@ -58,14 +58,8 @@ class BusinessService(BaseService):
         self.db.commit()
         self.db.refresh(db_obj)
 
-        import asyncio
-        loop = asyncio.get_event_loop()
-        event_data = {"business": db_obj}
-        if loop.is_running():
-            loop.create_task(dispatcher.emit("business.created", event_data))
-        else:
-            asyncio.run(dispatcher.emit("business.created", event_data))
-
+        # Restore synchronous side-effect: default roadmap
+        self.roadmap.init_default_roadmap(db_obj.id)
         return db_obj
 
     def update_business(self, db_obj: Business, obj_in: Any) -> Business:
@@ -103,15 +97,24 @@ def get_business_service(
     return BusinessService(db, roadmap, collaborator)
 
 
-# Legacy aliases
+# Legacy aliases (Supports older tests calling functions directly)
+def get_business_service_manual(db: Session) -> BusinessService:
+    from app.services.business.business_roadmap import BusinessRoadmapService
+    from app.services.business.business_collaborator import BusinessCollaboratorService
+    return BusinessService(
+        db=db,
+        roadmap_service=BusinessRoadmapService(db),
+        collaborator_service=BusinessCollaboratorService(db)
+    )
+
 def get_business(db: Session, id: UUID) -> Optional[Business]:
-    return get_business_service(db).get_business(id)
+    return get_business_service_manual(db).get_business(id)
 
 def create_business(db: Session, obj_in: Any) -> Business:
-    return get_business_service(db).create_business(obj_in)
+    return get_business_service_manual(db).create_business(obj_in)
 
 def update_business(db: Session, db_obj: Business, obj_in: Any) -> Business:
-    return get_business_service(db).update_business(db_obj, obj_in)
+    return get_business_service_manual(db).update_business(db_obj, obj_in)
 
 def delete_business(db: Session, id: UUID) -> Optional[Business]:
-    return get_business_service(db).delete_business(id)
+    return get_business_service_manual(db).delete_business(id)

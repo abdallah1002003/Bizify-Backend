@@ -150,8 +150,10 @@ class SubscriptionService(BaseService):
             self.db.refresh(db_obj)
             logger.info(f"Created subscription {db_obj.id} for user {db_obj.user_id} with plan {db_obj.plan_id}")
             return db_obj
-        except (ValidationError, ResourceNotFoundError):
+        except (ValidationError, ResourceNotFoundError) as e:
             self.db.rollback()
+            code = getattr(e, "code", "UNKNOWN")
+            logger.warning(f"Error {code} in create_subscription: {e}")
             raise
         except Exception as e:
             self.db.rollback()

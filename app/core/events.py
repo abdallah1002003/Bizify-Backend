@@ -14,11 +14,18 @@ class EventDispatcher:
         self._handlers: Dict[str, List[EventHandler]] = {}
 
     def subscribe(self, event_type: str, handler: EventHandler):
-        """Subscribe a handler to an event type."""
+        """Subscribe a handler to an event type. Prevents duplicate subscriptions."""
         if event_type not in self._handlers:
             self._handlers[event_type] = []
-        self._handlers[event_type].append(handler)
-        logger.debug(f"Subscribed handler {handler.__name__} to event {event_type}")
+        
+        if handler not in self._handlers[event_type]:
+            self._handlers[event_type].append(handler)
+            logger.debug(f"Subscribed handler {getattr(handler, '__name__', str(handler))} to event {event_type}")
+
+    def clear_all_handlers(self):
+        """Clear all registered handlers. Useful for test cleanup."""
+        self._handlers = {}
+        logger.debug("Cleared all event handlers")
 
     async def emit(self, event_type: str, payload: Any):
         """Emit an event to all subscribed handlers."""

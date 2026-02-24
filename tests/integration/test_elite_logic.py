@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from app.models.ideation.idea import IdeaVersion
 from app.models.business.business import BusinessRoadmap
 from app.services.users import user_service
-from app.services.ideation import idea_core as idea_service
-from app.services.business import business_core as business_service
+from app.services.ideation import idea_service
+from app.services.business import business_service
 from app.services.business import business_roadmap
 from app.services.billing import billing_service
 from app.schemas.users.user import UserCreate

@@ -204,3 +204,12 @@ def get_roadmap(db: Session, business_id: UUID) -> Optional[BusinessRoadmap]:
 
 def init_default_roadmap(db: Session, business_id: UUID) -> BusinessRoadmap:
     return BusinessRoadmapService(db).init_default_roadmap(business_id)
+
+def add_roadmap_stage(db: Session, roadmap_id: UUID, stage_type: StageType, order_index: int) -> RoadmapStage:
+    return BusinessRoadmapService(db).add_roadmap_stage(roadmap_id, stage_type, order_index)
+
+def update_stage_status(db: Session, stage_id: UUID, new_status: RoadmapStageStatus) -> Optional[RoadmapStage]:
+    return BusinessRoadmapService(db).transition_stage(stage_id, new_status)
+
+def transition_stage(db: Session, stage_id: UUID, new_status: RoadmapStageStatus) -> Optional[RoadmapStage]:
+    return BusinessRoadmapService(db).transition_stage(stage_id, new_status)

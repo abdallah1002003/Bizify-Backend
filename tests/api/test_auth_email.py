@@ -31,11 +31,11 @@ class TestVerificationEmailFlow:
         """POST /register must call send_verification_email with the user's email."""
         sent = []
 
-        async def fake_send(email, token):
+        async def fake_send(self, email, token):
             sent.append({"email": email, "token": token})
 
         monkeypatch.setattr(
-            "app.api.routes.auth.send_verification_email", fake_send
+            "app.services.core.email_service.EmailService.send_verification_email", fake_send
         )
 
         resp = _register_user(client)
@@ -151,11 +151,11 @@ class TestPasswordResetEmailFlow:
         """POST /forgot-password must call send_password_reset_email."""
         sent = []
 
-        async def fake_send(email, token):
+        async def fake_send(self, email, token):
             sent.append({"email": email, "token": token})
 
         monkeypatch.setattr(
-            "app.api.routes.auth.send_password_reset_email", fake_send
+            "app.services.core.email_service.EmailService.send_password_reset_email", fake_send
         )
 
         resp = client.post(
@@ -172,11 +172,11 @@ class TestPasswordResetEmailFlow:
         """POST /forgot-password for unknown email must return 200 (no user enumeration)."""
         sent = []
 
-        async def fake_send(email, token):
+        async def fake_send(self, email, token):
             sent.append(email)
 
         monkeypatch.setattr(
-            "app.api.routes.auth.send_password_reset_email", fake_send
+            "app.services.core.email_service.EmailService.send_password_reset_email", fake_send
         )
 
         resp = client.post(
@@ -190,11 +190,11 @@ class TestPasswordResetEmailFlow:
         """forgot-password → reset-password should work end-to-end."""
         captured_token = []
 
-        async def fake_send(email, token):
+        async def fake_send(self, email, token):
             captured_token.append(token)
 
         monkeypatch.setattr(
-            "app.api.routes.auth.send_password_reset_email", fake_send
+            "app.services.core.email_service.EmailService.send_password_reset_email", fake_send
         )
 
         # 1. Request reset

@@ -71,13 +71,8 @@ class IdeaService(BaseService):
         self.db.commit()
         self.db.refresh(db_obj)
 
-        import asyncio
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            loop.create_task(dispatcher.emit("idea.created", {"idea": db_obj}))
-        else:
-            asyncio.run(dispatcher.emit("idea.created", {"idea": db_obj}))
-            
+        # Restore synchronous side-effect: initial snapshot
+        self.version.create_idea_snapshot(db_obj)
         return db_obj
 
     def update_idea(self, db_obj: Idea, obj_in: Any, performer_id: Optional[UUID] = None) -> Idea:
@@ -93,14 +88,9 @@ class IdeaService(BaseService):
         self.db.commit()
         self.db.refresh(db_obj)
 
+        # Restore synchronous side-effect: snapshot on major change
         if major_changed:
-            import asyncio
-            loop = asyncio.get_event_loop()
-            event_data = {"idea": db_obj, "performer_id": performer_id}
-            if loop.is_running():
-                loop.create_task(dispatcher.emit("idea.updated", event_data))
-            else:
-                asyncio.run(dispatcher.emit("idea.updated", event_data))
+            self.version.create_idea_snapshot(db_obj, created_by=performer_id)
 
         return db_obj
 
@@ -128,18 +118,27 @@ def get_idea_service(
     return IdeaService(db, access, version)
 
 
-# Legacy aliases
+# Legacy aliases (Supports older tests calling functions directly)
+def get_idea_service_manual(db: Session) -> IdeaService:
+    from app.services.ideation.idea_access import IdeaAccessService
+    from app.services.ideation.idea_version import IdeaVersionService
+    return IdeaService(
+        db=db,
+        access_service=IdeaAccessService(db),
+        version_service=IdeaVersionService(db)
+    )
+
 def get_idea(db: Session, id: UUID, user_id: Optional[UUID] = None) -> Optional[Idea]:
-    return get_idea_service(db).get_idea(id, user_id)
+    return get_idea_service_manual(db).get_idea(id, user_id)
 
 def create_idea(db: Session, obj_in: Any) -> Idea:
-    return get_idea_service(db).create_idea(obj_in)
+    return get_idea_service_manual(db).create_idea(obj_in)
 
 def update_idea(db: Session, db_obj: Idea, obj_in: Any, performer_id: Optional[UUID] = None) -> Idea:
-    return get_idea_service(db).update_idea(db_obj, obj_in, performer_id)
+    return get_idea_service_manual(db).update_idea(db_obj, obj_in, performer_id)
 
 def check_idea_access(db: Session, idea_id: UUID, user_id: UUID, required_perm: str = "view") -> bool:
-    return get_idea_service(db).check_idea_access(idea_id, user_id, required_perm)
+    return get_idea_service_manual(db).check_idea_access(idea_id, user_id, required_perm)
 
 def delete_idea(db: Session, id: UUID) -> Optional[Idea]:
-    return get_idea_service(db).delete_idea(id)
+    return get_idea_service_manual(db).delete_idea(id)

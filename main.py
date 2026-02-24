@@ -70,27 +70,31 @@ async def lifespan(_: FastAPI):
     # Register internal event handlers
     register_all_handlers()
 
-    # One-shot cleanup on startup
-    db = SessionLocal()
-    try:
-        summary = cleanup_all(db)
-        if any(v > 0 for v in summary.values()):
-            logger.info("Startup cleanup: %s", summary)
-    finally:
-        db.close()
+    # One-shot cleanup on startup (skip in test to avoid in-memory DB issues)
+    if settings.APP_ENV != "test":
+        db = SessionLocal()
+        try:
+            summary = cleanup_all(db)
+            if any(v > 0 for v in summary.values()):
+                logger.info("Startup cleanup: %s", summary)
+        finally:
+            db.close()
 
-    # Launch the 24-hour periodic cleanup task
-    cleanup_task = asyncio.create_task(_periodic_cleanup())
-    logger.info("Periodic cleanup task started (interval: %ds)", _CLEANUP_INTERVAL_SECONDS)
+    # Launch the 24-hour periodic cleanup task (only in non-test env)
+    cleanup_task = None
+    if settings.APP_ENV != "test":
+        cleanup_task = asyncio.create_task(_periodic_cleanup())
+        logger.info("Periodic cleanup task started (interval: %ds)", _CLEANUP_INTERVAL_SECONDS)
 
     yield
 
     # Gracefully cancel the background task on shutdown
-    cleanup_task.cancel()
-    try:
-        await cleanup_task
-    except asyncio.CancelledError:
-        pass
+    if cleanup_task:
+        cleanup_task.cancel()
+        try:
+            await cleanup_task
+        except asyncio.CancelledError:
+            pass
 
 app = FastAPI(
     title=settings.APP_NAME,
