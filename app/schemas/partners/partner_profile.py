@@ -1,7 +1,7 @@
 from app.models.enums import ApprovalStatus, PartnerType
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from typing import Optional
+from typing import Optional, Any, Dict
 from uuid import UUID
 
 class PartnerProfileBase(BaseModel):
@@ -26,7 +26,7 @@ class PartnerProfileCreate(BaseModel):
     
     @field_validator('services_json', 'experience_json', mode='before')
     @classmethod
-    def validate_json_fields(cls, v):
+    def validate_json_fields(cls, v: Any) -> Dict[str, Any]:
         """Validate JSON fields at input time."""
         if v is None:
             return {}
@@ -53,7 +53,7 @@ class PartnerProfileUpdate(BaseModel):
     
     @field_validator('services_json', 'experience_json', mode='before')
     @classmethod
-    def validate_json_fields(cls, v):
+    def validate_json_fields(cls, v: Any) -> Optional[Dict[str, Any]]:
         """Validate JSON fields at input time."""
         if v is None:
             return None

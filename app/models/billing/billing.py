@@ -1,76 +1,122 @@
 import uuid
 from datetime import datetime, timezone
+from typing import List, Optional
 from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Enum, JSON, Float, Integer
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.guid import GUID
-from sqlalchemy.orm import relationship
+from app.core.encryption import EncryptedString
 from app.db.database import Base
 from app.models.enums import SubscriptionStatus, PaymentStatus
+from config.settings import settings
 from app.core.crud_utils import _utc_now as utc_now
 
 
 class Plan(Base):
+    """Subscription plan definition."""
     __tablename__ = "plans"
 
-    id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    name = Column(String, nullable=False)
-    price = Column(Float, nullable=False)
-    features_json = Column(JSON, nullable=True)
-    is_active = Column(Boolean, default=True)
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
+    price: Mapped[float] = mapped_column(Float, nullable=False)
+    features_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
-    subscriptions = relationship("Subscription", back_populates="plan", cascade="all, delete-orphan")
+    subscriptions: Mapped[List["Subscription"]] = relationship(
+        "Subscription", back_populates="plan", cascade="all, delete-orphan"
+    )
 
 class Subscription(Base):
+    """User subscription model with plan and payment relationships."""
     __tablename__ = "subscriptions"
 
-    id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    user_id = Column(GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    plan_id = Column(GUID, ForeignKey("plans.id", ondelete="CASCADE"), nullable=False)
-    status = Column(Enum(SubscriptionStatus), default=SubscriptionStatus.ACTIVE)
-    start_date = Column(DateTime(timezone=True), nullable=False)
-    end_date = Column(DateTime(timezone=True), nullable=True)
-    stripe_subscription_id = Column(String, unique=True, nullable=True, index=True)  # e.g. sub_Xyz...
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    plan_id: Mapped[uuid.UUID] = mapped_column(
+        GUID, ForeignKey("plans.id", ondelete="CASCADE"), nullable=False
+    )
+    status: Mapped[SubscriptionStatus] = mapped_column(
+        Enum(SubscriptionStatus), default=SubscriptionStatus.ACTIVE
+    )
+    start_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    end_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    stripe_subscription_id: Mapped[Optional[str]] = mapped_column(
+        String, unique=True, nullable=True, index=True
+    )
 
-    user = relationship("User", foreign_keys=[user_id], back_populates="subscriptions")
-    plan = relationship("Plan", back_populates="subscriptions")
-    payments = relationship("Payment", back_populates="subscription", cascade="all, delete-orphan")
+    user: Mapped["User"] = relationship(
+        "User", foreign_keys=[user_id], back_populates="subscriptions"
+    )
+    plan: Mapped["Plan"] = relationship("Plan", back_populates="subscriptions")
+    payments: Mapped[List["Payment"]] = relationship(
+        "Payment", back_populates="subscription", cascade="all, delete-orphan"
+    )
 
 class PaymentMethod(Base):
+    """Payment method stored for a user with encryption."""
     __tablename__ = "payment_methods"
 
-    id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    user_id = Column(GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    provider = Column(String, nullable=False)
-    token_ref = Column(String, nullable=False)
-    last4 = Column(String, nullable=True)
-    is_default = Column(Boolean, default=False)
-    created_at = Column(DateTime(timezone=True), default=utc_now)
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    provider: Mapped[str] = mapped_column(String, nullable=False)
+    token_ref: Mapped[str] = mapped_column(EncryptedString, nullable=False)
+    last4: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
-    user = relationship("User", foreign_keys=[user_id], back_populates="payment_methods")
-    payments = relationship("Payment", back_populates="payment_method")
+    user: Mapped["User"] = relationship(
+        "User", foreign_keys=[user_id], back_populates="payment_methods"
+    )
+    payments: Mapped[List["Payment"]] = relationship(
+        "Payment", back_populates="payment_method"
+    )
 
 class Payment(Base):
+    """Payment transaction record with status tracking."""
     __tablename__ = "payments"
 
-    id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    user_id = Column(GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    subscription_id = Column(GUID, ForeignKey("subscriptions.id", ondelete="SET NULL"), nullable=True)
-    payment_method_id = Column(GUID, ForeignKey("payment_methods.id", ondelete="SET NULL"), nullable=True)
-    amount = Column(Float, nullable=False)
-    currency = Column(String, nullable=False, default="USD")
-    status = Column(Enum(PaymentStatus), default=PaymentStatus.PENDING, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=utc_now)
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    subscription_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        GUID, ForeignKey("subscriptions.id", ondelete="SET NULL"), nullable=True
+    )
+    payment_method_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        GUID, ForeignKey("payment_methods.id", ondelete="SET NULL"), nullable=True
+    )
+    amount: Mapped[float] = mapped_column(Float, nullable=False)
+    currency: Mapped[str] = mapped_column(String, nullable=False, default=settings.DEFAULT_CURRENCY)
+    status: Mapped[PaymentStatus] = mapped_column(
+        Enum(PaymentStatus), default=PaymentStatus.PENDING, nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
-    user = relationship("User", foreign_keys=[user_id], back_populates="payments")
-    subscription = relationship("Subscription", back_populates="payments")
-    payment_method = relationship("PaymentMethod", back_populates="payments")
+    user: Mapped["User"] = relationship(
+        "User", foreign_keys=[user_id], back_populates="payments"
+    )
+    subscription: Mapped[Optional["Subscription"]] = relationship(
+        "Subscription", back_populates="payments"
+    )
+    payment_method: Mapped[Optional["PaymentMethod"]] = relationship(
+        "PaymentMethod", back_populates="payments"
+    )
 
 class Usage(Base):
+    """Resource usage tracking per user and resource type."""
     __tablename__ = "usages"
 
-    id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    user_id = Column(GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    resource_type = Column(String, nullable=False)
-    used = Column(Integer, default=0)
-    limit_value = Column(Integer, nullable=True)
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    resource_type: Mapped[str] = mapped_column(String, nullable=False)
+    used: Mapped[int] = mapped_column(Integer, default=0)
+    limit_value: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
-    user = relationship("User", foreign_keys=[user_id], back_populates="usages")
+    user: Mapped["User"] = relationship(
+        "User", foreign_keys=[user_id], back_populates="usages"
+    )

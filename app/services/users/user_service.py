@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, cast
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -22,6 +22,22 @@ def _record_admin_action(
     target_entity: str = "user",
     auto_commit: bool = True
 ) -> AdminActionLog:
+    """Records an administrative action in the audit log.
+
+    Args:
+        db: The database session.
+        admin_id: UUID of the administrator performing the action.
+        action_type: A descriptive string of the action (e.g., 'USER_CREATED').
+        target_id: UUID of the entity being acted upon.
+        target_entity: Type of the entity (default: 'user').
+        auto_commit: Whether to commit the transaction immediately.
+
+    Returns:
+        The created AdminActionLog entry.
+
+    Raises:
+        ValueError: If target_id is not provided.
+    """
     if target_id is None:
         raise ValueError("target_id is required for admin log")
 
@@ -45,18 +61,33 @@ def _record_admin_action(
 # ----------------------------
 
 def get_user(db: Session, id: UUID) -> Optional[User]:
+    """Retrieves a user by their unique UUID."""
     return db.query(User).filter(User.id == id).first()
 
 
 def get_user_by_email(db: Session, email: str) -> Optional[User]:
+    """Retrieves a user by their registered email address."""
     return db.query(User).filter(User.email == email).first()
 
 
 def get_users(db: Session, skip: int = 0, limit: int = 100) -> List[User]:
+    """Retrieves a list of users with pagination."""
     return db.query(User).offset(skip).limit(limit).all()
 
 
 def create_user(db: Session, obj_in: Union[Dict[str, Any], Any]) -> User:
+    """Creates a new user and an associated empty profile.
+
+    Args:
+        db: The database session.
+        obj_in: User creation data (schema or dict).
+
+    Returns:
+        The newly created User object.
+
+    Raises:
+        Exception: If database creation or transaction fails.
+    """
     try:
         user_data = _to_update_dict(obj_in)
 
@@ -78,9 +109,9 @@ def create_user(db: Session, obj_in: Union[Dict[str, Any], Any]) -> User:
 
         _record_admin_action(
             db,
-            admin_id=db_obj.id,
+            admin_id=cast(UUID, db_obj.id),
             action_type="USER_CREATED",
-            target_id=db_obj.id,
+            target_id=cast(UUID, db_obj.id),
             target_entity="user",
             auto_commit=False,
         )
@@ -95,6 +126,16 @@ def create_user(db: Session, obj_in: Union[Dict[str, Any], Any]) -> User:
 
 
 def update_user(db: Session, db_obj: User, obj_in: Any) -> User:
+    """Updates an existing user's information.
+
+    Args:
+        db: The database session.
+        db_obj: The existing User record from the database.
+        obj_in: The updated data (schema or dict).
+
+    Returns:
+        The updated User object.
+    """
     update_data = _to_update_dict(obj_in)
 
     if "password" in update_data:
@@ -110,6 +151,15 @@ def update_user(db: Session, db_obj: User, obj_in: Any) -> User:
 
 
 def delete_user(db: Session, id: UUID) -> Optional[User]:
+    """Deletes a user and records the administrative action.
+
+    Args:
+        db: The database session.
+        id: UUID of the user to delete.
+
+    Returns:
+        The deleted User object, or None if not found.
+    """
     db_obj = get_user(db, id=id)
     if not db_obj:
         return None
@@ -129,6 +179,7 @@ def get_user_profile(
     id: Optional[UUID] = None,
     user_id: Optional[UUID] = None,
 ) -> Optional[UserProfile]:
+    """Retrieves a user profile by profile ID or user ID."""
     if id is not None:
         return db.query(UserProfile).filter(UserProfile.id == id).first()
     if user_id is not None:
@@ -137,10 +188,12 @@ def get_user_profile(
 
 
 def get_user_profiles(db: Session, skip: int = 0, limit: int = 100) -> List[UserProfile]:
+    """Retrieves multiple user profiles with pagination."""
     return db.query(UserProfile).offset(skip).limit(limit).all()
 
 
 def create_user_profile(db: Session, obj_in: Any) -> UserProfile:
+    """Creates a new user profile manually."""
     db_obj = UserProfile(**_to_update_dict(obj_in))
     db.add(db_obj)
     db.commit()
@@ -154,7 +207,17 @@ def update_user_profile(
     obj_in: Any,
     performer_id: Optional[UUID] = None,
 ) -> UserProfile:
-    """Update a user profile explicitly by passing the UserProfile db object."""
+    """Updates an existing user profile record.
+
+    Args:
+        db: The database session.
+        db_obj: The existing UserProfile record.
+        obj_in: Updated data.
+        performer_id: ID of the user performing the update (for logging).
+
+    Returns:
+        The updated UserProfile object.
+    """
     update_data = _to_update_dict(obj_in)
     _apply_updates(db_obj, update_data)
 
@@ -167,7 +230,7 @@ def update_user_profile(
             db,
             admin_id=performer_id,
             action_type="PROFILE_UPDATED",
-            target_id=db_obj.user_id,
+            target_id=cast(UUID, db_obj.user_id),
             target_entity="user_profile",
         )
 
@@ -180,7 +243,17 @@ def update_user_profile_by_user_id(
     profile_data: Dict[str, Any],
     performer_id: Optional[UUID] = None,
 ) -> UserProfile:
-    """Update a user profile by resolving the user_id first."""
+    """Updates a user profile by resolving it via user_id.
+
+    Args:
+        db: The database session.
+        user_id: UUID of the user whose profile is being updated.
+        profile_data: The new profile data.
+        performer_id: ID of the user performing the update.
+
+    Returns:
+        The updated UserProfile object. Creates one if it doesn't exist.
+    """
     db_obj = get_user_profile(db, user_id=user_id)
     if db_obj is None:
         db_obj = UserProfile(user_id=user_id, bio="", preferences_json={})
@@ -197,13 +270,14 @@ def update_user_profile_by_user_id(
         db,
         admin_id=performer_id,
         action_type="PROFILE_UPDATED",
-        target_id=user_id,
+        target_id=cast(UUID, user_id),
         target_entity="user_profile",
     )
     return db_obj
 
 
 def delete_user_profile(db: Session, id: UUID) -> Optional[UserProfile]:
+    """Deletes a user profile record."""
     db_obj = get_user_profile(db, id=id)
     if not db_obj:
         return None
@@ -218,10 +292,12 @@ def delete_user_profile(db: Session, id: UUID) -> Optional[UserProfile]:
 # ----------------------------
 
 def get_admin_action_log(db: Session, id: UUID) -> Optional[AdminActionLog]:
+    """Retrieves a specific admin action log entry."""
     return db.query(AdminActionLog).filter(AdminActionLog.id == id).first()
 
 
 def get_admin_action_logs(db: Session, skip: int = 0, limit: int = 100) -> List[AdminActionLog]:
+    """Retrieves admin action logs with pagination, newest first."""
     return (
         db.query(AdminActionLog)
         .order_by(AdminActionLog.created_at.desc())
@@ -232,6 +308,7 @@ def get_admin_action_logs(db: Session, skip: int = 0, limit: int = 100) -> List[
 
 
 def create_admin_action_log(db: Session, obj_in: Any) -> AdminActionLog:
+    """Creates a new admin action log entry."""
     data = _to_update_dict(obj_in)
     db_obj = AdminActionLog(**data)
     db.add(db_obj)
@@ -241,6 +318,7 @@ def create_admin_action_log(db: Session, obj_in: Any) -> AdminActionLog:
 
 
 def update_admin_action_log(db: Session, db_obj: AdminActionLog, obj_in: Any) -> AdminActionLog:
+    """Updates an existing admin action log entry."""
     _apply_updates(db_obj, _to_update_dict(obj_in))
     db.add(db_obj)
     db.commit()
@@ -249,6 +327,7 @@ def update_admin_action_log(db: Session, db_obj: AdminActionLog, obj_in: Any) ->
 
 
 def delete_admin_action_log(db: Session, id: UUID) -> Optional[AdminActionLog]:
+    """Deletes an admin action log entry."""
     db_obj = get_admin_action_log(db, id=id)
     if not db_obj:
         return None
@@ -264,6 +343,14 @@ def get_admin_logs(db: Session, skip: int = 0, limit: int = 100) -> List[AdminAc
 
 
 def mask_user_data(user: User) -> Dict[str, Any]:
+    """Returns a sanitized version of user data for public/logs.
+
+    Args:
+        user: The User model instance to mask.
+
+    Returns:
+        A dictionary with sensitive info masked (e.g., email partially hidden).
+    """
     masked = "***"
     email = user.email or ""
     if "@" in email:

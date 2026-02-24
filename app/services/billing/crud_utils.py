@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, TypeVar
+from typing import Any, Dict, List, Optional, TypeVar, cast
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -13,7 +13,7 @@ ModelT = TypeVar("ModelT")
 def get_by_id(db: Session, model: Any, id: UUID) -> Optional[ModelT]:
     """Fetch a single record by `id` for a SQLAlchemy model."""
 
-    return db.query(model).filter(model.id == id).first()
+    return cast(Optional[ModelT], db.query(model).filter(model.id == id).first())
 
 
 def list_records(
@@ -31,5 +31,5 @@ def list_records(
             if value is None:
                 continue
             query = query.filter(getattr(model, field_name) == value)
-    return query.offset(skip).limit(limit).all()
+    return cast(List[ModelT], query.offset(skip).limit(limit).all())
 

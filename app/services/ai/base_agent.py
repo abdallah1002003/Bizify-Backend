@@ -25,7 +25,7 @@ class BaseAgent(abc.ABC):
         """
         pass
 
-    def log_telemetry(self, action: str, outcome: str, details: Dict[str, Any]):
+    def log_telemetry(self, action: str, outcome: str, details: Dict[str, Any]) -> None:
         """Standardized telemetry logging."""
         logger.info(
             "agent_telemetry agent=%s action=%s outcome=%s details=%s",
@@ -43,7 +43,7 @@ class BaseAgent(abc.ABC):
         _ = context
         return {"status": "neutral", "intent": intent, "insights": []}
 
-    def _safe_execute(self, func: Callable[..., Any], *args: Any, **kwargs: Any):
+    def _safe_execute(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Optional[Any]:
         """Internal safety wrapper for fragile AI operations."""
         try:
             return func(*args, **kwargs)

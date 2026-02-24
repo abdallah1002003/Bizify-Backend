@@ -12,7 +12,7 @@ Configuration:
 
 import asyncio
 import time
-from typing import Optional
+from typing import Optional, Dict, List, Any, Callable
 import logging
 
 from fastapi import Request
@@ -20,6 +20,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from config.settings import settings
+from jose import jwt, JWTError
 
 logger = logging.getLogger(__name__)
 # Paths with stricter rate limit requirements
@@ -37,16 +38,16 @@ class RedisRateLimiterMiddleware(BaseHTTPMiddleware):
     Falls back to in-memory limiting if Redis is unavailable.
     """
     
-    def __init__(self, app, requests_per_minute: Optional[int] = None):
+    def __init__(self, app: Any, requests_per_minute: Optional[int] = None):
         super().__init__(app)
         self.requests_per_minute = requests_per_minute or settings.RATE_LIMIT_PER_MINUTE
         self.window_size = 60  # seconds
-        self.redis_client = None
-        self.fallback_in_memory = {}
+        self.redis_client: Any = None
+        self.fallback_in_memory: Dict[str, List[float]] = {}
         self._lock = asyncio.Lock()
         self._redis_available = False
         
-    async def _init_redis(self):
+    async def _init_redis(self) -> None:
         """Initialize Redis connection on first request."""
         if self._redis_available or self.redis_client:
             return
@@ -103,7 +104,10 @@ class RedisRateLimiterMiddleware(BaseHTTPMiddleware):
         except Exception as e:
             logger.warning(f"Redis check failed for {client_ip}, falling back to in-memory: {e}")
             self._redis_available = False
-            return await self._check_rate_limit_memory(client_ip)
+            # Check if this path has a stricter limit
+            limit = STRICT_RATE_LIMIT_PATHS.get(request_path, self.requests_per_minute)
+            is_allowed, rem = await self._check_rate_limit_memory(client_ip, limit)
+            return is_allowed, rem, limit
 
     async def _check_rate_limit_memory(self, client_ip: str, limit: int) -> tuple[bool, int]:
         """Fallback in-memory rate limit check."""
@@ -133,29 +137,44 @@ class RedisRateLimiterMiddleware(BaseHTTPMiddleware):
             
             return is_allowed, remaining
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: Callable[..., Any]) -> Any:
         """Process request with rate limiting."""
         if settings.APP_ENV == "test":
             return await call_next(request)
 
         await self._init_redis()
         
-        client_ip = self._get_client_ip(request)
+        # 1. Identify rate limit key (User ID or Client IP)
+        rate_key = self._get_client_ip(request)
+        
+        # Try to extract user_id from JWT if Authorization header is present
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            try:
+                payload = jwt.decode(
+                    token,
+                    settings.jwt_verify_key,
+                    algorithms=[settings.jwt_algorithm]
+                )
+                user_id = payload.get("sub")
+                if user_id:
+                    rate_key = f"user:{user_id}"
+            except (JWTError, Exception):
+                # Fallback to IP if token is invalid or decoding fails
+                pass
         
         # Check rate limit
         if self._redis_available and self.redis_client:
-            is_allowed, remaining, limit = await self._check_rate_limit_redis(client_ip, request.url.path)
+            is_allowed, remaining, limit = await self._check_rate_limit_redis(rate_key, request.url.path)
         else:
             # For memory fallback, we need to handle limit manually as in Redis
-            # (Simplifying here by using Redis check signature)
             limit = STRICT_RATE_LIMIT_PATHS.get(request.url.path, self.requests_per_minute)
-            # Temporarily monkey-patch requests_per_minute for memory check or handle explicitly
-            # Let's adjust _check_rate_limit_memory signature for consistency
-            is_allowed, remaining = await self._check_rate_limit_memory(client_ip, limit)
+            is_allowed, remaining = await self._check_rate_limit_memory(rate_key, limit)
         
         if not is_allowed:
             retry_after = self.window_size
-            logger.warning(f"Rate limit exceeded for IP {client_ip}")
+            logger.warning(f"Rate limit exceeded for {rate_key}")
             return JSONResponse(
                 status_code=429,
                 content={

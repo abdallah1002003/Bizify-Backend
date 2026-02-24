@@ -12,12 +12,12 @@ class PartnerProfile(Base):
 
     id = Column(GUID, primary_key=True, default=uuid.uuid4)
     user_id = Column(GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    partner_type = Column(Enum(PartnerType), nullable=False)
+    partner_type: Column[PartnerType] = Column(Enum(PartnerType), nullable=False)
     company_name = Column(String, nullable=True)
     description = Column(Text, nullable=True)
     services_json = Column(JSON, nullable=True)
     experience_json = Column(JSON, nullable=True)
-    approval_status = Column(Enum(ApprovalStatus), default=ApprovalStatus.PENDING)
+    approval_status: Column[ApprovalStatus] = Column(Enum(ApprovalStatus), default=ApprovalStatus.PENDING)
     approved_by = Column(GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     approved_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=utc_now)
@@ -34,7 +34,7 @@ class PartnerRequest(Base):
     business_id = Column(GUID, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False)
     partner_id = Column(GUID, ForeignKey("partner_profiles.id", ondelete="CASCADE"), nullable=False)
     requested_by = Column(GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    status = Column(Enum(RequestStatus), default=RequestStatus.PENDING)
+    status: Column[RequestStatus] = Column(Enum(RequestStatus), default=RequestStatus.PENDING)
     created_at = Column(DateTime(timezone=True), default=utc_now)
 
     business = relationship("Business", back_populates="partner_requests")

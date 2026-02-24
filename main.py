@@ -10,15 +10,35 @@ from app.middleware.log_middleware import LogMiddleware
 from app.middleware.rate_limiter import RateLimiterMiddleware
 from app.middleware.rate_limiter_redis import RedisRateLimiterMiddleware
 from config.settings import settings
-
-# import central router
 from app.api.api import api_router
 from app.db.database import SessionLocal
 from app.services.core.cleanup_service import cleanup_all, cleanup_expired_tokens
+from app.core.structured_logging import configure_structured_logging, get_logger
+from app.middleware.prometheus import setup_prometheus
 import logging
 import asyncio
 
-logger = logging.getLogger(__name__)
+# Configure structured logging at startup
+configure_structured_logging(log_level="DEBUG" if settings.APP_ENV == "development" else "INFO")
+logger = get_logger(__name__)
+
+# ---------------------------------------------------------------------------
+# Sentry (optional — only activates when SENTRY_DSN is configured)
+# ---------------------------------------------------------------------------
+if settings.SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        environment=settings.APP_ENV,
+        integrations=[FastApiIntegration(), SqlalchemyIntegration()],
+        traces_sample_rate=0.2,   # capture 20% of transactions for performance
+        send_default_pii=False,   # never send personal data to Sentry
+    )
+    logger.info("Sentry initialized for environment: %s", settings.APP_ENV)
+
 
 
 _CLEANUP_INTERVAL_SECONDS = 24 * 60 * 60  # 24 hours
@@ -68,7 +88,7 @@ async def lifespan(_: FastAPI):
         pass
 
 app = FastAPI(
-    title="Bizify",
+    title=settings.APP_NAME,
     description="API for User Profiling and Idea Management",
     version="1.0.0",
     lifespan=lifespan,
@@ -98,7 +118,7 @@ app.include_router(api_router, prefix="/api/v1")
 def read_root():
     """Root endpoint returning API information."""
     return {
-        "message": "Welcome to Bizify",
+        "message": f"Welcome to {settings.APP_NAME}",
         "version": "1.0.0",
         "docs": "/docs"
     }
@@ -107,19 +127,53 @@ def read_root():
 def health_check():
     """Health check endpoint for monitoring and load balancers."""
     from sqlalchemy import text
+    import stripe
+    from app.middleware.rate_limiter_redis import redis_client
+    
+    results = {
+        "status": "ok",
+        "database": "ok",
+        "version": "1.0.0"
+    }
+    
+    # 1. Database Check
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        db_status = "ok"
     except Exception as e:
-        logger.error(f"Health check failed: {e}")
-        db_status = "error"
+        logger.error(f"Health check - Database failed: {e}")
+        results["database"] = "error"
+        results["status"] = "degraded"
+        
+    # 2. Redis Check
+    if settings.REDIS_ENABLED:
+        try:
+            if redis_client and redis_client.ping():
+                results["redis"] = "ok"
+            else:
+                results["redis"] = "disconnected"
+                results["status"] = "degraded"
+        except Exception as e:
+            logger.error(f"Health check - Redis failed: {e}")
+            results["redis"] = "error"
+            results["status"] = "degraded"
     
-    return {
-        "status": "ok" if db_status == "ok" else "degraded",
-        "database": db_status,
-        "version": "1.0.0"
-    }
+    # 3. Stripe Check
+    if settings.STRIPE_ENABLED:
+        try:
+            stripe.api_key = settings.STRIPE_SECRET_KEY
+            # Simple check to verify connectivity
+            stripe.Balance.retrieve()
+            results["stripe"] = "ok"
+        except Exception as e:
+            logger.error(f"Health check - Stripe failed: {e}")
+            results["stripe"] = "error"
+            results["status"] = "degraded"
+            
+    return results
+
+# Initialize Prometheus instrumentation (after all routes are defined)
+setup_prometheus(app)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8001, reload=True)

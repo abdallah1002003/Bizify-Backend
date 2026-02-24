@@ -65,17 +65,9 @@ jobs:
     
     - name: Run Type Checking (Mypy Gate)
       run: |
-        mypy --config-file config/pyproject.toml \
+        mypy app/ --config-file config/pyproject.toml \
           --explicit-package-bases \
-          --follow-imports=skip \
-          config/settings.py \
-          app/db/database.py \
-          app/core/security.py \
-          app/core/dependencies.py \
-          app/api/routes/auth.py \
-          app/api/routes/users/user.py \
-          app/api/routes/users/user_profile.py \
-          app/api/routes/users/admin_action_log.py
+          --follow-imports=skip
     
     - name: Run Unit Tests
       run: |

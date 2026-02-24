@@ -1,94 +1,155 @@
 import uuid
 from datetime import datetime, timezone
+from typing import List, Optional
 from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text, Enum, JSON, Float, CheckConstraint
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.guid import GUID
-from sqlalchemy.orm import relationship
 from app.db.database import Base
 from app.models.enums import IdeaStatus, ExperimentStatus, MetricType
 from app.core.crud_utils import _utc_now as utc_now
 
 class Idea(Base):
+    """Business idea with versions, metrics, and experiments."""
     __tablename__ = "ideas"
     __table_args__ = (
         CheckConstraint('ai_score >= 0 AND ai_score <= 1', name='check_ai_score_range'),
     )
 
-    id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    owner_id = Column(GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    business_id = Column(GUID, ForeignKey("businesses.id", ondelete="SET NULL"), nullable=True)
-    title = Column(String, nullable=False)
-    description = Column(Text, nullable=True)
-    status = Column(Enum(IdeaStatus), default=IdeaStatus.DRAFT)
-    ai_score = Column(Float, nullable=True)
-    is_archived = Column(Boolean, default=False)
-    archived_at = Column(DateTime(timezone=True), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=utc_now)
-    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
-    converted_at = Column(DateTime(timezone=True), nullable=True)
-    owner = relationship("User", foreign_keys=[owner_id], back_populates="ideas")
-    business = relationship("Business", foreign_keys=[business_id], back_populates="idea_backref")
-    versions = relationship("IdeaVersion", back_populates="idea", cascade="all, delete-orphan")
-    metrics = relationship("IdeaMetric", back_populates="idea", cascade="all, delete-orphan")
-    experiments = relationship("Experiment", back_populates="idea", cascade="all, delete-orphan")
-    chat_sessions = relationship("ChatSession", foreign_keys="ChatSession.idea_id", back_populates="idea", cascade="all, delete-orphan")
-    share_links = relationship("ShareLink", foreign_keys="ShareLink.idea_id", back_populates="idea", cascade="all, delete-orphan")
-    comparisons = relationship("ComparisonItem", back_populates="idea", cascade="all, delete-orphan")
-    accesses = relationship("IdeaAccess", back_populates="idea", cascade="all, delete-orphan")
-    business_invites = relationship("BusinessInviteIdea", back_populates="idea", cascade="all, delete-orphan")
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    owner_id: Mapped[uuid.UUID] = mapped_column(
+        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    business_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        GUID, ForeignKey("businesses.id", ondelete="SET NULL"), nullable=True
+    )
+    title: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    status: Mapped[IdeaStatus] = mapped_column(Enum(IdeaStatus), default=IdeaStatus.DRAFT)
+    ai_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    is_archived: Mapped[bool] = mapped_column(Boolean, default=False)
+    archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now
+    )
+    converted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    
+    owner: Mapped["User"] = relationship(
+        "User", foreign_keys=[owner_id], back_populates="ideas"
+    )
+    business: Mapped[Optional["Business"]] = relationship(
+        "Business", foreign_keys=[business_id], back_populates="idea_backref"
+    )
+    versions: Mapped[List["IdeaVersion"]] = relationship(
+        "IdeaVersion", back_populates="idea", cascade="all, delete-orphan"
+    )
+    metrics: Mapped[List["IdeaMetric"]] = relationship(
+        "IdeaMetric", back_populates="idea", cascade="all, delete-orphan"
+    )
+    experiments: Mapped[List["Experiment"]] = relationship(
+        "Experiment", back_populates="idea", cascade="all, delete-orphan"
+    )
+    chat_sessions: Mapped[List["ChatSession"]] = relationship(
+        "ChatSession", foreign_keys="ChatSession.idea_id", back_populates="idea",
+        cascade="all, delete-orphan"
+    )
+    share_links: Mapped[List["ShareLink"]] = relationship(
+        "ShareLink", foreign_keys="ShareLink.idea_id", back_populates="idea",
+        cascade="all, delete-orphan"
+    )
+    comparisons: Mapped[List["ComparisonItem"]] = relationship(
+        "ComparisonItem", back_populates="idea", cascade="all, delete-orphan"
+    )
+    accesses: Mapped[List["IdeaAccess"]] = relationship(
+        "IdeaAccess", back_populates="idea", cascade="all, delete-orphan"
+    )
+    business_invites: Mapped[List["BusinessInviteIdea"]] = relationship(
+        "BusinessInviteIdea", back_populates="idea", cascade="all, delete-orphan"
+    )
 
 class IdeaVersion(Base):
+    """Version snapshot of an idea for tracking changes."""
     __tablename__ = "idea_versions"
 
-    id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    idea_id = Column(GUID, ForeignKey("ideas.id", ondelete="CASCADE"), nullable=False)
-    created_by = Column(GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    snapshot_json = Column(JSON, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=utc_now)
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    idea_id: Mapped[uuid.UUID] = mapped_column(
+        GUID, ForeignKey("ideas.id", ondelete="CASCADE"), nullable=False
+    )
+    created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    snapshot_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
-    idea = relationship("Idea", back_populates="versions")
-    creator = relationship("User", foreign_keys=[created_by])
+    idea: Mapped["Idea"] = relationship("Idea", back_populates="versions")
+    creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])
 
 class IdeaMetric(Base):
+    """Metric tracking for idea validation and analysis."""
     __tablename__ = "idea_metrics"
 
-    id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    idea_id = Column(GUID, ForeignKey("ideas.id", ondelete="CASCADE"), nullable=False)
-    created_by = Column(GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    name = Column(String, nullable=False)
-    value = Column(Float, nullable=False)
-    type = Column(Enum(MetricType), nullable=False, default=MetricType.CUSTOM)
-    recorded_at = Column(DateTime(timezone=True), default=utc_now)
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    idea_id: Mapped[uuid.UUID] = mapped_column(
+        GUID, ForeignKey("ideas.id", ondelete="CASCADE"), nullable=False
+    )
+    created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    value: Mapped[float] = mapped_column(Float, nullable=False)
+    type: Mapped[MetricType] = mapped_column(
+        Enum(MetricType), nullable=False, default=MetricType.CUSTOM
+    )
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
-    idea = relationship("Idea", back_populates="metrics")
-    creator = relationship("User", foreign_keys=[created_by])
+    idea: Mapped["Idea"] = relationship("Idea", back_populates="metrics")
+    creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])
 
 class Experiment(Base):
+    """Experiment for testing idea hypotheses."""
     __tablename__ = "experiments"
 
-    id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    idea_id = Column(GUID, ForeignKey("ideas.id", ondelete="CASCADE"), nullable=False)
-    created_by = Column(GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    hypothesis = Column(String, nullable=False)
-    status = Column(Enum(ExperimentStatus), nullable=False, default=ExperimentStatus.RUNNING)
-    result_summary = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), default=utc_now)
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    idea_id: Mapped[uuid.UUID] = mapped_column(
+        GUID, ForeignKey("ideas.id", ondelete="CASCADE"), nullable=False
+    )
+    created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    hypothesis: Mapped[str] = mapped_column(String, nullable=False)
+    status: Mapped[ExperimentStatus] = mapped_column(
+        Enum(ExperimentStatus), nullable=False, default=ExperimentStatus.RUNNING
+    )
+    result_summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
-    idea = relationship("Idea", back_populates="experiments")
-    creator = relationship("User", foreign_keys=[created_by])
+    idea: Mapped["Idea"] = relationship("Idea", back_populates="experiments")
+    creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])
 
 class IdeaAccess(Base):
+    """Access control permissions for ideas."""
     __tablename__ = "idea_accesses"
 
-    id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    idea_id = Column(GUID, ForeignKey("ideas.id", ondelete="CASCADE"), nullable=False)
-    business_id = Column(GUID, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=True)
-    user_id = Column(GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    can_edit = Column(Boolean, default=False)
-    can_delete = Column(Boolean, default=False)
-    can_experiment = Column(Boolean, default=False)
-    assigned_job = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), default=utc_now)
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    idea_id: Mapped[uuid.UUID] = mapped_column(
+        GUID, ForeignKey("ideas.id", ondelete="CASCADE"), nullable=False
+    )
+    business_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        GUID, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    can_edit: Mapped[bool] = mapped_column(Boolean, default=False)
+    can_delete: Mapped[bool] = mapped_column(Boolean, default=False)
+    can_experiment: Mapped[bool] = mapped_column(Boolean, default=False)
+    assigned_job: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
-    idea = relationship("Idea", back_populates="accesses")
-    business = relationship("Business", back_populates="idea_accesses")
-    user = relationship("User", foreign_keys=[user_id], back_populates="idea_accesses")
+    idea: Mapped["Idea"] = relationship("Idea", back_populates="accesses")
+    business: Mapped[Optional["Business"]] = relationship(
+        "Business", back_populates="idea_accesses"
+    )
+    user: Mapped["User"] = relationship(
+        "User", foreign_keys=[user_id], back_populates="idea_accesses"
+    )

@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"  # Used only as fallback when RSA keys are absent
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
+    # Branding & Localization
+    APP_NAME: str = "Bizify"
+    DEFAULT_CURRENCY: str = "USD"
+
     # RS256 asymmetric keys (production). When set, RS256 is used automatically.
     # Leave empty in dev/test to use HS256 + SECRET_KEY instead.
     # Generate with: python scripts/generate_rsa_keys.py
@@ -52,6 +56,13 @@ class Settings(BaseSettings):
     STRIPE_ENABLED: bool = False
     STRIPE_SECRET_KEY: str = ""         # sk_live_... or sk_test_...
     STRIPE_WEBHOOK_SECRET: str = ""     # whsec_... from Stripe dashboard
+
+    # Field-level encryption (AES-256-GCM)
+    # Generate: python -c "import secrets; print(secrets.token_hex(32))"
+    ENCRYPTION_KEY: str = ""             # 64-char hex = 32 bytes
+
+    # Observability
+    SENTRY_DSN: str = ""                 # https://<key>@sentry.io/<project>
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

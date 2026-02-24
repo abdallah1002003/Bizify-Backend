@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union, cast
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -36,8 +36,9 @@ def create_partner_profile(
 ) -> PartnerProfile:
     if obj_in is not None:
         data = _to_update_dict(obj_in)
-    elif hasattr(user_id, "model_dump"):
-        data = user_id.model_dump(exclude_unset=True)
+    elif user_id is not None and hasattr(user_id, "model_dump"):
+        # This handles the case where a schema is passed as the first positional arg
+        data = cast(Any, user_id).model_dump(exclude_unset=True)
     else:
         data = {
             "user_id": user_id,
@@ -80,9 +81,9 @@ def approve_partner_profile(db: Session, profile_id: UUID, approver_id: UUID) ->
     if profile is None:
         return None
 
-    profile.approval_status = ApprovalStatus.APPROVED
-    profile.approved_by = approver_id
-    profile.approved_at = _utc_now()
+    profile.approval_status = ApprovalStatus.APPROVED  # type: ignore[assignment]
+    profile.approved_by = approver_id  # type: ignore[assignment]
+    profile.approved_at = _utc_now()  # type: ignore[assignment]
     db.commit()
     db.refresh(profile)
     return profile

@@ -5,7 +5,9 @@ from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 import logging
 import traceback
-from typing import Any, Dict
+from typing import Any, Dict, Callable
+
+from app.core.exceptions import AppException
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +43,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
     Enhanced error handler middleware with error classification and observability.
 
     Catches and classifies different exception types:
+    - AppException:     Custom app exceptions (various status codes)
     - ValidationError:  422 (VALIDATION_ERROR)
     - IntegrityError:   409 (CONFLICT)
     - SQLAlchemyError:  500 (DATABASE_ERROR)
@@ -49,12 +52,28 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
     - Generic Exception: 500 (INTERNAL_ERROR)
     """
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: Callable[..., Any]) -> Any:
         try:
             response = await call_next(request)
             return response
 
-        except ValidationError as exc:
+        except AppException as exc:
+            """Handle custom application exceptions."""
+            log_func = logger.warning if exc.status_code < 500 else logger.error
+            log_func(
+                f"App exception ({exc.code}) on {request.method} {request.url.path}: {exc.message}",
+                extra={"code": exc.code, "details": exc.details}
+            )
+            error = ErrorResponse(
+                status_code=exc.status_code,
+                error_code=exc.code,
+                message=exc.message,
+                details=exc.details if exc.details else None
+            )
+            return JSONResponse(
+                status_code=exc.status_code,
+                content=error.to_dict()
+            )
             """Handle Pydantic validation errors."""
             logger.warning(
                 f"Validation error on {request.method} {request.url.path}",

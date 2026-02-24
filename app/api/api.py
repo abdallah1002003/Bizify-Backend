@@ -22,12 +22,14 @@ from app.api.routes.ai import validation_log
 from app.api.routes.ai import embedding
 from app.api.routes.chat import chat_session
 from app.api.routes.chat import chat_message
+from app.api.routes.chat import chat_ws
 from app.api.routes.billing import plan
 from app.api.routes.billing import subscription
 from app.api.routes.billing import payment_method
 from app.api.routes.billing import payment
 from app.api.routes.billing import usage
 from app.api.routes.billing import stripe_webhook
+from app.api.routes.billing import checkout
 from app.api.routes.core import file
 from app.api.routes.core import notification
 from app.api.routes.core import share_link
@@ -159,6 +161,11 @@ api_router.include_router(
     dependencies=[Depends(get_current_active_user)],
 )
 api_router.include_router(
+    chat_ws.router,
+    prefix="/chat",
+    tags=["Chat Real-Time"],
+)
+api_router.include_router(
     plan.router,
     prefix="/plans",
     tags=["Plan"],
@@ -225,8 +232,17 @@ api_router.include_router(
     dependencies=[Depends(get_current_active_user)],
 )
 
+
 api_router.include_router(
     stripe_webhook.router,
     prefix="/billing/webhooks",
     tags=["Stripe Webhooks"],
+)
+
+# Stripe Checkout - requires auth
+api_router.include_router(
+    checkout.router,
+    prefix="/billing",
+    tags=["Stripe Checkout"],
+    dependencies=[Depends(get_current_active_user)],
 )

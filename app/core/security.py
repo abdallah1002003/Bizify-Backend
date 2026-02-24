@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional, Union, cast
+from typing import Any, Optional, Union, cast, Dict
 from uuid import uuid4
 from jose import jwt
 from passlib.context import CryptContext
@@ -35,13 +35,13 @@ def create_password_reset_token(email: str) -> str:
     return cast(str, jwt.encode(to_encode, settings.jwt_signing_key, algorithm=settings.jwt_algorithm))
 
 
-def verify_password_reset_token(token: str) -> Optional[dict]:
+def verify_password_reset_token(token: str) -> Optional[Dict[str, Any]]:
     """Verify reset token and return full payload if valid."""
     try:
         decoded_token = jwt.decode(token, settings.jwt_verify_key, algorithms=[settings.jwt_algorithm])
         if decoded_token.get("type") != "password_reset":
             return None
-        return decoded_token
+        return cast(Dict[str, Any], decoded_token)
     except jwt.JWTError:
         return None
 
@@ -61,12 +61,12 @@ def create_email_verification_token(email: str) -> str:
     return cast(str, jwt.encode(to_encode, settings.jwt_signing_key, algorithm=settings.jwt_algorithm))
 
 
-def verify_email_verification_token(token: str) -> Optional[dict]:
+def verify_email_verification_token(token: str) -> Optional[Dict[str, Any]]:
     """Verify email verification token and return full payload if valid."""
     try:
         decoded_token = jwt.decode(token, settings.jwt_verify_key, algorithms=[settings.jwt_algorithm])
         if decoded_token.get("type") != "email_verification":
             return None
-        return decoded_token
+        return cast(Dict[str, Any], decoded_token)
     except jwt.JWTError:
         return None

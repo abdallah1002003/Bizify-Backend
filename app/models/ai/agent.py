@@ -1,4 +1,5 @@
 import uuid
+from typing import Any
 from datetime import datetime, timezone
 from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text, Enum, JSON, Float, Integer
 from app.db.guid import GUID
@@ -12,13 +13,13 @@ try:
 except ImportError:  # pragma: no cover
     from sqlalchemy.types import TypeDecorator
 
-    class Vector(TypeDecorator):  # type: ignore[misc]
+    class Vector(TypeDecorator):  # type: ignore[no-redef, misc]
         """Fallback vector type when pgvector is unavailable."""
 
         impl = JSON
         cache_ok = True
 
-        def __init__(self, dimensions: int, *args, **kwargs) -> None:
+        def __init__(self, dimensions: int, *args: Any, **kwargs: Any) -> None:
             super().__init__(*args, **kwargs)
             self.dimensions = dimensions
 
@@ -42,7 +43,7 @@ class AgentRun(Base):
     input_data = Column(JSON, nullable=True)
     output_data = Column(JSON, nullable=True)
     confidence_score = Column(Float, nullable=True)
-    status = Column(Enum(AgentRunStatus), default=AgentRunStatus.PENDING)
+    status: Column[AgentRunStatus] = Column(Enum(AgentRunStatus), default=AgentRunStatus.PENDING)
     execution_time_ms = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), default=utc_now)
 
@@ -71,7 +72,7 @@ class Embedding(Base):
     business_id = Column(GUID, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=True)
     agent_id = Column(GUID, ForeignKey("agents.id", ondelete="SET NULL"), nullable=True)
     content = Column(Text, nullable=False)
-    vector = Column(Vector(1536), nullable=False)
+    vector: Column = Column(Vector(1536), nullable=False)
     created_at = Column(DateTime(timezone=True), default=utc_now)
 
     business = relationship("Business", back_populates="embeddings")

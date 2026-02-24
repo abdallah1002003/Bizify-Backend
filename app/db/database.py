@@ -1,7 +1,8 @@
+from typing import Any, Generator
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
 from config.settings import settings
 
@@ -29,7 +30,7 @@ if settings.APP_ENV.lower() != "test" and engine.url.get_backend_name() != "post
 
 if engine.url.get_backend_name() == "sqlite":
     @event.listens_for(engine, "connect")
-    def _set_sqlite_pragma(dbapi_connection, connection_record):
+    def _set_sqlite_pragma(dbapi_connection: Any, connection_record: Any) -> None:
         _ = connection_record
         cursor = dbapi_connection.cursor()
         try:
@@ -55,7 +56,8 @@ def verify_database_connection() -> None:
             "and your PostgreSQL server is running."
         ) from exc
 
-def get_db():
+from sqlalchemy.orm import Session
+def get_db() -> Generator[Session, None, None]:
     db = SessionLocal()
     try:
         yield db

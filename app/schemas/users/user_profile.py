@@ -1,6 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, field_validator
-from typing import Optional
+from typing import Optional, Any, Dict
 from uuid import UUID
 
 class UserProfileBase(BaseModel):

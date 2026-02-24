@@ -1,6 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from typing import Optional
+from typing import Optional, Any, Dict
 from uuid import UUID
 
 class PlanBase(BaseModel):
@@ -17,7 +17,7 @@ class PlanCreate(BaseModel):
     
     @field_validator('features_json', mode='before')
     @classmethod
-    def validate_features_json(cls, v):
+    def validate_features_json(cls, v: Any) -> Dict[str, Any]:
         """Validate features_json at input time."""
         if v is None:
             return {}
@@ -38,7 +38,7 @@ class PlanUpdate(BaseModel):
     
     @field_validator('features_json', mode='before')
     @classmethod
-    def validate_features_json(cls, v):
+    def validate_features_json(cls, v: Any) -> Optional[Dict[str, Any]]:
         """Validate features_json at input time."""
         if v is None:
             return None

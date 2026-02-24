@@ -1,13 +1,14 @@
 import asyncio
 from collections import defaultdict, deque
 import time
-from typing import Optional, Dict
+from typing import Optional, Dict, Any, Callable
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from config.settings import settings
+from jose import jwt, JWTError
 
 # Paths with stricter rate limit requirements
 STRICT_RATE_LIMIT_PATHS: Dict[str, int] = {
@@ -42,7 +43,7 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
         return count <= limit
     ```
     """
-    def __init__(self, app, requests_per_minute: Optional[int] = None):
+    def __init__(self, app: Any, requests_per_minute: Optional[int] = None):
         super().__init__(app)
         self.requests_per_minute = requests_per_minute or settings.RATE_LIMIT_PER_MINUTE
         self.window_size = 60  # seconds
@@ -53,18 +54,37 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
         # X-Forwarded-For is forgeable by clients. Rely strictly on client connection IP.
         return request.client.host if request.client else "127.0.0.1"
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: Callable[..., Any]) -> Any:
         if settings.APP_ENV == "test":
             return await call_next(request)
 
-        client_ip = self._get_client_ip(request)
+        # 1. Identify rate limit key (User ID or Client IP)
+        rate_key = self._get_client_ip(request)
+        
+        # Try to extract user_id from JWT if Authorization header is present
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            try:
+                payload = jwt.decode(
+                    token,
+                    settings.jwt_verify_key,
+                    algorithms=[settings.jwt_algorithm]
+                )
+                user_id = payload.get("sub")
+                if user_id:
+                    rate_key = f"user:{user_id}"
+            except (JWTError, Exception):
+                # Fallback to IP if token is invalid or decoding fails
+                pass
+
         current_time = time.time()
         
         # Check if this path has a stricter limit
         limit = STRICT_RATE_LIMIT_PATHS.get(request.url.path, self.requests_per_minute)
 
-        async with self._locks[client_ip]:
-            bucket = self.request_counts[client_ip]
+        async with self._locks[rate_key]:
+            bucket = self.request_counts[rate_key]
             cutoff = current_time - self.window_size
             while bucket and bucket[0] <= cutoff:
                 bucket.popleft()

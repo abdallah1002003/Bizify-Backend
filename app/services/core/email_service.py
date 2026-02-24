@@ -14,61 +14,24 @@ from config.settings import settings
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# HTML email templates
-# ---------------------------------------------------------------------------
+import os
+from jinja2 import Environment, FileSystemLoader
 
-_VERIFY_TEMPLATE = """\
-<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"></head>
-<body style="font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:0;">
-  <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:8px;padding:40px;">
-    <h2 style="color:#2d3748;">Welcome to Bizify 🚀</h2>
-    <p style="color:#4a5568;">Thanks for signing up! Please verify your email address to activate your account.</p>
-    <a href="{link}"
-       style="display:inline-block;margin-top:20px;padding:12px 24px;background:#4f46e5;color:#fff;
-              text-decoration:none;border-radius:6px;font-weight:bold;">
-      Verify Email
-    </a>
-    <p style="margin-top:24px;color:#718096;font-size:12px;">
-      This link expires in <strong>24 hours</strong>.
-      If you didn't create an account, you can safely ignore this email.
-    </p>
-    <p style="color:#718096;font-size:12px;">
-      Or copy this URL into your browser:<br>
-      <span style="color:#4f46e5;">{link}</span>
-    </p>
-  </div>
-</body>
-</html>
-"""
+# Setup Jinja2 environment
+template_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "templates", "email")
+jinja_env = Environment(loader=FileSystemLoader(template_dir))
 
-_RESET_TEMPLATE = """\
-<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"></head>
-<body style="font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:0;">
-  <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:8px;padding:40px;">
-    <h2 style="color:#2d3748;">Password Reset Request 🔐</h2>
-    <p style="color:#4a5568;">We received a request to reset your password. Click the button below to choose a new one.</p>
-    <a href="{link}"
-       style="display:inline-block;margin-top:20px;padding:12px 24px;background:#e53e3e;color:#fff;
-              text-decoration:none;border-radius:6px;font-weight:bold;">
-      Reset Password
-    </a>
-    <p style="margin-top:24px;color:#718096;font-size:12px;">
-      This link expires in <strong>15 minutes</strong>.
-      If you didn't request a password reset, you can safely ignore this email.
-    </p>
-    <p style="color:#718096;font-size:12px;">
-      Or copy this URL into your browser:<br>
-      <span style="color:#e53e3e;">{link}</span>
-    </p>
-  </div>
-</body>
-</html>
-"""
+def render_template(template_name: str, **context) -> str:
+    """Helper to render a Jinja2 template."""
+    try:
+        # Inject global branding context
+        context.setdefault("app_name", settings.APP_NAME)
+        template = jinja_env.get_template(template_name)
+        return template.render(**context)
+    except Exception:
+        logger.exception("Failed to render template %s", template_name)
+        # Fallback to a very basic string if template rendering fails
+        return f"<html><body>{context.get('content_html', '')}</body></html>"
 
 # ---------------------------------------------------------------------------
 # Internal SMTP send helper (lazy-imports fastapi-mail to keep startup fast)
@@ -109,37 +72,50 @@ async def _send(to_email: str, subject: str, html_body: str) -> None:
 
 async def send_verification_email(email: str, token: str) -> None:
     """
-    Send an account verification email.
-
-    No-op when ``settings.MAIL_ENABLED`` is False (test / local dev without SMTP).
+    Send an account verification email using HTML template.
     """
     if not settings.MAIL_ENABLED:
         logger.info("MAIL_ENABLED=False — skipping verification email to %s", email)
         return
 
     link = f"{settings.FRONTEND_URL}/verify-email?token={token}"
-    html_body = _VERIFY_TEMPLATE.format(link=link)
+    html_body = render_template(
+        "base.html",
+        title="Verify Email",
+        heading="Welcome to Bizify 🚀",
+        content_html="Thanks for signing up! Please verify your email address to activate your account.",
+        button_url=link,
+        button_text="Verify Email",
+        footer_text="This link expires in 24 hours. If you didn't create an account, you can safely ignore this.",
+        fallback_url=link
+    )
 
     try:
         await _send(email, "Verify your Bizify account", html_body)
         logger.info("Verification email sent to %s", email)
     except Exception:
-        # Log but never crash the registration flow — user can request a resend
         logger.exception("Failed to send verification email to %s", email)
 
 
 async def send_password_reset_email(email: str, token: str) -> None:
     """
-    Send a password-reset email containing a one-time link.
-
-    No-op when ``settings.MAIL_ENABLED`` is False.
+    Send a password-reset email using HTML template.
     """
     if not settings.MAIL_ENABLED:
         logger.info("MAIL_ENABLED=False — skipping password reset email to %s", email)
         return
 
     link = f"{settings.FRONTEND_URL}/reset-password?token={token}"
-    html_body = _RESET_TEMPLATE.format(link=link)
+    html_body = render_template(
+        "base.html",
+        title="Password Reset",
+        heading="Password Reset Request 🔐",
+        content_html="We received a request to reset your password. Click the button below to choose a new one.",
+        button_url=link,
+        button_text="Reset Password",
+        footer_text="This link expires in 15 minutes. If you didn't request a reset, you can safely ignore this.",
+        fallback_url=link
+    )
 
     try:
         await _send(email, "Reset your Bizify password", html_body)
