@@ -5,7 +5,7 @@ import logging
 from typing import Any, Dict, List, Optional, Union, cast
 from uuid import UUID
 
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 from fastapi import Depends
 
 from app.db.database import get_db
