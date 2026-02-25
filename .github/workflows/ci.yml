@@ -80,29 +80,29 @@ jobs:
 
     - name: Run Linting (Ruff)
       run: |
-        ruff check . --config config/pyproject.toml --output-format=github
+        python -m ruff check . --config config/pyproject.toml --output-format=github
     
     - name: Run Type Checking (Mypy Gate)
       run: |
-        mypy app/ --config-file config/pyproject.toml \
+        python -m mypy app/ --config-file config/pyproject.toml \
           --explicit-package-bases \
           --follow-imports=skip
     
     - name: Run Unit Tests
       run: |
-        pytest tests/unit -v --tb=short
+        python -m pytest tests/unit -v --tb=short
     
     - name: Run Integration Tests
       run: |
-        pytest tests/integration -v --tb=short
+        python -m pytest tests/integration -v --tb=short
     
     - name: Run Security Tests
       run: |
-        pytest tests/security -v --tb=short
+        python -m pytest tests/security -v --tb=short
     
     - name: Generate Coverage Report
       run: |
-        pytest --cov=. --cov-report=xml --cov-report=term-missing tests/
+        python -m pytest --cov=. --cov-report=xml --cov-report=term-missing tests/
     
     - name: Upload Coverage to Codecov
       uses: codecov/codecov-action@v3
