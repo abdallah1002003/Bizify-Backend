@@ -73,7 +73,8 @@ def db():
         raw_conn.commit()
 
     # Re-run Alembic migrations on the clean schema
-    import subprocess, os
+    import os
+    import subprocess
     env = os.environ.copy()
     env["DATABASE_URL"] = str(test_engine.url)
     subprocess.run(
