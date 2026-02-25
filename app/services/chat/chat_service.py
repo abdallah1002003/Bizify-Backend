@@ -15,13 +15,8 @@ For detailed documentation, see:
 
 from __future__ import annotations
 
-import logging
-from typing import Any, Dict, List, Optional
-from uuid import UUID
+from typing import Any, Dict
 
-from sqlalchemy.orm import Session
-
-from app.models.enums import ChatRole, ChatSessionType
 from app.core.structured_logging import get_logger
 from app.core.crud_utils import _utc_now
 
