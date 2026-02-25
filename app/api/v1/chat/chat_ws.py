@@ -1,4 +1,3 @@
-# type: ignore
 from typing import List, Dict
 from uuid import UUID
 import json
@@ -19,26 +18,26 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 class ConnectionManager:
-    def __init__(self):
+    def __init__(self):  # type: ignore
         # session_id -> list of active websockets
         self.active_connections: Dict[UUID, List[WebSocket]] = {}
 
-    async def connect(self, websocket: WebSocket, session_id: UUID):
+    async def connect(self, websocket: WebSocket, session_id: UUID):  # type: ignore
         await websocket.accept()
         if session_id not in self.active_connections:
             self.active_connections[session_id] = []
         self.active_connections[session_id].append(websocket)
 
-    def disconnect(self, websocket: WebSocket, session_id: UUID):
+    def disconnect(self, websocket: WebSocket, session_id: UUID):  # type: ignore
         if session_id in self.active_connections:
             self.active_connections[session_id].remove(websocket)
             if not self.active_connections[session_id]:
                 del self.active_connections[session_id]
 
-    async def send_personal_message(self, message: str, websocket: WebSocket):
+    async def send_personal_message(self, message: str, websocket: WebSocket):  # type: ignore
         await websocket.send_text(message)
 
-    async def broadcast(self, message: str, session_id: UUID):
+    async def broadcast(self, message: str, session_id: UUID):  # type: ignore
         if session_id in self.active_connections:
             for connection in self.active_connections[session_id]:
                 await connection.send_text(message)
@@ -54,14 +53,14 @@ async def get_user_from_token(token: str, db: Session) -> models.User:
         )
         user_id = payload.get("sub")
         if user_id is None:
-            return None
-        return db.query(models.User).filter(models.User.id == user_id).first()
+            return None  # type: ignore
+        return db.query(models.User).filter(models.User.id == user_id).first()  # type: ignore
     except Exception as e:
         logger.error(f"FAILED TOKEN DECODE: {type(e).__name__} - {str(e)}")
-        return None
+        return None  # type: ignore
 
 @router.websocket("/ws/{session_id}")
-async def websocket_endpoint(
+async def websocket_endpoint(  # type: ignore
     websocket: WebSocket,
     session_id: UUID,
     token: str = Query(...),

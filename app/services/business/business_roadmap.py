@@ -1,4 +1,3 @@
-# type: ignore
 import logging
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -173,7 +172,7 @@ class BusinessRoadmapService(BaseService):
         return db_stage
 
     @staticmethod
-    async def handle_business_event(event_type: str, payload: Dict[str, Any]):
+    async def handle_business_event(event_type: str, payload: Dict[str, Any]):  # type: ignore
         """Async handler for business events."""
         business = payload.get("business")
         if not business:
@@ -190,7 +189,7 @@ class BusinessRoadmapService(BaseService):
         finally:
             db.close()
 
-def register_business_roadmap_handlers():
+def register_business_roadmap_handlers():  # type: ignore
     """Register BusinessRoadmapService handlers."""
     dispatcher.subscribe("business.created", BusinessRoadmapService.handle_business_event)
 

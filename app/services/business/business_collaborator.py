@@ -1,4 +1,3 @@
-# type: ignore
 import logging
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -103,7 +102,7 @@ class BusinessCollaboratorService(BaseService):
         return db_obj
 
     @staticmethod
-    async def handle_business_event(event_type: str, payload: Dict[str, Any]):
+    async def handle_business_event(event_type: str, payload: Dict[str, Any]):  # type: ignore
         """Async handler for business events."""
         business = payload.get("business")
         if not business:
@@ -120,7 +119,7 @@ class BusinessCollaboratorService(BaseService):
         finally:
             db.close()
 
-def register_business_collaborator_handlers():
+def register_business_collaborator_handlers():  # type: ignore
     """Register BusinessCollaboratorService handlers."""
     dispatcher.subscribe("business.created", BusinessCollaboratorService.handle_business_event)
 

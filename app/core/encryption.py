@@ -1,4 +1,3 @@
-# type: ignore
 """
 AES-256-GCM transparent column encryption for SQLAlchemy.
 

@@ -1,4 +1,3 @@
-# type: ignore
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -23,7 +22,7 @@ def _ensure_agent_run_owner(db_obj: models.AgentRun, current_user: models.User) 
 
 
 @router.get("/", response_model=List[AgentRunResponse])
-def read_agent_runs(
+def read_agent_runs(  # type: ignore
     skip: SkipParam = 0,
     limit: LimitParam = 20,
     db: Session = Depends(get_db),
@@ -41,7 +40,7 @@ def read_agent_runs(
     return service.get_agent_runs(db, skip=skip, limit=limit, user_id=current_user.id)
 
 @router.post("/", response_model=AgentRunResponse)
-def create_agent_run(
+def create_agent_run(  # type: ignore
     item_in: AgentRunCreate, 
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user)
@@ -77,7 +76,7 @@ def create_agent_run(
     )
 
 @router.get("/{id}", response_model=AgentRunResponse)
-def read_agent_run(
+def read_agent_run(  # type: ignore
     id: UUID,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -89,7 +88,7 @@ def read_agent_run(
     return db_obj
 
 @router.put("/{id}", response_model=AgentRunResponse)
-def update_agent_run(
+def update_agent_run(  # type: ignore
     id: UUID,
     item_in: AgentRunUpdate,
     db: Session = Depends(get_db),
@@ -102,7 +101,7 @@ def update_agent_run(
     return service.update_agent_run(db, db_obj=db_obj, obj_in=item_in)
 
 @router.delete("/{id}", response_model=AgentRunResponse)
-def delete_agent_run(
+def delete_agent_run(  # type: ignore
     id: UUID,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -118,7 +117,7 @@ def delete_agent_run(
     status_code=202,
     response_model=AgentRunResponse,
 )
-def execute_agent_run(
+def execute_agent_run(  # type: ignore
     id: UUID,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),

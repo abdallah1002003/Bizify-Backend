@@ -1,5 +1,4 @@
 # ruff: noqa
-# type: ignore
 """
 Admin Action Log CRUD operations.
 """

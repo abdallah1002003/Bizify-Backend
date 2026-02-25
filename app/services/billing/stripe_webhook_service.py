@@ -1,5 +1,4 @@
 # ruff: noqa
-# type: ignore
 """
 Stripe Webhook Service — pure business logic, no FastAPI imports.
 
@@ -48,7 +47,7 @@ def _find_subscription_by_stripe_id(db: Session, stripe_sub_id: str) -> Subscrip
     )
 
 
-def _find_user_by_stripe_customer_id(db: Session, stripe_customer_id: str):
+def _find_user_by_stripe_customer_id(db: Session, stripe_customer_id: str):  # type: ignore
     """Look up a local User by their Stripe customer ID."""
     from app.models import User
     return db.query(User).filter(User.stripe_customer_id == stripe_customer_id).first()

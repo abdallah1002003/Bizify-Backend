@@ -1,4 +1,3 @@
-# type: ignore
 from __future__ import annotations
 
 from sqlalchemy.orm import Session
@@ -7,11 +6,11 @@ from app.models import ValidationLog
 from app.services.ai import ai_service
 
 
-def record_critique(db: Session, agent_run_id, score: float, critique: dict) -> ValidationLog:
+def record_critique(db: Session, agent_run_id, score: float, critique: dict) -> ValidationLog:  # type: ignore
     result = "SUCCESS" if score >= 0.8 else "WARNING"
     log = ai_service.record_validation_log(db, agent_run_id=agent_run_id, result=result, details=str(critique))
-    log.confidence_score = score
-    log.threshold_passed = score >= 0.8
+    log.confidence_score = score  # type: ignore
+    log.threshold_passed = score >= 0.8  # type: ignore
     db.commit()
     db.refresh(log)
     return log

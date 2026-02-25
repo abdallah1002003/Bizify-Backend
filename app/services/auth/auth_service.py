@@ -1,5 +1,4 @@
 # ruff: noqa
-# type: ignore
 from datetime import datetime, timedelta, timezone
 import logging
 from typing import Optional, Tuple
@@ -140,7 +139,7 @@ class AuthService(BaseService):
                 status_code=400, detail="Verification link has already been used or is invalid"
             )
 
-        user = self.users.get_user_by_email(email)
+        user = self.users.get_user_by_email(email)  # type: ignore
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 

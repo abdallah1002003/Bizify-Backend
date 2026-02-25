@@ -1,4 +1,3 @@
-# type: ignore
 """
 User Profile CRUD operations.
 """

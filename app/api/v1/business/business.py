@@ -1,4 +1,3 @@
-# type: ignore
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,7 +11,7 @@ from app.core.cache import get_cache_manager
 router = APIRouter()
 
 @router.get("/", response_model=List[BusinessResponse])
-def read_businesses(
+def read_businesses(  # type: ignore
     skip: SkipParam = 0,
     limit: LimitParam = 20,
     service: BusinessService = Depends(get_business_service),
@@ -32,7 +31,7 @@ def read_businesses(
     return result
 
 @router.post("/", response_model=BusinessResponse)
-def create_business(
+def create_business(  # type: ignore
     item_in: BusinessCreate, 
     service: BusinessService = Depends(get_business_service),
     current_user: models.User = Depends(dependencies.get_current_active_user)
@@ -45,7 +44,7 @@ def create_business(
     return result
 
 @router.get("/{id}", response_model=BusinessResponse)
-def read_business(
+def read_business(  # type: ignore
     id: UUID, 
     service: BusinessService = Depends(get_business_service),
     current_user: models.User = Depends(dependencies.get_current_active_user)
@@ -68,7 +67,7 @@ def read_business(
     return db_obj
 
 @router.put("/{id}", response_model=BusinessResponse)
-def update_business(
+def update_business(  # type: ignore
     id: UUID, item_in: BusinessUpdate, 
     service: BusinessService = Depends(get_business_service),
     current_user: models.User = Depends(dependencies.get_current_active_user)
@@ -88,7 +87,7 @@ def update_business(
     return result
 
 @router.delete("/{id}", response_model=BusinessResponse)
-def delete_business(
+def delete_business(  # type: ignore
     id: UUID, 
     service: BusinessService = Depends(get_business_service),
     current_user: models.User = Depends(dependencies.get_current_active_user)

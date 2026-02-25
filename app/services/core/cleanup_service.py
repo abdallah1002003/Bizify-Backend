@@ -1,4 +1,3 @@
-# type: ignore
 """
 Cleanup service for periodic removal of stale database records.
 

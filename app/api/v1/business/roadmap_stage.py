@@ -1,4 +1,3 @@
-# type: ignore
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
@@ -9,7 +8,7 @@ from app.services.business.business_roadmap import BusinessRoadmapService, get_b
 router = APIRouter()
 
 @router.get("/", response_model=List[RoadmapStageResponse])
-def read_roadmap_stages(
+def read_roadmap_stages(  # type: ignore
     skip: SkipParam = 0, 
     limit: LimitParam = 100, 
     service: BusinessRoadmapService = Depends(get_business_roadmap_service)
@@ -17,14 +16,14 @@ def read_roadmap_stages(
     return service.get_roadmap_stages(skip=skip, limit=limit)
 
 @router.post("/", response_model=RoadmapStageResponse)
-def create_roadmap_stage(
+def create_roadmap_stage(  # type: ignore
     item_in: RoadmapStageCreate, 
     service: BusinessRoadmapService = Depends(get_business_roadmap_service)
 ):
     return service.create_roadmap_stage(obj_in=item_in)
 
 @router.get("/{id}", response_model=RoadmapStageResponse)
-def read_roadmap_stage(
+def read_roadmap_stage(  # type: ignore
     id: UUID, 
     service: BusinessRoadmapService = Depends(get_business_roadmap_service)
 ):
@@ -34,7 +33,7 @@ def read_roadmap_stage(
     return db_obj
 
 @router.put("/{id}", response_model=RoadmapStageResponse)
-def update_roadmap_stage(
+def update_roadmap_stage(  # type: ignore
     id: UUID, 
     item_in: RoadmapStageUpdate, 
     service: BusinessRoadmapService = Depends(get_business_roadmap_service)
@@ -45,7 +44,7 @@ def update_roadmap_stage(
     return service.update_roadmap_stage(db_obj=db_obj, obj_in=item_in)
 
 @router.delete("/{id}", response_model=RoadmapStageResponse)
-def delete_roadmap_stage(
+def delete_roadmap_stage(  # type: ignore
     id: UUID, 
     service: BusinessRoadmapService = Depends(get_business_roadmap_service)
 ):

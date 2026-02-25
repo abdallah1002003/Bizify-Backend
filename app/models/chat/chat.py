@@ -26,13 +26,13 @@ class ChatSession(Base, TimestampMixin, SoftDeleteMixin):
     session_type: Mapped[ChatSessionType] = mapped_column(Enum(ChatSessionType), nullable=False)
     conversation_summary_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
-    user: Mapped["User"] = relationship(
+    user: Mapped["User"] = relationship(  # type: ignore
         "User", foreign_keys=[user_id], back_populates="chat_sessions"
     )
-    business: Mapped[Optional["Business"]] = relationship(
+    business: Mapped[Optional["Business"]] = relationship(  # type: ignore
         "Business", foreign_keys=[business_id], back_populates="chat_sessions"
     )
-    idea: Mapped[Optional["Idea"]] = relationship(
+    idea: Mapped[Optional["Idea"]] = relationship(  # type: ignore
         "Idea", foreign_keys=[idea_id], back_populates="chat_sessions"
     )
     messages: Mapped[List["ChatMessage"]] = relationship(

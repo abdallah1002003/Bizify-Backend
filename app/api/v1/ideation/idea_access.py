@@ -1,4 +1,3 @@
-# type: ignore
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
@@ -18,7 +17,7 @@ def _require_idea_owner(idea_service: IdeaService, idea_id: UUID, current_user_i
 
 
 @router.get("/", response_model=List[IdeaAccessResponse])
-def read_idea_accesses(
+def read_idea_accesses(  # type: ignore
     skip: SkipParam = 0, 
     limit: LimitParam = 100, 
     service: IdeaAccessService = Depends(get_idea_access_service), 
@@ -28,7 +27,7 @@ def read_idea_accesses(
     return service.get_idea_accesses_by_owner(owner_id=current_user.id, skip=skip, limit=limit)
 
 @router.post("/", response_model=IdeaAccessResponse)
-def create_idea_access(
+def create_idea_access(  # type: ignore
     item_in: IdeaAccessCreate, 
     service: IdeaAccessService = Depends(get_idea_access_service),
     idea_service: IdeaService = Depends(get_idea_service),
@@ -38,7 +37,7 @@ def create_idea_access(
     return service.create_idea_access(obj_in=item_in)
 
 @router.get("/{id}", response_model=IdeaAccessResponse)
-def read_idea_access(
+def read_idea_access(  # type: ignore
     id: UUID, 
     service: IdeaAccessService = Depends(get_idea_access_service),
     idea_service: IdeaService = Depends(get_idea_service),
@@ -51,7 +50,7 @@ def read_idea_access(
     return db_obj
 
 @router.put("/{id}", response_model=IdeaAccessResponse)
-def update_idea_access(
+def update_idea_access(  # type: ignore
     id: UUID, 
     item_in: IdeaAccessUpdate, 
     service: IdeaAccessService = Depends(get_idea_access_service),
@@ -67,7 +66,7 @@ def update_idea_access(
     return service.update_idea_access(db_obj=db_obj, obj_in=item_in)
 
 @router.delete("/{id}", response_model=IdeaAccessResponse)
-def delete_idea_access(
+def delete_idea_access(  # type: ignore
     id: UUID, 
     service: IdeaAccessService = Depends(get_idea_access_service),
     idea_service: IdeaService = Depends(get_idea_service),

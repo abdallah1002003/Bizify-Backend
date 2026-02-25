@@ -1,4 +1,3 @@
-# type: ignore
 """
 Async/Await pattern examples for Bizify API services.
 
@@ -99,7 +98,7 @@ async def get_chat_sessions_by_user_async(
         sessions = sessions_result.scalars().all()
         total = len(count_result.scalars().all())
         
-        return sessions, total
+        return sessions, total  # type: ignore
 
 
 # ============================================================================
@@ -253,7 +252,7 @@ async def fetch_multiple_sessions_async(
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
         # Handle any exceptions
-        sessions = []
+        sessions = []  # type: ignore
         for i, result in enumerate(results):
             if isinstance(result, Exception):
                 logger.error(
@@ -263,7 +262,7 @@ async def fetch_multiple_sessions_async(
             else:
                 sessions.append(result)
         
-        return sessions
+        return sessions  # type: ignore
 
 
 # ============================================================================
@@ -375,7 +374,7 @@ async def transfer_session_ownership_async(
 # Example 8: Async Stream Large Results
 # ============================================================================
 
-async def stream_sessions_async(
+async def stream_sessions_async(  # type: ignore
     db: AsyncSession,
     user_id: UUID,
     batch_size: int = 100,

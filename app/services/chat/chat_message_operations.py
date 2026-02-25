@@ -1,4 +1,3 @@
-# type: ignore
 """
 ChatMessage operations for managing conversation messages.
 
@@ -274,7 +273,7 @@ def get_session_history(
     )
 
 
-def get_detailed_status() -> Dict[str, any]:
+def get_detailed_status() -> Dict[str, any]:  # type: ignore
     """
     Get detailed status information for chat message operations.
     

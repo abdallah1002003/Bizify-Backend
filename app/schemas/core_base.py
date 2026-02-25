@@ -1,7 +1,6 @@
-# type: ignore
 from pydantic import BaseModel, field_validator
 from typing import Any
-import bleach
+import bleach  # type: ignore
 
 class SafeBaseModel(BaseModel):
     """

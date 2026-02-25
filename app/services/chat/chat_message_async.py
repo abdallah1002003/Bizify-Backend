@@ -1,4 +1,3 @@
-# type: ignore
 """
 Async ChatMessage operations using SQLAlchemy AsyncSession.
 

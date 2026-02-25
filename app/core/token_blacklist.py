@@ -1,4 +1,3 @@
-# type: ignore
 """
 JTI (JWT ID) token blacklist for access-token revocation.
 
@@ -66,7 +65,7 @@ def _memory_is_blacklisted(jti: str) -> bool:
 BLACKLIST_PREFIX = "jti_blacklist:"
 
 
-def _get_redis_client():
+def _get_redis_client():  # type: ignore
     """Return a synchronous Redis client or None if unavailable/disabled."""
     if not getattr(settings, "REDIS_ENABLED", False):
         return None

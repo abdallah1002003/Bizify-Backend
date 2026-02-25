@@ -1,4 +1,3 @@
-# type: ignore
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
@@ -19,7 +18,7 @@ def _ensure_share_link_owner(share_link: models.ShareLink, current_user: models.
 
 
 @router.get("/", response_model=List[ShareLinkResponse])
-def read_share_links(
+def read_share_links(  # type: ignore
     skip: SkipParam = 0,
     limit: LimitParam = 100,
     db: Session = Depends(get_db),
@@ -28,7 +27,7 @@ def read_share_links(
     return service.get_share_links(db, skip=skip, limit=limit, created_by=current_user.id)
 
 @router.post("/", response_model=ShareLinkResponse)
-def create_share_link(
+def create_share_link(  # type: ignore
     item_in: ShareLinkCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -38,7 +37,7 @@ def create_share_link(
     return service.create_share_link(db, obj_in=data)
 
 @router.get("/{id}", response_model=ShareLinkResponse)
-def read_share_link(
+def read_share_link(  # type: ignore
     id: UUID,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -50,7 +49,7 @@ def read_share_link(
     return db_obj
 
 @router.put("/{id}", response_model=ShareLinkResponse)
-def update_share_link(
+def update_share_link(  # type: ignore
     id: UUID,
     item_in: ShareLinkUpdate,
     db: Session = Depends(get_db),
@@ -65,7 +64,7 @@ def update_share_link(
     return service.update_share_link(db, db_obj=db_obj, obj_in=data)
 
 @router.delete("/{id}", response_model=ShareLinkResponse)
-def delete_share_link(
+def delete_share_link(  # type: ignore
     id: UUID,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),

@@ -1,4 +1,3 @@
-# type: ignore
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
@@ -18,7 +17,7 @@ router = APIRouter()
 
 
 @router.get("/", response_model=List[UserProfileResponse], dependencies=[Depends(require_admin)])
-def read_user_profiles(
+def read_user_profiles(  # type: ignore
     skip: SkipParam = 0,
     limit: LimitParam = 100,
     service: UserService = Depends(get_user_service),
@@ -27,7 +26,7 @@ def read_user_profiles(
 
 
 @router.post("/", response_model=UserProfileResponse)
-def create_user_profile(
+def create_user_profile(  # type: ignore
     item_in: UserProfileCreate,
     service: UserService = Depends(get_user_service),
     current_user: models.User = Depends(get_current_active_user),
@@ -39,7 +38,7 @@ def create_user_profile(
 
 
 @router.get("/{id}", response_model=UserProfileResponse)
-def read_user_profile(
+def read_user_profile(  # type: ignore
     id: UUID,
     service: UserService = Depends(get_user_service),
     current_user: models.User = Depends(get_current_active_user),
@@ -52,7 +51,7 @@ def read_user_profile(
 
 
 @router.put("/{id}", response_model=UserProfileResponse)
-def update_user_profile(
+def update_user_profile(  # type: ignore
     id: UUID,
     item_in: UserProfileUpdate,
     service: UserService = Depends(get_user_service),
@@ -68,7 +67,7 @@ def update_user_profile(
 
 
 @router.delete("/{id}", response_model=UserProfileResponse)
-def delete_user_profile(
+def delete_user_profile(  # type: ignore
     id: UUID,
     service: UserService = Depends(get_user_service),
     current_user: models.User = Depends(get_current_active_user),

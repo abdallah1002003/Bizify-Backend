@@ -1,4 +1,3 @@
-# type: ignore
 """
 Redis caching service with automatic fallback to in-memory caching.
 
@@ -73,7 +72,7 @@ class InMemoryCache(CacheBackend[T]):
     production with multiple workers.
     """
 
-    def __init__(self):
+    def __init__(self):  # type: ignore
         """Initialize in-memory cache."""
         self._cache: Dict[str, tuple[Any, Optional[float]]] = {}
         self._hits = 0
@@ -96,7 +95,7 @@ class InMemoryCache(CacheBackend[T]):
             return None
 
         self._hits += 1
-        return value
+        return value  # type: ignore
 
     def set(self, key: str, value: T, ttl_seconds: Optional[int] = None) -> bool:
         """Store value with optional TTL."""
@@ -209,7 +208,7 @@ class RedisCache(CacheBackend[T]):
             # Check if compressed
             if data.startswith(b"__COMPRESSED__"):
                 data = zlib.decompress(data[14:])  # Skip marker
-            return pickle.loads(data)
+            return pickle.loads(data)  # type: ignore
         except Exception as e:
             logger.error(f"Redis get failed for {key}: {e}")
             return None
@@ -309,7 +308,7 @@ class CacheManager:
         self.backend: CacheBackend = InMemoryCache()
 
         if use_redis and redis is not None:
-            redis_cache = RedisCache(
+            redis_cache = RedisCache(  # type: ignore
                 host=redis_host,
                 port=redis_port,
                 password=redis_password,
@@ -364,13 +363,13 @@ class CacheManager:
         gen = self.get_generation_key(namespace)
         new_gen = gen + 1
         self.set(f"generation:{namespace}", new_gen)
-        return new_gen
+        return new_gen  # type: ignore
 
     def is_healthy(self) -> bool:
         """Check backend health."""
         return self.backend.health_check()
 
-    def setup_caching_decorator(self, ttl_seconds: int = 3600):
+    def setup_caching_decorator(self, ttl_seconds: int = 3600):  # type: ignore
         """
         Create a caching decorator for synchronous functions.
         
@@ -380,12 +379,12 @@ class CacheManager:
                 # Expensive operation
                 pass
         """
-        def decorator(func):
+        def decorator(func):  # type: ignore
             import inspect
             
             if inspect.iscoroutinefunction(func):
                 @wraps(func)
-                async def async_wrapper(*args, **kwargs):
+                async def async_wrapper(*args, **kwargs):  # type: ignore
                     cache_key = f"{func.__name__}:{json.dumps([str(arg) for arg in args] + [f'{k}={v}' for k, v in kwargs.items()], sort_keys=True, default=str)}"
                     cached = self.get(cache_key)
                     if cached is not None:
@@ -397,7 +396,7 @@ class CacheManager:
                 return async_wrapper
             else:
                 @wraps(func)
-                def sync_wrapper(*args, **kwargs):
+                def sync_wrapper(*args, **kwargs):  # type: ignore
                     cache_key = f"{func.__name__}:{json.dumps([str(arg) for arg in args] + [f'{k}={v}' for k, v in kwargs.items()], sort_keys=True, default=str)}"
                     cached = self.get(cache_key)
                     if cached is not None:

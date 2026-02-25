@@ -1,5 +1,4 @@
 # ruff: noqa
-# type: ignore
 """
 Subscription CRUD operations and plan synchronization.
 """

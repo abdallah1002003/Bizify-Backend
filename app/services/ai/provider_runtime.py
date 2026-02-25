@@ -1,4 +1,3 @@
-# type: ignore
 from __future__ import annotations
 
 import asyncio
@@ -66,7 +65,7 @@ def _mock_agent_response(
     }
 
 
-async def _call_openai_embeddings(content: str) -> Optional[list[float]]:
+async def _call_openai_embeddings(content: str) -> Optional[list[float]]:  # type: ignore
     if not _is_openai_enabled():
         return None
 
@@ -113,7 +112,7 @@ async def generate_embedding_vector(content: str, dimensions: int = DEFAULT_VECT
     return _normalize_vector(_deterministic_vector(content, dimensions), dimensions)
 
 
-async def _call_openai_agent_response(
+async def _call_openai_agent_response(  # type: ignore
     input_data: Optional[Dict[str, Any]],
     *,
     agent_name: str,

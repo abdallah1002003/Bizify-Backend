@@ -1,5 +1,4 @@
 # ruff: noqa
-# type: ignore
 """
 Idea Metric CRUD operations and analytics.
 """

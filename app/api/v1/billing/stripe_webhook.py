@@ -1,5 +1,4 @@
 # ruff: noqa
-# type: ignore
 """
 Stripe Webhook endpoint.
 
@@ -33,7 +32,7 @@ router = APIRouter()
     status_code=200,
     # Stripe docs recommend returning 200 quickly; let the router handle errors.
 )
-async def stripe_webhook(
+async def stripe_webhook(  # type: ignore
     request: Request,
     stripe_signature: str = Header(..., alias="Stripe-Signature"),
     db: Session = Depends(get_db),

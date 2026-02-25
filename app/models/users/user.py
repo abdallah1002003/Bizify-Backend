@@ -43,33 +43,33 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     profile: Mapped[Optional["UserProfile"]] = relationship(
         "UserProfile", back_populates="user", uselist=False, cascade="all, delete-orphan"
     )
-    ideas: Mapped[List["Idea"]] = relationship(
+    ideas: Mapped[List["Idea"]] = relationship(  # type: ignore
         "Idea", foreign_keys="Idea.owner_id", back_populates="owner",
         cascade="all, delete-orphan", lazy="select"
     )
-    businesses: Mapped[List["Business"]] = relationship(
+    businesses: Mapped[List["Business"]] = relationship(  # type: ignore
         "Business", foreign_keys="Business.owner_id", back_populates="owner",
         cascade="all, delete-orphan", lazy="select"
     )
-    subscriptions: Mapped[List["Subscription"]] = relationship(
+    subscriptions: Mapped[List["Subscription"]] = relationship(  # type: ignore
         "Subscription", back_populates="user", cascade="all, delete-orphan", lazy="select"
     )
-    payment_methods: Mapped[List["PaymentMethod"]] = relationship(
+    payment_methods: Mapped[List["PaymentMethod"]] = relationship(  # type: ignore
         "PaymentMethod", back_populates="user", cascade="all, delete-orphan", lazy="select"
     )
-    payments: Mapped[List["Payment"]] = relationship(
+    payments: Mapped[List["Payment"]] = relationship(  # type: ignore
         "Payment", back_populates="user", cascade="all, delete-orphan", lazy="select"
     )
-    usages: Mapped[List["Usage"]] = relationship(
+    usages: Mapped[List["Usage"]] = relationship(  # type: ignore
         "Usage", back_populates="user", cascade="all, delete-orphan", lazy="select"
     )
-    notifications: Mapped[List["Notification"]] = relationship(
+    notifications: Mapped[List["Notification"]] = relationship(  # type: ignore
         "Notification", back_populates="user", cascade="all, delete-orphan", lazy="select"
     )
-    files: Mapped[List["File"]] = relationship(
+    files: Mapped[List["File"]] = relationship(  # type: ignore
         "File", back_populates="owner", cascade="all, delete-orphan", lazy="select"
     )
-    partner_profiles: Mapped[List["PartnerProfile"]] = relationship(
+    partner_profiles: Mapped[List["PartnerProfile"]] = relationship(  # type: ignore
         "PartnerProfile", foreign_keys="PartnerProfile.user_id", back_populates="user",
         cascade="all, delete-orphan", lazy="select"
     )
@@ -77,21 +77,21 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
         "AdminActionLog", foreign_keys="AdminActionLog.admin_id", back_populates="admin",
         cascade="all, delete-orphan", lazy="select"
     )
-    idea_comparisons: Mapped[List["IdeaComparison"]] = relationship(
+    idea_comparisons: Mapped[List["IdeaComparison"]] = relationship(  # type: ignore
         "IdeaComparison", back_populates="user", cascade="all, delete-orphan", lazy="select"
     )
-    share_links: Mapped[List["ShareLink"]] = relationship(
+    share_links: Mapped[List["ShareLink"]] = relationship(  # type: ignore
         "ShareLink", foreign_keys="ShareLink.created_by", back_populates="creator",
         cascade="all, delete-orphan", lazy="select"
     )
-    chat_sessions: Mapped[List["ChatSession"]] = relationship(
+    chat_sessions: Mapped[List["ChatSession"]] = relationship(  # type: ignore
         "ChatSession", back_populates="user", cascade="all, delete-orphan", lazy="select"
     )
-    business_invites_sent: Mapped[List["BusinessInvite"]] = relationship(
+    business_invites_sent: Mapped[List["BusinessInvite"]] = relationship(  # type: ignore
         "BusinessInvite", foreign_keys="BusinessInvite.invited_by", back_populates="inviter",
         cascade="all, delete-orphan", lazy="select"
     )
-    idea_accesses: Mapped[List["IdeaAccess"]] = relationship(
+    idea_accesses: Mapped[List["IdeaAccess"]] = relationship(  # type: ignore
         "IdeaAccess", back_populates="user", cascade="all, delete-orphan", lazy="select"
     )
 

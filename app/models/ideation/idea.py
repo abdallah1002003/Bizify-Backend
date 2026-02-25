@@ -32,10 +32,10 @@ class Idea(Base, TimestampMixin, SoftDeleteMixin):
     archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     converted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     
-    owner: Mapped["User"] = relationship(
+    owner: Mapped["User"] = relationship(  # type: ignore
         "User", foreign_keys=[owner_id], back_populates="ideas"
     )
-    business: Mapped[Optional["Business"]] = relationship(
+    business: Mapped[Optional["Business"]] = relationship(  # type: ignore
         "Business", foreign_keys=[business_id], back_populates="idea_backref"
     )
     versions: Mapped[List["IdeaVersion"]] = relationship(
@@ -47,21 +47,21 @@ class Idea(Base, TimestampMixin, SoftDeleteMixin):
     experiments: Mapped[List["Experiment"]] = relationship(
         "Experiment", back_populates="idea", cascade="all, delete-orphan"
     )
-    chat_sessions: Mapped[List["ChatSession"]] = relationship(
+    chat_sessions: Mapped[List["ChatSession"]] = relationship(  # type: ignore
         "ChatSession", foreign_keys="ChatSession.idea_id", back_populates="idea",
         cascade="all, delete-orphan"
     )
-    share_links: Mapped[List["ShareLink"]] = relationship(
+    share_links: Mapped[List["ShareLink"]] = relationship(  # type: ignore
         "ShareLink", foreign_keys="ShareLink.idea_id", back_populates="idea",
         cascade="all, delete-orphan"
     )
-    comparisons: Mapped[List["ComparisonItem"]] = relationship(
+    comparisons: Mapped[List["ComparisonItem"]] = relationship(  # type: ignore
         "ComparisonItem", back_populates="idea", cascade="all, delete-orphan"
     )
     accesses: Mapped[List["IdeaAccess"]] = relationship(
         "IdeaAccess", back_populates="idea", cascade="all, delete-orphan"
     )
-    business_invites: Mapped[List["BusinessInviteIdea"]] = relationship(
+    business_invites: Mapped[List["BusinessInviteIdea"]] = relationship(  # type: ignore
         "BusinessInviteIdea", back_populates="idea", cascade="all, delete-orphan"
     )
 
@@ -79,7 +79,7 @@ class IdeaVersion(Base, TimestampMixin, SoftDeleteMixin):
     snapshot_json: Mapped[dict] = mapped_column(JSON, nullable=False)
 
     idea: Mapped["Idea"] = relationship("Idea", back_populates="versions")
-    creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])
+    creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])  # type: ignore
 
 class IdeaMetric(Base, TimestampMixin, SoftDeleteMixin):
     """Metric tracking for idea validation and analysis."""
@@ -99,7 +99,7 @@ class IdeaMetric(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     idea: Mapped["Idea"] = relationship("Idea", back_populates="metrics")
-    creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])
+    creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])  # type: ignore
 
 class Experiment(Base, TimestampMixin, SoftDeleteMixin):
     """Experiment for testing idea hypotheses."""
@@ -119,7 +119,7 @@ class Experiment(Base, TimestampMixin, SoftDeleteMixin):
     result_summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     idea: Mapped["Idea"] = relationship("Idea", back_populates="experiments")
-    creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])
+    creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])  # type: ignore
 
 class IdeaAccess(Base, TimestampMixin, SoftDeleteMixin):
     """Access control permissions for ideas."""
@@ -141,9 +141,9 @@ class IdeaAccess(Base, TimestampMixin, SoftDeleteMixin):
     assigned_job: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     idea: Mapped["Idea"] = relationship("Idea", back_populates="accesses")
-    business: Mapped[Optional["Business"]] = relationship(
+    business: Mapped[Optional["Business"]] = relationship(  # type: ignore
         "Business", back_populates="idea_accesses"
     )
-    user: Mapped["User"] = relationship(
+    user: Mapped["User"] = relationship(  # type: ignore
         "User", foreign_keys=[user_id], back_populates="idea_accesses"
     )

@@ -1,4 +1,3 @@
-# type: ignore
 """
 Authentication and authorization dependencies for FastAPI routes.
 
@@ -56,7 +55,7 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        user_id: str = payload.get("sub")
+        user_id: str = payload.get("sub")  # type: ignore
         if user_id is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

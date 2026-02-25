@@ -1,4 +1,3 @@
-# type: ignore
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
@@ -19,7 +18,7 @@ def _ensure_file_owner(file_obj: models.File, current_user: models.User) -> None
 
 
 @router.get("/", response_model=List[FileResponse])
-def read_files(
+def read_files(  # type: ignore
     skip: SkipParam = 0,
     limit: LimitParam = 100,
     db: Session = Depends(get_db),
@@ -28,7 +27,7 @@ def read_files(
     return service.get_files(db, skip=skip, limit=limit, owner_id=current_user.id)
 
 @router.post("/", response_model=FileResponse)
-def create_file(
+def create_file(  # type: ignore
     item_in: FileCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -38,7 +37,7 @@ def create_file(
     return service.create_file(db, obj_in=data)
 
 @router.get("/{id}", response_model=FileResponse)
-def read_file(
+def read_file(  # type: ignore
     id: UUID,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -50,7 +49,7 @@ def read_file(
     return db_obj
 
 @router.put("/{id}", response_model=FileResponse)
-def update_file(
+def update_file(  # type: ignore
     id: UUID,
     item_in: FileUpdate,
     db: Session = Depends(get_db),
@@ -65,7 +64,7 @@ def update_file(
     return service.update_file(db, db_obj=db_obj, obj_in=data)
 
 @router.delete("/{id}", response_model=FileResponse)
-def delete_file(
+def delete_file(  # type: ignore
     id: UUID,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),

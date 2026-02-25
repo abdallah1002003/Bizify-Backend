@@ -1,4 +1,3 @@
-# type: ignore
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
@@ -19,7 +18,7 @@ def _ensure_usage_owner(usage: models.Usage, current_user: models.User) -> None:
 
 
 @router.get("/", response_model=List[UsageResponse])
-def read_usages(
+def read_usages(  # type: ignore
     skip: SkipParam = 0,
     limit: LimitParam = 100,
     db: Session = Depends(get_db),
@@ -28,7 +27,7 @@ def read_usages(
     return service.get_usages(db, skip=skip, limit=limit, user_id=current_user.id)
 
 @router.post("/", response_model=UsageResponse)
-def create_usage(
+def create_usage(  # type: ignore
     item_in: UsageCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -38,7 +37,7 @@ def create_usage(
     return service.create_usage(db, obj_in=data)
 
 @router.get("/{id}", response_model=UsageResponse)
-def read_usage(
+def read_usage(  # type: ignore
     id: UUID,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -50,7 +49,7 @@ def read_usage(
     return db_obj
 
 @router.put("/{id}", response_model=UsageResponse)
-def update_usage(
+def update_usage(  # type: ignore
     id: UUID,
     item_in: UsageUpdate,
     db: Session = Depends(get_db),
@@ -65,7 +64,7 @@ def update_usage(
     return service.update_usage(db, db_obj=db_obj, obj_in=data)
 
 @router.delete("/{id}", response_model=UsageResponse)
-def delete_usage(
+def delete_usage(  # type: ignore
     id: UUID,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),

@@ -1,4 +1,3 @@
-# type: ignore
 """
 Usage enforcement and tracking operations.
 """

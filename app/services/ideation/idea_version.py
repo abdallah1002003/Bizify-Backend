@@ -1,4 +1,3 @@
-# type: ignore
 import logging
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -75,7 +74,7 @@ class IdeaVersionService(BaseService):
         return db_obj
 
     @staticmethod
-    async def handle_idea_event(event_type: str, payload: Dict[str, Any]):
+    async def handle_idea_event(event_type: str, payload: Dict[str, Any]):  # type: ignore
         """Async handler for idea events."""
         idea = payload.get("idea")
         performer_id = payload.get("performer_id")
@@ -95,7 +94,7 @@ class IdeaVersionService(BaseService):
         finally:
             db.close()
 
-def register_idea_version_handlers():
+def register_idea_version_handlers():  # type: ignore
     """Register IdeaVersionService handlers to the event dispatcher."""
     dispatcher.subscribe("idea.created", IdeaVersionService.handle_idea_event)
     dispatcher.subscribe("idea.updated", IdeaVersionService.handle_idea_event)

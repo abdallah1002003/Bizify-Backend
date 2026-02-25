@@ -1,5 +1,4 @@
 # ruff: noqa
-# type: ignore
 """
 Idea Experiment CRUD operations.
 """
@@ -86,7 +85,7 @@ def finalize_experiment(db: Session, exp_id: UUID, result_json: dict, status: st
     if not db_obj:
         return None
 
-    db_obj.status = status
+    db_obj.status = status  # type: ignore
     db_obj.result_summary = str(result_json)
     db.commit()
     db.refresh(db_obj)

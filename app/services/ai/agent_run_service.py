@@ -1,4 +1,3 @@
-# type: ignore
 from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
@@ -90,7 +89,7 @@ class AgentRunService(BaseService):
 
         try:
             output_data = await provider_runtime.run_agent_execution(
-                db_obj.input_data,
+                db_obj.input_data,  # type: ignore
                 agent_name=db_obj.agent.name if db_obj.agent else "agent",
                 stage_type=stage_type,
             )
@@ -108,7 +107,7 @@ class AgentRunService(BaseService):
             self.db.refresh(db_obj)
 
             self.record_validation_log(
-                agent_run_id=db_obj.id,
+                agent_run_id=db_obj.id,  # type: ignore
                 result="SUCCESS",
                 details=str(output_data.get("summary", "Execution completed")),
             )
@@ -128,7 +127,7 @@ class AgentRunService(BaseService):
             self.db.refresh(db_obj)
 
             self.record_validation_log(
-                agent_run_id=db_obj.id,
+                agent_run_id=db_obj.id,  # type: ignore
                 result="FAILED",
                 details=str(exc),
             )

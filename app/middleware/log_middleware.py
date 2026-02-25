@@ -1,4 +1,3 @@
-# type: ignore
 """
 Enhanced logging middleware with structured logging and correlation IDs.
 

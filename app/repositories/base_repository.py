@@ -1,4 +1,3 @@
-# type: ignore
 """
 Base repository providing generic CRUD operations for SQLAlchemy models.
 

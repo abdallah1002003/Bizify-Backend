@@ -1,5 +1,4 @@
 # ruff: noqa
-# type: ignore
 """
 Business Invite and BusinessInviteIdea CRUD operations.
 """

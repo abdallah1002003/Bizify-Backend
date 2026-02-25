@@ -1,5 +1,4 @@
 # ruff: noqa
-# type: ignore
 """
 Email service for transactional emails (verification, password reset).
 
@@ -27,7 +26,7 @@ jinja_env = Environment(loader=FileSystemLoader(template_dir))
 class EmailService:
     """Service for sending transactional emails."""
 
-    def render_template(self, template_name: str, **context) -> str:
+    def render_template(self, template_name: str, **context) -> str:  # type: ignore
         """Helper to render a Jinja2 template."""
         try:
             # Inject global branding context
@@ -92,7 +91,7 @@ class EmailService:
         self._queue_email(email, "Reset your Bizify password", html_body)
 
     @staticmethod
-    async def handle_auth_event(event_type: str, payload: Dict[str, Any]):
+    async def handle_auth_event(event_type: str, payload: Dict[str, Any]):  # type: ignore
         """Async handler for authentication events."""
         email = payload.get("email")
         token = payload.get("token")
@@ -105,7 +104,7 @@ class EmailService:
         elif event_type == "auth.password_reset_requested":
             await service.send_password_reset_email(email, token)
 
-def register_email_handlers():
+def register_email_handlers():  # type: ignore
     """Register EmailService handlers with the dispatcher."""
     dispatcher.subscribe("auth.user_registered", EmailService.handle_auth_event)
     dispatcher.subscribe("auth.password_reset_requested", EmailService.handle_auth_event)

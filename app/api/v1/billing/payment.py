@@ -1,4 +1,3 @@
-# type: ignore
 """Payment API routes.
 
 This module provides endpoints for managing payment records including:
@@ -74,7 +73,7 @@ def _ensure_payment_method_owner(
 
 
 @router.get("/", response_model=List[PaymentResponse])
-def read_payments(
+def read_payments(  # type: ignore
     skip: SkipParam = 0,
     limit: LimitParam = 20,
     db: Session = Depends(get_db),
@@ -92,7 +91,7 @@ def read_payments(
     return service.get_payments(db, skip=skip, limit=limit, user_id=current_user.id)
 
 @router.post("/", response_model=PaymentResponse)
-def create_payment(
+def create_payment(  # type: ignore
     item_in: PaymentCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -153,7 +152,7 @@ def create_payment(
     return service.create_payment(db, obj_in=data)
 
 @router.get("/{id}", response_model=PaymentResponse)
-def read_payment(
+def read_payment(  # type: ignore
     id: UUID,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -179,7 +178,7 @@ def read_payment(
     return db_obj
 
 @router.put("/{id}", response_model=PaymentResponse)
-def update_payment(
+def update_payment(  # type: ignore
     id: UUID,
     item_in: PaymentUpdate,
     db: Session = Depends(get_db),
@@ -226,7 +225,7 @@ def update_payment(
     return service.update_payment(db, db_obj=db_obj, obj_in=data)
 
 @router.delete("/{id}", response_model=PaymentResponse)
-def delete_payment(
+def delete_payment(  # type: ignore
     id: UUID,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -252,7 +251,7 @@ def delete_payment(
     return service.delete_payment(db, id=id)
 
 @router.post("/{id}/refund", response_model=PaymentResponse)
-def refund_payment(
+def refund_payment(  # type: ignore
     id: UUID,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),

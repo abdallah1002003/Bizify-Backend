@@ -1,4 +1,3 @@
-# type: ignore
 from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import UUID
@@ -148,7 +147,7 @@ def bootstrap_admin(
 
 
 @router.post("/logout")
-def logout(
+def logout(  # type: ignore
     request: Request,
     payload: RefreshTokenRequest,
     auth_service: AuthService = Depends(get_auth_service),
@@ -179,7 +178,7 @@ def logout(
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-async def register(
+async def register(  # type: ignore
     item_in: UserCreate,
     background_tasks: BackgroundTasks,
     auth_service: AuthService = Depends(get_auth_service),
@@ -201,7 +200,7 @@ async def register(
 
 
 @router.get("/verify-email")
-def verify_email(
+def verify_email(  # type: ignore
     token: str = Query(..., description="Email verification JWT"),
     auth_service: AuthService = Depends(get_auth_service),
 ):
@@ -212,7 +211,7 @@ def verify_email(
 
 
 @router.post("/forgot-password")
-async def forgot_password(
+async def forgot_password(  # type: ignore
     payload: ForgotPasswordRequest,
     auth_service: AuthService = Depends(get_auth_service),
 ):
@@ -222,7 +221,7 @@ async def forgot_password(
 
 
 @router.post("/reset-password")
-def reset_password(
+def reset_password(  # type: ignore
     payload: ResetPasswordRequest,
     auth_service: AuthService = Depends(get_auth_service),
 ):
@@ -242,7 +241,7 @@ def reset_password(
     if not stored_token or stored_token.used:
         raise HTTPException(status_code=400, detail="Token has already been used or is invalid")
 
-    user = auth_service.users.get_user_by_email(email)
+    user = auth_service.users.get_user_by_email(email)  # type: ignore
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 

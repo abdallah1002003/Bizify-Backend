@@ -1,4 +1,3 @@
-# type: ignore
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
@@ -19,7 +18,7 @@ def _ensure_chat_session_owner(session: models.ChatSession, current_user: models
 
 
 @router.get("/", response_model=List[ChatSessionResponse])
-def read_chat_sessions(
+def read_chat_sessions(  # type: ignore
     skip: SkipParam = 0,
     limit: LimitParam = 100,
     db: Session = Depends(get_db),
@@ -28,7 +27,7 @@ def read_chat_sessions(
     return service.get_chat_sessions(db, skip=skip, limit=limit, user_id=current_user.id)
 
 @router.post("/", response_model=ChatSessionResponse)
-def create_chat_session(
+def create_chat_session(  # type: ignore
     item_in: ChatSessionCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -43,7 +42,7 @@ def create_chat_session(
     )
 
 @router.get("/{id}", response_model=ChatSessionResponse)
-def read_chat_session(
+def read_chat_session(  # type: ignore
     id: UUID,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -55,7 +54,7 @@ def read_chat_session(
     return db_obj
 
 @router.put("/{id}", response_model=ChatSessionResponse)
-def update_chat_session(
+def update_chat_session(  # type: ignore
     id: UUID,
     item_in: ChatSessionUpdate,
     db: Session = Depends(get_db),
@@ -70,7 +69,7 @@ def update_chat_session(
     return service.update_chat_session(db, db_obj=db_obj, obj_in=data)
 
 @router.delete("/{id}", response_model=ChatSessionResponse)
-def delete_chat_session(
+def delete_chat_session(  # type: ignore
     id: UUID,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),

@@ -1,4 +1,3 @@
-# type: ignore
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.pagination import LimitParam, SkipParam, PageResponse
@@ -16,7 +15,7 @@ router = APIRouter()
 
 
 @router.get("/", response_model=PageResponse[UserResponse], dependencies=[Depends(require_admin)])
-def read_users(
+def read_users(  # type: ignore
     skip: SkipParam = 0,
     limit: LimitParam = 100,
     service: UserService = Depends(get_user_service),
@@ -27,7 +26,7 @@ def read_users(
 
 
 @router.post("/", response_model=UserResponse)
-def create_user(
+def create_user(  # type: ignore
     item_in: UserCreate,
     service: UserService = Depends(get_user_service)
 ):
@@ -38,14 +37,14 @@ def create_user(
 
 
 @router.get("/me", response_model=UserResponse)
-def read_current_user(
+def read_current_user(  # type: ignore
     current_user: models.User = Depends(get_current_active_user),
 ):
     return current_user
 
 
 @router.get("/{id}", response_model=UserResponse)
-def read_user(
+def read_user(  # type: ignore
     id: UUID,
     service: UserService = Depends(get_user_service),
     current_user: models.User = Depends(get_current_active_user),
@@ -58,7 +57,7 @@ def read_user(
 
 
 @router.put("/{id}", response_model=UserResponse)
-def update_user(
+def update_user(  # type: ignore
     id: UUID,
     item_in: UserUpdate,
     service: UserService = Depends(get_user_service),
@@ -72,7 +71,7 @@ def update_user(
 
 
 @router.delete("/{id}", response_model=UserResponse)
-def delete_user(
+def delete_user(  # type: ignore
     id: UUID,
     service: UserService = Depends(get_user_service),
     current_user: models.User = Depends(get_current_active_user),
@@ -85,7 +84,7 @@ def delete_user(
 
 
 @router.post("/{id}/verify", response_model=UserResponse, dependencies=[Depends(require_admin)])
-def verify_user(
+def verify_user(  # type: ignore
     id: UUID,
     service: UserService = Depends(get_user_service),
 ):

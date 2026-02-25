@@ -51,7 +51,7 @@ def setup_prometheus(app: FastAPI) -> Instrumentator:
     
     if not enable_metrics:
         logger.info("Prometheus metrics disabled via ENABLE_METRICS env var")
-        return None
+        return None  # type: ignore
 
     instrumentator = Instrumentator(
         should_group_status_codes=True,

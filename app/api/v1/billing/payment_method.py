@@ -1,4 +1,3 @@
-# type: ignore
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
@@ -19,7 +18,7 @@ def _ensure_payment_method_owner(payment_method: models.PaymentMethod, current_u
 
 
 @router.get("/", response_model=List[PaymentMethodResponse])
-def read_payment_methods(
+def read_payment_methods(  # type: ignore
     skip: SkipParam = 0,
     limit: LimitParam = 100,
     db: Session = Depends(get_db),
@@ -28,7 +27,7 @@ def read_payment_methods(
     return service.get_payment_methods(db, skip=skip, limit=limit, user_id=current_user.id)
 
 @router.post("/", response_model=PaymentMethodResponse)
-def create_payment_method(
+def create_payment_method(  # type: ignore
     item_in: PaymentMethodCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -38,7 +37,7 @@ def create_payment_method(
     return service.create_payment_method(db, obj_in=data)
 
 @router.get("/{id}", response_model=PaymentMethodResponse)
-def read_payment_method(
+def read_payment_method(  # type: ignore
     id: UUID,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -50,7 +49,7 @@ def read_payment_method(
     return db_obj
 
 @router.put("/{id}", response_model=PaymentMethodResponse)
-def update_payment_method(
+def update_payment_method(  # type: ignore
     id: UUID,
     item_in: PaymentMethodUpdate,
     db: Session = Depends(get_db),
@@ -65,7 +64,7 @@ def update_payment_method(
     return service.update_payment_method(db, db_obj=db_obj, obj_in=data)
 
 @router.delete("/{id}", response_model=PaymentMethodResponse)
-def delete_payment_method(
+def delete_payment_method(  # type: ignore
     id: UUID,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),

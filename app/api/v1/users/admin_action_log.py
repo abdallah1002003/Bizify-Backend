@@ -1,4 +1,3 @@
-# type: ignore
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,7 +11,7 @@ router = APIRouter(dependencies=[Depends(require_admin)])
 
 
 @router.get("/", response_model=List[AdminActionLogResponse])
-def read_admin_action_logs(
+def read_admin_action_logs(  # type: ignore
     skip: SkipParam = 0, 
     limit: LimitParam = 100, 
     service: UserService = Depends(get_user_service)
@@ -21,7 +20,7 @@ def read_admin_action_logs(
 
 
 @router.post("/", response_model=AdminActionLogResponse)
-def create_admin_action_log(
+def create_admin_action_log(  # type: ignore
     item_in: AdminActionLogCreate, 
     service: UserService = Depends(get_user_service)
 ):
@@ -29,7 +28,7 @@ def create_admin_action_log(
 
 
 @router.get("/{id}", response_model=AdminActionLogResponse)
-def read_admin_action_log(
+def read_admin_action_log(  # type: ignore
     id: UUID, 
     service: UserService = Depends(get_user_service)
 ):
@@ -40,7 +39,7 @@ def read_admin_action_log(
 
 
 @router.put("/{id}", response_model=AdminActionLogResponse)
-def update_admin_action_log(
+def update_admin_action_log(  # type: ignore
     id: UUID, 
     item_in: AdminActionLogUpdate, 
     service: UserService = Depends(get_user_service)
@@ -52,7 +51,7 @@ def update_admin_action_log(
 
 
 @router.delete("/{id}", response_model=AdminActionLogResponse)
-def delete_admin_action_log(
+def delete_admin_action_log(  # type: ignore
     id: UUID, 
     service: UserService = Depends(get_user_service)
 ):

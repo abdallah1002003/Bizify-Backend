@@ -1,5 +1,4 @@
 # ruff: noqa
-# type: ignore
 """
 Share Link CRUD operations and validation.
 """
@@ -101,7 +100,7 @@ def validate_share_link(db: Session, token: str) -> Optional[ShareLink]:
     if link is None:
         return None
 
-    if link.expires_at is not None and _is_expired(link.expires_at):
+    if link.expires_at is not None and _is_expired(link.expires_at):  # type: ignore
         return None
 
     return link

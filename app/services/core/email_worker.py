@@ -74,24 +74,24 @@ async def process_email_queue() -> None:
 
             try:
                 if settings.MAIL_ENABLED:
-                    await _send_fastapi_mail(email.to_email, email.subject, email.html_body)
+                    await _send_fastapi_mail(email.to_email, email.subject, email.html_body)  # type: ignore
                     logger.info("Successfully sent queued email to %s", email.to_email)
                 else:
                     logger.info("MAIL_ENABLED=False - Mocked sending to %s", email.to_email)
                 
-                email.status = "SENT"
-                email.error_message = None
+                email.status = "SENT"  # type: ignore
+                email.error_message = None  # type: ignore
             except Exception as e:
                 logger.error("Failed to send queued email to %s: %s", email.to_email, str(e))
                 current_retries = int(email.retries or 0)
                 max_retries = int(email.max_retries or 3)
                 
-                email.retries = current_retries + 1
-                email.error_message = str(e)
+                email.retries = current_retries + 1  # type: ignore
+                email.error_message = str(e)  # type: ignore
                 if current_retries + 1 >= max_retries:
-                    email.status = "FAILED"
+                    email.status = "FAILED"  # type: ignore
                 else:
-                    email.status = "RETRYING"
+                    email.status = "RETRYING"  # type: ignore
             
             db.commit()
 

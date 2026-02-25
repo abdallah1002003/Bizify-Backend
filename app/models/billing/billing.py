@@ -50,7 +50,7 @@ class Subscription(Base, TimestampMixin, SoftDeleteMixin):
         String, unique=True, nullable=True, index=True
     )
 
-    user: Mapped["User"] = relationship(
+    user: Mapped["User"] = relationship(  # type: ignore
         "User", foreign_keys=[user_id], back_populates="subscriptions"
     )
     plan: Mapped["Plan"] = relationship("Plan", back_populates="subscriptions")
@@ -71,7 +71,7 @@ class PaymentMethod(Base, TimestampMixin, SoftDeleteMixin):
     last4: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    user: Mapped["User"] = relationship(
+    user: Mapped["User"] = relationship(  # type: ignore
         "User", foreign_keys=[user_id], back_populates="payment_methods"
     )
     payments: Mapped[List["Payment"]] = relationship(
@@ -98,7 +98,7 @@ class Payment(Base, TimestampMixin, SoftDeleteMixin):
         Enum(PaymentStatus), default=PaymentStatus.PENDING, nullable=False
     )
 
-    user: Mapped["User"] = relationship(
+    user: Mapped["User"] = relationship(  # type: ignore
         "User", foreign_keys=[user_id], back_populates="payments"
     )
     subscription: Mapped[Optional["Subscription"]] = relationship(
@@ -120,6 +120,6 @@ class Usage(Base, TimestampMixin, SoftDeleteMixin):
     used: Mapped[int] = mapped_column(Integer, default=0)
     limit_value: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
-    user: Mapped["User"] = relationship(
+    user: Mapped["User"] = relationship(  # type: ignore
         "User", foreign_keys=[user_id], back_populates="usages"
     )

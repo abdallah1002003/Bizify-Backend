@@ -110,7 +110,7 @@ def _apply_updates(db_obj: Any, update_data: Dict[str, Any]) -> Any:
 from contextlib import contextmanager
 
 @contextmanager
-def transactional(db):
+def transactional(db):  # type: ignore
     """
     Context manager for safely executing database transactions.
     

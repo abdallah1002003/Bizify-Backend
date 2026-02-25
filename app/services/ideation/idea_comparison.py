@@ -1,5 +1,4 @@
 # ruff: noqa
-# type: ignore
 """
 Idea Comparison CRUD operations.
 """

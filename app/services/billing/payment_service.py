@@ -1,5 +1,4 @@
 # ruff: noqa
-# type: ignore
 """
 Payment CRUD operations and payment processing.
 """
@@ -212,7 +211,7 @@ def process_payment(
         )
 
 
-def process_subscription_payment(db: Session, subscription_id, amount: float, payment_method_id):
+def process_subscription_payment(db: Session, subscription_id, amount: float, payment_method_id):  # type: ignore
     """Backward-compatible wrapper around `process_payment`."""
     return process_payment(
         db,

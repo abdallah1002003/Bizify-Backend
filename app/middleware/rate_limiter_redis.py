@@ -1,4 +1,3 @@
-# type: ignore
 """
 Redis-backed rate limiter middleware for distributed deployments.
 

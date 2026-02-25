@@ -1,4 +1,3 @@
-# type: ignore
 """
 Core Idea Service.
 """
@@ -120,7 +119,7 @@ def get_idea_service(
     version: IdeaVersionService = Depends(get_idea_version_service),
 ) -> IdeaService:
     """Dependency provider for IdeaService."""
-    return IdeaService(db, access, version)
+    return IdeaService(db, access, version)  # type: ignore
 
 
 # Legacy aliases (Supports older tests calling functions directly)
@@ -129,7 +128,7 @@ def get_idea_service_manual(db: Session) -> IdeaService:
     from app.services.ideation.idea_version import IdeaVersionService
     return IdeaService(
         db=db,
-        access_service=IdeaAccessService(db),
+        access_service=IdeaAccessService(db),  # type: ignore
         version_service=IdeaVersionService(db)
     )
 

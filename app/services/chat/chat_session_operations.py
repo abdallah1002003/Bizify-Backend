@@ -1,4 +1,3 @@
-# type: ignore
 """
 ChatSession operations for managing conversation contexts.
 
@@ -265,7 +264,7 @@ def delete_chat_session(db: Session, id: UUID) -> Optional[ChatSession]:
     return db_obj
 
 
-def get_detailed_status() -> Dict[str, any]:
+def get_detailed_status() -> Dict[str, any]:  # type: ignore
     """
     Get detailed status information for chat session operations.
     

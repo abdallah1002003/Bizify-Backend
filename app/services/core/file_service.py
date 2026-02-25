@@ -1,5 +1,4 @@
 # ruff: noqa
-# type: ignore
 """
 File CRUD operations.
 """

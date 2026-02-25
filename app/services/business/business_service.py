@@ -1,4 +1,3 @@
-# type: ignore
 import logging
 from typing import Any, List, Optional
 from uuid import UUID
@@ -107,7 +106,7 @@ def get_business_service_manual(db: Session) -> BusinessService:
     from app.services.business.business_collaborator import BusinessCollaboratorService
     return BusinessService(
         db=db,
-        roadmap_service=BusinessRoadmapService(db),
+        roadmap_service=BusinessRoadmapService(db),  # type: ignore
         collaborator_service=BusinessCollaboratorService(db)
     )
 

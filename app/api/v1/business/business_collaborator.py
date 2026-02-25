@@ -1,4 +1,3 @@
-# type: ignore
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
@@ -9,7 +8,7 @@ from app.services.business.business_collaborator import BusinessCollaboratorServ
 router = APIRouter()
 
 @router.get("/", response_model=List[BusinessCollaboratorResponse])
-def read_business_collaborators(
+def read_business_collaborators(  # type: ignore
     skip: SkipParam = 0, 
     limit: LimitParam = 100, 
     service: BusinessCollaboratorService = Depends(get_business_collaborator_service)
@@ -17,14 +16,14 @@ def read_business_collaborators(
     return service.get_business_collaborators(skip=skip, limit=limit)
 
 @router.post("/", response_model=BusinessCollaboratorResponse)
-def create_business_collaborator(
+def create_business_collaborator(  # type: ignore
     item_in: BusinessCollaboratorCreate, 
     service: BusinessCollaboratorService = Depends(get_business_collaborator_service)
 ):
     return service.create_business_collaborator(obj_in=item_in)
 
 @router.get("/{id}", response_model=BusinessCollaboratorResponse)
-def read_business_collaborator(
+def read_business_collaborator(  # type: ignore
     id: UUID, 
     service: BusinessCollaboratorService = Depends(get_business_collaborator_service)
 ):
@@ -34,7 +33,7 @@ def read_business_collaborator(
     return db_obj
 
 @router.put("/{id}", response_model=BusinessCollaboratorResponse)
-def update_business_collaborator(
+def update_business_collaborator(  # type: ignore
     id: UUID, 
     item_in: BusinessCollaboratorUpdate, 
     service: BusinessCollaboratorService = Depends(get_business_collaborator_service)
@@ -45,7 +44,7 @@ def update_business_collaborator(
     return service.update_business_collaborator(db_obj=db_obj, obj_in=item_in)
 
 @router.delete("/{id}", response_model=BusinessCollaboratorResponse)
-def delete_business_collaborator(
+def delete_business_collaborator(  # type: ignore
     id: UUID, 
     service: BusinessCollaboratorService = Depends(get_business_collaborator_service)
 ):

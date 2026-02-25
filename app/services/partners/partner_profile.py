@@ -1,5 +1,4 @@
 # ruff: noqa
-# type: ignore
 """
 Partner Profile CRUD operations and matching.
 """
@@ -41,7 +40,7 @@ def create_partner_profile(
     if obj_in is not None:
         data = _to_update_dict(obj_in)
     elif hasattr(user_id, "model_dump"):
-        data = user_id.model_dump(exclude_unset=True)
+        data = user_id.model_dump(exclude_unset=True)  # type: ignore
     else:
         data = {
             "user_id": user_id,
@@ -84,9 +83,9 @@ def approve_partner_profile(db: Session, profile_id: UUID, approver_id: UUID) ->
     if profile is None:
         return None
 
-    profile.approval_status = ApprovalStatus.APPROVED
-    profile.approved_by = approver_id
-    profile.approved_at = _utc_now()
+    profile.approval_status = ApprovalStatus.APPROVED  # type: ignore
+    profile.approved_by = approver_id  # type: ignore
+    profile.approved_at = _utc_now()  # type: ignore
     db.commit()
     db.refresh(profile)
     return profile
@@ -107,8 +106,8 @@ def match_partners_by_capability(db: Session, business_needs: Dict[str, Any]) ->
     
     for partner in candidates:
         score = 0
-        services = partner.services_json or {}
-        experience = partner.experience_json or {}
+        services = partner.services_json or {}  # type: ignore
+        experience = partner.experience_json or {}  # type: ignore
         
         # Skill matching (+2 per skill)
         partner_skills = set(services.get("skills", []) + experience.get("skills", []))

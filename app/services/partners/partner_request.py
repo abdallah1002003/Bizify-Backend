@@ -1,5 +1,4 @@
 # ruff: noqa
-# type: ignore
 """
 Partner Request CRUD operations and status transitions.
 """
@@ -90,7 +89,7 @@ def transition_request_status(
     if request is None:
         return None
 
-    request.status = new_status
+    request.status = new_status  # type: ignore
     db.commit()
     db.refresh(request)
     return request

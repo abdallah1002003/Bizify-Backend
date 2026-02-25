@@ -1,5 +1,4 @@
 # ruff: noqa
-# type: ignore
 """
 Stripe Checkout Session endpoint.
 
@@ -47,7 +46,7 @@ class CheckoutResponse(BaseModel):
     response_model=CheckoutResponse,
     summary="Create Stripe Checkout Session",
 )
-def create_checkout_session(
+def create_checkout_session(  # type: ignore
     body: CheckoutRequest,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -113,7 +112,7 @@ def create_checkout_session(
         session = stripe.checkout.Session.create(
             customer=customer_id,
             payment_method_types=["card"],
-            line_items=[line_item],
+            line_items=[line_item],  # type: ignore
             mode="subscription",
             success_url=body.success_url,
             cancel_url=body.cancel_url,
@@ -131,4 +130,4 @@ def create_checkout_session(
         session.id, current_user.id, plan.id,
     )
 
-    return CheckoutResponse(checkout_url=session.url, session_id=session.id)
+    return CheckoutResponse(checkout_url=session.url, session_id=session.id)  # type: ignore

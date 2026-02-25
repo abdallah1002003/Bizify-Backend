@@ -1,4 +1,3 @@
-# type: ignore
 """
 Structured logging configuration with correlation IDs and contextualization.
 
@@ -87,7 +86,7 @@ def clear_log_context() -> None:
 
 
 @contextmanager
-def log_context(
+def log_context(  # type: ignore
     correlation_id: str,
     request_id: Optional[str] = None,
     user_id: Optional[str] = None,
@@ -151,7 +150,7 @@ class PerformanceTimer:
         self.start_time: Optional[float] = None
         self.duration_ms: float = 0.0
 
-    def __enter__(self):
+    def __enter__(self):  # type: ignore
         """Start timing."""
         self.start_time = time.time()
         self.logger.log(
@@ -160,9 +159,9 @@ class PerformanceTimer:
         )
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb):  # type: ignore
         """Stop timing and log result."""
-        self.duration_ms = (time.time() - self.start_time) * 1000
+        self.duration_ms = (time.time() - self.start_time) * 1000  # type: ignore
         
         if exc_type is not None:
             self.logger.error(

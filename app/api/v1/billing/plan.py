@@ -1,4 +1,3 @@
-# type: ignore
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.pagination import LimitParam, SkipParam, PageResponse
@@ -12,7 +11,7 @@ router = APIRouter()
 
 
 @router.get("/", response_model=PageResponse[PlanResponse])
-def read_plans(
+def read_plans(  # type: ignore
     skip: SkipParam = 0,
     limit: LimitParam = 20,
     service: PlanService = Depends(get_plan_service),
@@ -26,7 +25,7 @@ def read_plans(
 
 
 @router.post("/", response_model=PlanResponse, dependencies=[Depends(require_admin)])
-def create_plan(
+def create_plan(  # type: ignore
     item_in: PlanCreate,
     service: PlanService = Depends(get_plan_service),
 ):
@@ -34,7 +33,7 @@ def create_plan(
 
 
 @router.get("/{id}", response_model=PlanResponse)
-def read_plan(
+def read_plan(  # type: ignore
     id: UUID,
     service: PlanService = Depends(get_plan_service),
     current_user: models.User = Depends(get_current_active_user),
@@ -47,7 +46,7 @@ def read_plan(
 
 
 @router.put("/{id}", response_model=PlanResponse, dependencies=[Depends(require_admin)])
-def update_plan(
+def update_plan(  # type: ignore
     id: UUID,
     item_in: PlanUpdate,
     service: PlanService = Depends(get_plan_service),
@@ -60,7 +59,7 @@ def update_plan(
 
 @router.get("/{id}", response_model=PlanResponse)
 @router.delete("/{id}", response_model=PlanResponse, dependencies=[Depends(require_admin)])
-def delete_plan(
+def delete_plan(  # type: ignore
     id: UUID,
     service: PlanService = Depends(get_plan_service),
 ):

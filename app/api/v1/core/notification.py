@@ -1,4 +1,3 @@
-# type: ignore
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
@@ -19,7 +18,7 @@ def _ensure_notification_owner(notification: models.Notification, current_user: 
 
 
 @router.get("/", response_model=List[NotificationResponse])
-def read_notifications(
+def read_notifications(  # type: ignore
     skip: SkipParam = 0,
     limit: LimitParam = 100,
     db: Session = Depends(get_db),
@@ -28,7 +27,7 @@ def read_notifications(
     return service.get_notifications(db, skip=skip, limit=limit, user_id=current_user.id)
 
 @router.post("/", response_model=NotificationResponse)
-def create_notification(
+def create_notification(  # type: ignore
     item_in: NotificationCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -38,7 +37,7 @@ def create_notification(
     return service.create_notification(db, obj_in=data)
 
 @router.get("/{id}", response_model=NotificationResponse)
-def read_notification(
+def read_notification(  # type: ignore
     id: UUID,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -50,7 +49,7 @@ def read_notification(
     return db_obj
 
 @router.put("/{id}", response_model=NotificationResponse)
-def update_notification(
+def update_notification(  # type: ignore
     id: UUID,
     item_in: NotificationUpdate,
     db: Session = Depends(get_db),
@@ -65,7 +64,7 @@ def update_notification(
     return service.update_notification(db, db_obj=db_obj, obj_in=data)
 
 @router.delete("/{id}", response_model=NotificationResponse)
-def delete_notification(
+def delete_notification(  # type: ignore
     id: UUID,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),

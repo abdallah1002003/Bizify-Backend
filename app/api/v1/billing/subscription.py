@@ -1,4 +1,3 @@
-# type: ignore
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
@@ -19,7 +18,7 @@ def _ensure_subscription_owner(subscription: models.Subscription, current_user: 
 
 
 @router.get("/", response_model=List[SubscriptionResponse])
-def read_subscriptions(
+def read_subscriptions(  # type: ignore
     skip: SkipParam = 0,
     limit: LimitParam = 20,
     db: Session = Depends(get_db),
@@ -37,7 +36,7 @@ def read_subscriptions(
     return service.get_subscriptions(db, skip=skip, limit=limit, user_id=current_user.id)
 
 @router.post("/", response_model=SubscriptionResponse)
-def create_subscription(
+def create_subscription(  # type: ignore
     item_in: SubscriptionCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -47,7 +46,7 @@ def create_subscription(
     return service.create_subscription(db, obj_in=data)
 
 @router.get("/{id}", response_model=SubscriptionResponse)
-def read_subscription(
+def read_subscription(  # type: ignore
     id: UUID,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -59,7 +58,7 @@ def read_subscription(
     return db_obj
 
 @router.put("/{id}", response_model=SubscriptionResponse)
-def update_subscription(
+def update_subscription(  # type: ignore
     id: UUID,
     item_in: SubscriptionUpdate,
     db: Session = Depends(get_db),
@@ -74,7 +73,7 @@ def update_subscription(
     return service.update_subscription(db, db_obj=db_obj, obj_in=data)
 
 @router.delete("/{id}", response_model=SubscriptionResponse)
-def delete_subscription(
+def delete_subscription(  # type: ignore
     id: UUID,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),

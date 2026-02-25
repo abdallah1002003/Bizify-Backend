@@ -1,4 +1,3 @@
-# type: ignore
 """
 Security utilities for authentication and password management.
 

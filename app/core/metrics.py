@@ -1,4 +1,3 @@
-# type: ignore
 """
 Prometheus metrics for monitoring Bizify API.
 
@@ -246,25 +245,25 @@ class MetricsTimer:
         self.labels = labels
         self.start_time: Optional[float] = None
 
-    def __enter__(self):
+    def __enter__(self):  # type: ignore
         """Start timing."""
         self.start_time = time.time()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb):  # type: ignore
         """Record metric."""
         if self.start_time:
             duration = time.time() - self.start_time
             self.histogram.labels(**self.labels).observe(duration)
 
 
-def record_http_request(method: str, endpoint: str, status: int, duration: float):
+def record_http_request(method: str, endpoint: str, status: int, duration: float):  # type: ignore
     """Record HTTP request metrics."""
     http_requests_total.labels(method=method, endpoint=endpoint, status=status).inc()
     http_request_duration_seconds.labels(method=method, endpoint=endpoint).observe(duration)
 
 
-def record_db_query(operation: str, table: str, duration: float, error: bool = False):
+def record_db_query(operation: str, table: str, duration: float, error: bool = False):  # type: ignore
     """Record database query metrics."""
     db_query_duration_seconds.labels(operation=operation, table=table).observe(duration)
     if error:
@@ -273,7 +272,7 @@ def record_db_query(operation: str, table: str, duration: float, error: bool = F
         ).inc()
 
 
-def record_cache_operation(backend: str, hit: bool):
+def record_cache_operation(backend: str, hit: bool):  # type: ignore
     """Record cache operation."""
     if hit:
         cache_hits_total.labels(cache_backend=backend).inc()
@@ -281,24 +280,24 @@ def record_cache_operation(backend: str, hit: bool):
         cache_misses_total.labels(cache_backend=backend).inc()
 
 
-def record_auth_attempt(method: str, success: bool):
+def record_auth_attempt(method: str, success: bool):  # type: ignore
     """Record authentication attempt."""
     auth_attempts_total.labels(method=method, success=str(success)).inc()
 
 
-def record_ai_request(provider: str, model: str, duration: float, success: bool):
+def record_ai_request(provider: str, model: str, duration: float, success: bool):  # type: ignore
     """Record AI service request."""
     status = "success" if success else "error"
     ai_requests_total.labels(provider=provider, model=model, status=status).inc()
     ai_request_duration_seconds.labels(provider=provider, model=model).observe(duration)
 
 
-def record_email_sent(template: str, success: bool):
+def record_email_sent(template: str, success: bool):  # type: ignore
     """Record sent email."""
     status = "success" if success else "error"
     emails_sent_total.labels(template=template, status=status).inc()
 
 
-def record_error(error_type: str, service: str):
+def record_error(error_type: str, service: str):  # type: ignore
     """Record error occurrence."""
     errors_total.labels(error_type=error_type, service=service).inc()

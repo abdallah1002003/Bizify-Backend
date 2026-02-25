@@ -1,4 +1,3 @@
-# type: ignore
 import logging
 import asyncio
 import json
@@ -15,7 +14,7 @@ EventHandler = Callable[[str, Any], Coroutine[Any, Any, None]]
 
 class CustomJSONEncoder(json.JSONEncoder):
     """Custom JSON Encoder to handle UUIDs and Datetimes in event payloads."""
-    def default(self, obj):
+    def default(self, obj):  # type: ignore
         if isinstance(obj, UUID):
             return str(obj)
         if hasattr(obj, "isoformat"):
@@ -29,11 +28,11 @@ class EventDispatcher:
     with an automatic fallback to synchronous execution for tests.
     """
 
-    def __init__(self):
+    def __init__(self):  # type: ignore
         self._handlers: Dict[str, List[EventHandler]] = {}
         self.queue_key = "app:event_queue"
 
-    def subscribe(self, event_type: str, handler: EventHandler):
+    def subscribe(self, event_type: str, handler: EventHandler):  # type: ignore
         """Subscribe a handler to an event type. Prevents duplicate subscriptions."""
         if event_type not in self._handlers:
             self._handlers[event_type] = []
@@ -42,12 +41,12 @@ class EventDispatcher:
             self._handlers[event_type].append(handler)
             logger.debug(f"Subscribed handler {getattr(handler, '__name__', str(handler))} to event {event_type}")
 
-    def clear_all_handlers(self):
+    def clear_all_handlers(self):  # type: ignore
         """Clear all registered handlers. Useful for test cleanup."""
         self._handlers = {}
         logger.debug("Cleared all event handlers")
 
-    async def emit(self, event_type: str, payload: Any):
+    async def emit(self, event_type: str, payload: Any):  # type: ignore
         """Emit an event to the background queue, or straight to handlers if testing."""
         logger.info(f"Emitting event: {event_type}")
         
@@ -72,7 +71,7 @@ class EventDispatcher:
         # Fallback to immediate execution if Redis is unavailable or we hit an error
         await self._run_handlers(event_type, payload)
 
-    async def _run_handlers(self, event_type: str, payload: Any):
+    async def _run_handlers(self, event_type: str, payload: Any):  # type: ignore
         """Run handlers immediately (used by test environment and worker)."""
         if event_type not in self._handlers:
             return

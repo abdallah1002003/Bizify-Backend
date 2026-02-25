@@ -1,4 +1,3 @@
-# type: ignore
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,7 +11,7 @@ from app.core.cache import get_cache_manager
 router = APIRouter()
 
 @router.get("/", response_model=List[IdeaResponse])
-def read_ideas(
+def read_ideas(  # type: ignore
     skip: SkipParam = 0,
     limit: LimitParam = 20,
     service: IdeaService = Depends(get_idea_service),
@@ -34,7 +33,7 @@ def read_ideas(
     return result
 
 @router.post("/", response_model=IdeaResponse)
-def create_idea(
+def create_idea(  # type: ignore
     item_in: IdeaCreate, 
     service: IdeaService = Depends(get_idea_service),
     current_user: models.User = Depends(get_current_active_user)
@@ -47,7 +46,7 @@ def create_idea(
     return result
 
 @router.get("/{id}", response_model=IdeaResponse)
-def read_idea(
+def read_idea(  # type: ignore
     id: UUID, 
     service: IdeaService = Depends(get_idea_service),
     current_user: models.User = Depends(get_current_active_user)
@@ -67,7 +66,7 @@ def read_idea(
     return db_obj
 
 @router.put("/{id}", response_model=IdeaResponse)
-def update_idea(
+def update_idea(  # type: ignore
     id: UUID, 
     item_in: IdeaUpdate, 
     service: IdeaService = Depends(get_idea_service),
@@ -86,7 +85,7 @@ def update_idea(
     return result
 
 @router.delete("/{id}", response_model=IdeaResponse)
-def delete_idea(
+def delete_idea(  # type: ignore
     id: UUID, 
     service: IdeaService = Depends(get_idea_service),
     current_user: models.User = Depends(get_current_active_user)

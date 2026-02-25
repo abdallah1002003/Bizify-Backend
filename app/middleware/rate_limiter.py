@@ -1,4 +1,3 @@
-# type: ignore
 import asyncio
 from collections import defaultdict, deque
 import time
