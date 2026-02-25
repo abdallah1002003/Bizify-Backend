@@ -21,11 +21,11 @@ from app.core.crud_utils import _to_update_dict, _apply_updates
 # ----------------------------
 
 def get_comparison_metric(db: Session, id: UUID) -> Optional[ComparisonMetric]:
-    return db.query(ComparisonMetric).filter(ComparisonMetric.id == id).first()
+    return db.query(ComparisonMetric).filter(ComparisonMetric.id == id).first()  # type: ignore[no-any-return]
 
 
 def get_comparison_metrics(db: Session, skip: int = 0, limit: int = 100) -> List[ComparisonMetric]:
-    return db.query(ComparisonMetric).offset(skip).limit(limit).all()
+    return db.query(ComparisonMetric).offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
 
 def create_comparison_metric(db: Session, obj_in: Any) -> ComparisonMetric:

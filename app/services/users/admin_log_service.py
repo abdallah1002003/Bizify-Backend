@@ -21,11 +21,11 @@ from app.core.crud_utils import _to_update_dict, _apply_updates
 # ----------------------------
 
 def get_admin_action_log(db: Session, id: UUID) -> Optional[AdminActionLog]:
-    return db.query(AdminActionLog).filter(AdminActionLog.id == id).first()
+    return db.query(AdminActionLog).filter(AdminActionLog.id == id).first()  # type: ignore[no-any-return]
 
 
 def get_admin_action_logs(db: Session, skip: int = 0, limit: int = 100) -> List[AdminActionLog]:
-    return (
+    return (  # type: ignore[no-any-return]
         db.query(AdminActionLog)
         .order_by(AdminActionLog.created_at.desc())
         .offset(skip)

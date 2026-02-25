@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 def _find_payment_by_stripe_ref(db: Session, stripe_payment_intent_id: str) -> Payment | None:
     """Look up a Payment whose associated PaymentMethod token_ref equals the Stripe PaymentIntent ID."""
-    return (
+    return (  # type: ignore[no-any-return]
         db.query(Payment)
         .join(Payment.payment_method)
         .filter_by(token_ref=stripe_payment_intent_id)
@@ -40,7 +40,7 @@ def _find_payment_by_stripe_ref(db: Session, stripe_payment_intent_id: str) -> P
 
 def _find_subscription_by_stripe_id(db: Session, stripe_sub_id: str) -> Subscription | None:
     """Look up a local Subscription by its Stripe subscription ID."""
-    return (
+    return (  # type: ignore[no-any-return]
         db.query(Subscription)
         .filter(Subscription.stripe_subscription_id == stripe_sub_id)
         .first()

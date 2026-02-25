@@ -16,10 +16,10 @@ class EmbeddingService(BaseService):
     """Service for managing AI embeddings and vectorization."""
 
     def get_embedding(self, id: UUID) -> Optional[Embedding]:
-        return self.db.query(Embedding).filter(Embedding.id == id).first()
+        return self.db.query(Embedding).filter(Embedding.id == id).first()  # type: ignore[no-any-return]
 
     def get_embeddings(self, skip: int = 0, limit: int = 100) -> List[Embedding]:
-        return self.db.query(Embedding).offset(skip).limit(limit).all()
+        return self.db.query(Embedding).offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
     def create_embedding(self, obj_in: Any) -> Embedding:
         db_obj = Embedding(**_to_update_dict(obj_in))

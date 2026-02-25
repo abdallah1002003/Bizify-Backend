@@ -65,7 +65,7 @@ class GenericRepository(Generic[ModelType]):
         Returns:
             The model instance, or None if not found.
         """
-        return self.db.get(self.model, id)
+        return self.db.get(self.model, id)  # type: ignore[no-any-return]
 
     def get_all(self, *, skip: int = 0, limit: int = 100) -> List[ModelType]:
         """
@@ -78,11 +78,11 @@ class GenericRepository(Generic[ModelType]):
         Returns:
             List of model instances.
         """
-        return self.db.query(self.model).offset(skip).limit(limit).all()
+        return self.db.query(self.model).offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
     def count(self) -> int:
         """Return the total number of records in the table."""
-        return self.db.query(self.model).count()
+        return self.db.query(self.model).count()  # type: ignore[no-any-return]
 
     # ------------------------------------------------------------------
     # Write
@@ -155,4 +155,4 @@ class GenericRepository(Generic[ModelType]):
         if obj:
             self.db.delete(obj)
             self.db.commit()
-        return obj
+        return obj  # type: ignore[no-any-return]

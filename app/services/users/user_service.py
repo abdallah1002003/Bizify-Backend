@@ -54,15 +54,15 @@ class UserService(BaseService):
 
     def get_user(self, id: UUID) -> Optional[User]:
         """Retrieves a user by their unique UUID."""
-        return self.db.query(User).options(joinedload(User.profile)).filter(User.id == id).first()
+        return self.db.query(User).options(joinedload(User.profile)).filter(User.id == id).first()  # type: ignore[no-any-return]
 
     def get_user_by_email(self, email: str) -> Optional[User]:
         """Retrieves a user by their registered email address."""
-        return self.db.query(User).options(joinedload(User.profile)).filter(User.email == email).first()
+        return self.db.query(User).options(joinedload(User.profile)).filter(User.email == email).first()  # type: ignore[no-any-return]
 
     def get_users(self, skip: int = 0, limit: int = 100) -> List[User]:
         """Retrieves a list of users with pagination."""
-        return self.db.query(User).options(joinedload(User.profile)).offset(skip).limit(limit).all()
+        return self.db.query(User).options(joinedload(User.profile)).offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
     def create_user(self, obj_in: Union[Dict[str, Any], Any]) -> User:
         """Creates a new user and an associated empty profile."""
@@ -138,14 +138,14 @@ class UserService(BaseService):
     ) -> Optional[UserProfile]:
         """Retrieves a user profile by profile ID or user ID."""
         if id is not None:
-            return self.db.query(UserProfile).filter(UserProfile.id == id).first()
+            return self.db.query(UserProfile).filter(UserProfile.id == id).first()  # type: ignore[no-any-return]
         if user_id is not None:
-            return self.db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+            return self.db.query(UserProfile).filter(UserProfile.user_id == user_id).first()  # type: ignore[no-any-return]
         return None
 
     def get_user_profiles(self, skip: int = 0, limit: int = 100) -> List[UserProfile]:
         """Retrieves multiple user profiles with pagination."""
-        return self.db.query(UserProfile).offset(skip).limit(limit).all()
+        return self.db.query(UserProfile).offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
     def create_user_profile(self, obj_in: Any) -> UserProfile:
         """Creates a new user profile manually."""
@@ -222,11 +222,11 @@ class UserService(BaseService):
 
     def get_admin_action_log(self, id: UUID) -> Optional[AdminActionLog]:
         """Retrieves a specific admin action log entry."""
-        return self.db.query(AdminActionLog).filter(AdminActionLog.id == id).first()
+        return self.db.query(AdminActionLog).filter(AdminActionLog.id == id).first()  # type: ignore[no-any-return]
 
     def get_admin_action_logs(self, skip: int = 0, limit: int = 100) -> List[AdminActionLog]:
         """Retrieves admin action logs with pagination, newest first."""
-        return (
+        return (  # type: ignore[no-any-return]
             self.db.query(AdminActionLog)
             .order_by(AdminActionLog.created_at.desc())
             .offset(skip)

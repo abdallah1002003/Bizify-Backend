@@ -29,7 +29,7 @@ def cleanup_expired_refresh_tokens(db: Session) -> int:
         db.commit()
         if deleted:
             logger.info("Cleaned up %d expired refresh tokens", deleted)
-        return deleted
+        return deleted  # type: ignore[no-any-return]
     except Exception:
         db.rollback()
         logger.exception("Failed to clean up expired refresh tokens")
@@ -57,7 +57,7 @@ def cleanup_expired_password_reset_tokens(db: Session) -> int:
         db.commit()
         if deleted:
             logger.info("Cleaned up %d expired/used password reset tokens", deleted)
-        return deleted
+        return deleted  # type: ignore[no-any-return]
     except Exception:
         db.rollback()
         logger.exception("Failed to clean up expired password reset tokens")
@@ -81,7 +81,7 @@ def cleanup_expired_verification_tokens(db: Session) -> int:
         db.commit()
         if deleted:
             logger.info("Cleaned up %d expired/used email verification tokens", deleted)
-        return deleted
+        return deleted  # type: ignore[no-any-return]
     except Exception:
         db.rollback()
         logger.exception("Failed to clean up expired email verification tokens")

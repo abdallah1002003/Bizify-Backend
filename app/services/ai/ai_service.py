@@ -20,11 +20,11 @@ logger = logging.getLogger(__name__)
 # ----------------------------
 
 def get_agent(db: Session, id: UUID) -> Optional[Agent]:
-    return db.query(Agent).filter(Agent.id == id).first()
+    return db.query(Agent).filter(Agent.id == id).first()  # type: ignore[no-any-return]
 
 
 def get_agents(db: Session, skip: int = 0, limit: int = 100) -> List[Agent]:
-    return db.query(Agent).offset(skip).limit(limit).all()
+    return db.query(Agent).offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
 
 def create_agent(db: Session, name: str, phase: str, config: Optional[dict] = None) -> Agent:
@@ -73,7 +73,7 @@ def delete_agent(db: Session, id: UUID) -> Optional[Agent]:
 # ----------------------------
 
 def get_agent_run(db: Session, id: UUID) -> Optional[AgentRun]:
-    return db.query(AgentRun).filter(AgentRun.id == id).first()
+    return db.query(AgentRun).filter(AgentRun.id == id).first()  # type: ignore[no-any-return]
 
 
 def get_agent_runs(
@@ -101,7 +101,7 @@ def get_agent_runs(
             .join(Business, BusinessRoadmap.business_id == Business.id)
             .filter(Business.owner_id == user_id)
         )
-    return query.offset(skip).limit(limit).all()
+    return query.offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
 
 def initiate_agent_run(
@@ -188,7 +188,7 @@ def record_validation_log(db: Session, agent_run_id: UUID, result: str, details:
 
 
 def get_validation_logs(db: Session, skip: int = 0, limit: int = 100) -> List[ValidationLog]:
-    return db.query(ValidationLog).offset(skip).limit(limit).all()
+    return db.query(ValidationLog).offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
 
 def update_validation_log(db: Session, db_obj: ValidationLog, obj_in: Any) -> ValidationLog:

@@ -21,11 +21,11 @@ from app.core.crud_utils import _to_update_dict, _apply_updates
 # ----------------------------
 
 def get_comparison_item(db: Session, id: UUID) -> Optional[ComparisonItem]:
-    return db.query(ComparisonItem).filter(ComparisonItem.id == id).first()
+    return db.query(ComparisonItem).filter(ComparisonItem.id == id).first()  # type: ignore[no-any-return]
 
 
 def get_comparison_items(db: Session, skip: int = 0, limit: int = 100) -> List[ComparisonItem]:
-    return db.query(ComparisonItem).offset(skip).limit(limit).all()
+    return db.query(ComparisonItem).offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
 
 def create_comparison_item(db: Session, obj_in: Any) -> ComparisonItem:

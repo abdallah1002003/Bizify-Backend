@@ -37,7 +37,7 @@ class IdeaVersionService(BaseService):
         return db_obj
 
     def get_idea_version(self, id: UUID) -> Optional[IdeaVersion]:
-        return self.db.query(IdeaVersion).filter(IdeaVersion.id == id).first()
+        return self.db.query(IdeaVersion).filter(IdeaVersion.id == id).first()  # type: ignore[no-any-return]
 
     def get_idea_versions(
         self,
@@ -48,7 +48,7 @@ class IdeaVersionService(BaseService):
         query = self.db.query(IdeaVersion)
         if idea_id is not None:
             query = query.filter(IdeaVersion.idea_id == idea_id)
-        return query.order_by(IdeaVersion.created_at.desc()).offset(skip).limit(limit).all()
+        return query.order_by(IdeaVersion.created_at.desc()).offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
     def create_idea_version(self, obj_in: Any) -> IdeaVersion:
         db_obj = IdeaVersion(**_to_update_dict(obj_in))

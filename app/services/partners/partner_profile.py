@@ -22,11 +22,11 @@ from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
 # ----------------------------
 
 def get_partner_profile(db: Session, id: UUID) -> Optional[PartnerProfile]:
-    return db.query(PartnerProfile).filter(PartnerProfile.id == id).first()
+    return db.query(PartnerProfile).filter(PartnerProfile.id == id).first()  # type: ignore[no-any-return]
 
 
 def get_partner_profiles(db: Session, skip: int = 0, limit: int = 100) -> List[PartnerProfile]:
-    return db.query(PartnerProfile).offset(skip).limit(limit).all()
+    return db.query(PartnerProfile).offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
 
 def create_partner_profile(

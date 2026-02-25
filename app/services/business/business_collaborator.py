@@ -19,16 +19,16 @@ class BusinessCollaboratorService(BaseService):
     """Service for managing Business Collaborators."""
 
     def get_collaborator(self, id: UUID) -> Optional[BusinessCollaborator]:
-        return self.db.query(BusinessCollaborator).filter(BusinessCollaborator.id == id).first()
+        return self.db.query(BusinessCollaborator).filter(BusinessCollaborator.id == id).first()  # type: ignore[no-any-return]
 
     def get_business_collaborator(self, id: UUID) -> Optional[BusinessCollaborator]:
         return self.get_collaborator(id=id)
 
     def get_collaborators(self, business_id: UUID) -> List[BusinessCollaborator]:
-        return self.db.query(BusinessCollaborator).filter(BusinessCollaborator.business_id == business_id).all()
+        return self.db.query(BusinessCollaborator).filter(BusinessCollaborator.business_id == business_id).all()  # type: ignore[no-any-return]
 
     def get_business_collaborators(self, skip: int = 0, limit: int = 100) -> List[BusinessCollaborator]:
-        return self.db.query(BusinessCollaborator).offset(skip).limit(limit).all()
+        return self.db.query(BusinessCollaborator).offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
     def add_collaborator(
         self,
@@ -48,7 +48,7 @@ class BusinessCollaboratorService(BaseService):
             existing.role = role
             self.db.commit()
             self.db.refresh(existing)
-            return existing
+            return existing  # type: ignore[no-any-return]
 
         db_obj = BusinessCollaborator(business_id=business_id, user_id=user_id, role=role)
         self.db.add(db_obj)

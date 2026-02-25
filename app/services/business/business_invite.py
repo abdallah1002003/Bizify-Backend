@@ -24,7 +24,7 @@ from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
 # ----------------------------
 
 def get_invite(db: Session, id: UUID) -> Optional[BusinessInvite]:
-    return db.query(BusinessInvite).filter(BusinessInvite.id == id).first()
+    return db.query(BusinessInvite).filter(BusinessInvite.id == id).first()  # type: ignore[no-any-return]
 
 
 def get_business_invite(db: Session, id: UUID) -> Optional[BusinessInvite]:
@@ -32,11 +32,11 @@ def get_business_invite(db: Session, id: UUID) -> Optional[BusinessInvite]:
 
 
 def get_invites(db: Session, business_id: UUID) -> List[BusinessInvite]:
-    return db.query(BusinessInvite).filter(BusinessInvite.business_id == business_id).all()
+    return db.query(BusinessInvite).filter(BusinessInvite.business_id == business_id).all()  # type: ignore[no-any-return]
 
 
 def get_business_invites(db: Session, skip: int = 0, limit: int = 100) -> List[BusinessInvite]:
-    return db.query(BusinessInvite).offset(skip).limit(limit).all()
+    return db.query(BusinessInvite).offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
 
 def create_invite(db: Session, business_id: UUID, email: str, invited_by: UUID) -> BusinessInvite:
@@ -118,11 +118,11 @@ def accept_invite(db: Session, token: str, user_id: UUID) -> bool:
 # ----------------------------
 
 def get_business_invite_idea(db: Session, id: UUID) -> Optional[BusinessInviteIdea]:
-    return db.query(BusinessInviteIdea).filter(BusinessInviteIdea.id == id).first()
+    return db.query(BusinessInviteIdea).filter(BusinessInviteIdea.id == id).first()  # type: ignore[no-any-return]
 
 
 def get_business_invite_ideas(db: Session, skip: int = 0, limit: int = 100) -> List[BusinessInviteIdea]:
-    return db.query(BusinessInviteIdea).offset(skip).limit(limit).all()
+    return db.query(BusinessInviteIdea).offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
 
 def create_business_invite_idea(db: Session, obj_in: Any) -> BusinessInviteIdea:

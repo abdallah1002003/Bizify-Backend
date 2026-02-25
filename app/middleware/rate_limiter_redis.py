@@ -73,7 +73,7 @@ class RedisRateLimiterMiddleware(BaseHTTPMiddleware):
 
     def _get_client_ip(self, request: Request) -> str:
         """Extract client IP from request."""
-        return request.client.host if request.client else "127.0.0.1"
+        return request.client.host if request.client else "127.0.0.1"  # type: ignore[no-any-return]
 
     async def _check_rate_limit_redis(self, client_ip: str, request_path: str) -> tuple[bool, int, int]:
         """Check rate limit using Redis."""

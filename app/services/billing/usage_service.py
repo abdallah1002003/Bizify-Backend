@@ -31,7 +31,7 @@ class UsageService(BaseService):
         )
         if usage is None or usage.limit_value is None:
             return True
-        return usage.used < usage.limit_value
+        return usage.used < usage.limit_value  # type: ignore[no-any-return]
 
     def record_usage(self, user_id: UUID, resource_type: str, quantity: int = 1) -> Usage:
         """Atomically increment usage for a resource, creating the row when needed."""
@@ -48,7 +48,7 @@ class UsageService(BaseService):
         usage.used += quantity
         self.db.commit()
         self.db.refresh(usage)
-        return usage
+        return usage  # type: ignore[no-any-return]
 
     def get_usage(self, id: UUID) -> Optional[Usage]:
         """Return a single usage row by id."""
@@ -87,7 +87,7 @@ class UsageService(BaseService):
                 _apply_updates(existing, data)
                 self.db.commit()
                 self.db.refresh(existing)
-                return existing
+                return existing  # type: ignore[no-any-return]
 
         db_obj = Usage(**data)
         self.db.add(db_obj)

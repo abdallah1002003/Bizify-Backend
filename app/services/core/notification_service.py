@@ -21,7 +21,7 @@ from app.core.crud_utils import _to_update_dict, _apply_updates
 # ----------------------------
 
 def get_notification(db: Session, id: UUID) -> Optional[Notification]:
-    return db.query(Notification).filter(Notification.id == id).first()
+    return db.query(Notification).filter(Notification.id == id).first()  # type: ignore[no-any-return]
 
 
 def get_notifications(
@@ -33,7 +33,7 @@ def get_notifications(
     query = db.query(Notification)
     if user_id is not None:
         query = query.filter(Notification.user_id == user_id)
-    return query.offset(skip).limit(limit).all()
+    return query.offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
 
 def create_notification(db: Session, obj_in: Any) -> Notification:

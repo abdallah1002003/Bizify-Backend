@@ -52,7 +52,7 @@ def create_access_token(subject: Union[str, Any], expires_delta: Optional[timede
         expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
     to_encode = {"exp": expire, "sub": str(subject), "jti": str(uuid4()), "type": "access"}
-    return jwt.encode(to_encode, settings.jwt_signing_key, algorithm=settings.jwt_algorithm)
+    return jwt.encode(to_encode, settings.jwt_signing_key, algorithm=settings.jwt_algorithm)  # type: ignore[no-any-return]
 
 
 def create_refresh_token(subject: Union[str, Any], expires_delta: Optional[timedelta] = None) -> str:
@@ -84,7 +84,7 @@ def create_refresh_token(subject: Union[str, Any], expires_delta: Optional[timed
         expire = datetime.now(timezone.utc) + timedelta(days=7)
 
     to_encode = {"exp": expire, "sub": str(subject), "jti": str(uuid4()), "type": "refresh"}
-    return jwt.encode(to_encode, settings.jwt_signing_key, algorithm=settings.jwt_algorithm)
+    return jwt.encode(to_encode, settings.jwt_signing_key, algorithm=settings.jwt_algorithm)  # type: ignore[no-any-return]
 
 
 def create_password_reset_token(email: str) -> str:
@@ -111,7 +111,7 @@ def create_password_reset_token(email: str) -> str:
     """
     expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode = {"exp": expire, "sub": email, "type": "password_reset", "jti": str(uuid4())}
-    return jwt.encode(to_encode, settings.jwt_signing_key, algorithm=settings.jwt_algorithm)
+    return jwt.encode(to_encode, settings.jwt_signing_key, algorithm=settings.jwt_algorithm)  # type: ignore[no-any-return]
 
 
 def verify_password_reset_token(token: str) -> Optional[Dict[str, Any]]:
@@ -217,7 +217,7 @@ def create_email_verification_token(email: str) -> str:
     """
     expire = datetime.now(timezone.utc) + timedelta(hours=24)
     to_encode = {"exp": expire, "sub": email, "type": "email_verification", "jti": str(uuid4())}
-    return jwt.encode(to_encode, settings.jwt_signing_key, algorithm=settings.jwt_algorithm)
+    return jwt.encode(to_encode, settings.jwt_signing_key, algorithm=settings.jwt_algorithm)  # type: ignore[no-any-return]
 
 
 def verify_email_verification_token(token: str) -> Optional[Dict[str, Any]]:

@@ -108,7 +108,7 @@ class SubscriptionService(BaseService):
 
     def get_active_subscription(self, user_id: UUID) -> Optional[Subscription]:
         """Retrieve the currently active subscription for a user."""
-        return (
+        return (  # type: ignore[no-any-return]
             self.db.query(Subscription)
             .filter(Subscription.user_id == user_id, Subscription.status == SubscriptionStatus.ACTIVE)
             .first()

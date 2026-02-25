@@ -24,7 +24,7 @@ class AgentRunService(BaseService):
         self.billing = billing_service
 
     def get_agent_run(self, id: UUID) -> Optional[AgentRun]:
-        return self.db.query(AgentRun).filter(AgentRun.id == id).first()
+        return self.db.query(AgentRun).filter(AgentRun.id == id).first()  # type: ignore[no-any-return]
 
     def get_agent_runs(
         self,
@@ -40,7 +40,7 @@ class AgentRunService(BaseService):
                 .join(Business, BusinessRoadmap.business_id == Business.id)
                 .filter(Business.owner_id == user_id)
             )
-        return query.offset(skip).limit(limit).all()
+        return query.offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
     def initiate_agent_run(
         self,
@@ -136,7 +136,7 @@ class AgentRunService(BaseService):
         return db_obj
 
     def get_validation_log(self, id: UUID) -> Optional[ValidationLog]:
-        return self.db.query(ValidationLog).filter(ValidationLog.id == id).first()
+        return self.db.query(ValidationLog).filter(ValidationLog.id == id).first()  # type: ignore[no-any-return]
 
     def record_validation_log(self, agent_run_id: UUID, result: str, details: str) -> ValidationLog:
         confidence = 0.9 if result.upper() == "SUCCESS" else 0.4

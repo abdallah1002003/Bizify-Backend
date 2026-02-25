@@ -78,7 +78,7 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    return user_model
+    return user_model  # type: ignore[no-any-return]
 
 
 def get_current_active_user(current_user: models.User = Depends(get_current_user)) -> models.User:
@@ -128,7 +128,7 @@ require_admin: Callable = require_roles(UserRole.ADMIN)
 
 def is_admin_or_self(current_user: models.User, target_user_id: UUID) -> bool:
     """Return True if the user is an admin or is accessing their own resource."""
-    return current_user.role == UserRole.ADMIN or current_user.id == target_user_id
+    return current_user.role == UserRole.ADMIN or current_user.id == target_user_id  # type: ignore[no-any-return]
 
 
 def require_admin_or_self(current_user: models.User, target_user_id: UUID) -> None:

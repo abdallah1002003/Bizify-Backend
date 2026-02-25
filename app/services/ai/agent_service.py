@@ -15,10 +15,10 @@ class AgentService(BaseService):
     """Service for managing AI Agent templates."""
 
     def get_agent(self, id: UUID) -> Optional[Agent]:
-        return self.db.query(Agent).filter(Agent.id == id).first()
+        return self.db.query(Agent).filter(Agent.id == id).first()  # type: ignore[no-any-return]
 
     def get_agents(self, skip: int = 0, limit: int = 100) -> List[Agent]:
-        return self.db.query(Agent).offset(skip).limit(limit).all()
+        return self.db.query(Agent).offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
     def create_agent(self, name: str, phase: str, config: Optional[dict] = None) -> Agent:
         _ = config

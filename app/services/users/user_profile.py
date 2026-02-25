@@ -47,14 +47,14 @@ def get_user_profile(
     user_id: Optional[UUID] = None,
 ) -> Optional[UserProfile]:
     if id is not None:
-        return db.query(UserProfile).filter(UserProfile.id == id).first()
+        return db.query(UserProfile).filter(UserProfile.id == id).first()  # type: ignore[no-any-return]
     if user_id is not None:
-        return db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+        return db.query(UserProfile).filter(UserProfile.user_id == user_id).first()  # type: ignore[no-any-return]
     return None
 
 
 def get_user_profiles(db: Session, skip: int = 0, limit: int = 100) -> List[UserProfile]:
-    return db.query(UserProfile).offset(skip).limit(limit).all()
+    return db.query(UserProfile).offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
 
 def create_user_profile(db: Session, obj_in: Any) -> UserProfile:

@@ -46,7 +46,7 @@ async def get_chat_session_async(db: AsyncSession, session_id: UUID) -> Optional
     with PerformanceTimer(logger, f"get_chat_session_async({session_id})", threshold_ms=100):
         stmt = select(ChatSession).where(ChatSession.id == session_id)
         result = await db.execute(stmt)
-        return result.scalars().first()
+        return result.scalars().first()  # type: ignore[no-any-return]
 
 
 # ============================================================================

@@ -39,7 +39,7 @@ async def get_chat_session_async(
     """
     stmt = select(ChatSession).where(ChatSession.id == id)
     result = await db.execute(stmt)
-    return result.scalars().first()
+    return result.scalars().first()  # type: ignore[no-any-return]
 
 
 async def get_chat_sessions_by_user_async(

@@ -38,13 +38,13 @@ class BusinessRoadmapService(BaseService):
     # ----------------------------
 
     def get_roadmap(self, business_id: UUID) -> Optional[BusinessRoadmap]:
-        return self.db.query(BusinessRoadmap).filter(BusinessRoadmap.business_id == business_id).first()
+        return self.db.query(BusinessRoadmap).filter(BusinessRoadmap.business_id == business_id).first()  # type: ignore[no-any-return]
 
     def get_business_roadmap(self, id: UUID) -> Optional[BusinessRoadmap]:
-        return self.db.query(BusinessRoadmap).filter(BusinessRoadmap.id == id).first()
+        return self.db.query(BusinessRoadmap).filter(BusinessRoadmap.id == id).first()  # type: ignore[no-any-return]
 
     def get_business_roadmaps(self, skip: int = 0, limit: int = 100) -> List[BusinessRoadmap]:
-        return self.db.query(BusinessRoadmap).offset(skip).limit(limit).all()
+        return self.db.query(BusinessRoadmap).offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
     def init_default_roadmap(self, business_id: UUID) -> BusinessRoadmap:
         existing = self.get_roadmap(business_id=business_id)
@@ -88,7 +88,7 @@ class BusinessRoadmapService(BaseService):
     # ----------------------------
 
     def get_roadmap_stage(self, id: UUID) -> Optional[RoadmapStage]:
-        return self.db.query(RoadmapStage).filter(RoadmapStage.id == id).first()
+        return self.db.query(RoadmapStage).filter(RoadmapStage.id == id).first()  # type: ignore[no-any-return]
 
     def get_roadmap_stages(
         self,
@@ -99,7 +99,7 @@ class BusinessRoadmapService(BaseService):
         query = self.db.query(RoadmapStage)
         if roadmap_id is not None:
             query = query.filter(RoadmapStage.roadmap_id == roadmap_id)
-        return query.order_by(RoadmapStage.order_index.asc()).offset(skip).limit(limit).all()
+        return query.order_by(RoadmapStage.order_index.asc()).offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
     def add_roadmap_stage(self, roadmap_id: UUID, stage_type: StageType, order_index: int) -> RoadmapStage:
         db_stage = RoadmapStage(

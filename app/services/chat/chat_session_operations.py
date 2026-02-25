@@ -54,7 +54,7 @@ def get_chat_session(db: Session, id: UUID) -> Optional[ChatSession]:
         - Does not eagerly load related messages (use lazy loading or explicit join)
         - Query time: < 10ms typical
     """
-    return db.query(ChatSession).filter(ChatSession.id == id).first()
+    return db.query(ChatSession).filter(ChatSession.id == id).first()  # type: ignore[no-any-return]
 
 
 def get_chat_sessions(
@@ -90,7 +90,7 @@ def get_chat_sessions(
     query = db.query(ChatSession)
     if user_id is not None:
         query = query.filter(ChatSession.user_id == user_id)
-    return query.offset(skip).limit(limit).all()
+    return query.offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
 
 def get_chat_sessions_by_user(
@@ -126,7 +126,7 @@ def get_chat_sessions_by_user(
         - Typical query time: < 100ms for limit=100
         - Always returns newest first regardless of natural order
     """
-    return (
+    return (  # type: ignore[no-any-return]
         db.query(ChatSession)
         .filter(ChatSession.user_id == user_id)
         .order_by(ChatSession.created_at.desc())

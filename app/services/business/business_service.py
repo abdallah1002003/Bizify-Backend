@@ -34,7 +34,7 @@ class BusinessService(BaseService):
     # ----------------------------
 
     def get_business(self, id: UUID) -> Optional[Business]:
-        return self.db.query(Business).filter(Business.id == id).first()
+        return self.db.query(Business).filter(Business.id == id).first()  # type: ignore[no-any-return]
 
     def get_businesses(
         self,
@@ -52,7 +52,7 @@ class BusinessService(BaseService):
         )
         if owner_id is not None:
             query = query.filter(Business.owner_id == owner_id)
-        return query.offset(skip).limit(limit).all()
+        return query.offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
     def create_business(self, obj_in: Any) -> Business:
         """Create a new business and emit creation event."""

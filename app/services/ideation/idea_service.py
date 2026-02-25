@@ -47,7 +47,7 @@ class IdeaService(BaseService):
         if user_id is not None and not self.access.check_idea_access(id, user_id, "view"):
             return None
 
-        return db_obj
+        return db_obj  # type: ignore[no-any-return]
 
     def get_ideas(
         self,
@@ -66,7 +66,7 @@ class IdeaService(BaseService):
             query = query.outerjoin(IdeaAccess).filter(
                 (Idea.owner_id == user_id) | (IdeaAccess.user_id == user_id)
             )
-        return query.distinct().offset(skip).limit(limit).all()
+        return query.distinct().offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
     def create_idea(self, obj_in: Any) -> Idea:
         """Create a new idea and its initial version snapshot."""
@@ -106,7 +106,7 @@ class IdeaService(BaseService):
 
         self.db.delete(db_obj)
         self.db.commit()
-        return db_obj
+        return db_obj  # type: ignore[no-any-return]
 
     def check_idea_access(self, idea_id: UUID, user_id: UUID, required_perm: str = "view") -> bool:
         """Helper to expose access check via this service."""

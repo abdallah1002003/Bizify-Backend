@@ -32,7 +32,7 @@ class EmailService:
             # Inject global branding context
             context.setdefault("app_name", settings.APP_NAME)
             template = jinja_env.get_template(template_name)
-            return template.render(**context)
+            return template.render(**context)  # type: ignore[no-any-return]
         except Exception:
             logger.exception("Failed to render template %s", template_name)
             # Fallback to a very basic string if template rendering fails

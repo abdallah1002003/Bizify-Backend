@@ -23,7 +23,7 @@ from app.core.crud_utils import _to_update_dict, _apply_updates
 # ----------------------------
 
 def get_experiment(db: Session, id: UUID) -> Optional[Experiment]:
-    return db.query(Experiment).filter(Experiment.id == id).first()
+    return db.query(Experiment).filter(Experiment.id == id).first()  # type: ignore[no-any-return]
 
 
 def get_experiments(
@@ -35,7 +35,7 @@ def get_experiments(
     query = db.query(Experiment)
     if idea_id is not None:
         query = query.filter(Experiment.idea_id == idea_id)
-    return query.offset(skip).limit(limit).all()
+    return query.offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
 
 def create_experiment(db: Session, obj_in: Any) -> Experiment:

@@ -22,7 +22,7 @@ from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
 # ----------------------------
 
 def get_idea_metric(db: Session, id: UUID) -> Optional[IdeaMetric]:
-    return db.query(IdeaMetric).filter(IdeaMetric.id == id, IdeaMetric.is_deleted == False).first()
+    return db.query(IdeaMetric).filter(IdeaMetric.id == id, IdeaMetric.is_deleted == False).first()  # type: ignore[no-any-return]
 
 
 def get_idea_metrics(
@@ -34,7 +34,7 @@ def get_idea_metrics(
     query = db.query(IdeaMetric).filter(IdeaMetric.is_deleted == False)
     if idea_id is not None:
         query = query.filter(IdeaMetric.idea_id == idea_id)
-    return query.offset(skip).limit(limit).all()
+    return query.offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
 
 def create_idea_metric(db: Session, obj_in: Any) -> IdeaMetric:

@@ -21,7 +21,7 @@ from app.core.crud_utils import _to_update_dict, _apply_updates
 # ----------------------------
 
 def get_file(db: Session, id: UUID) -> Optional[File]:
-    return db.query(File).filter(File.id == id).first()
+    return db.query(File).filter(File.id == id).first()  # type: ignore[no-any-return]
 
 
 def get_files(
@@ -33,7 +33,7 @@ def get_files(
     query = db.query(File)
     if owner_id is not None:
         query = query.filter(File.owner_id == owner_id)
-    return query.offset(skip).limit(limit).all()
+    return query.offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
 
 def create_file(db: Session, obj_in: Any) -> File:

@@ -64,7 +64,7 @@ def check_usage_limit(db: Session, user_id: UUID, resource_type: str) -> bool:
     )
     if usage is None or usage.limit_value is None:
         return True
-    return usage.used < usage.limit_value
+    return usage.used < usage.limit_value  # type: ignore[no-any-return]
 
 
 def record_usage(db: Session, user_id: UUID, resource_type: str, quantity: int = 1) -> Usage:
@@ -109,7 +109,7 @@ def record_usage(db: Session, user_id: UUID, resource_type: str, quantity: int =
     usage.used += quantity
     db.commit()
     db.refresh(usage)
-    return usage
+    return usage  # type: ignore[no-any-return]
 
 
 # ----------------------------
@@ -127,7 +127,7 @@ def get_usage(db: Session, id: UUID) -> Optional[Usage]:
     Returns:
         Usage object if found, None otherwise
     """
-    return db.query(Usage).filter(Usage.id == id).first()
+    return db.query(Usage).filter(Usage.id == id).first()  # type: ignore[no-any-return]
 
 
 def get_usages(
@@ -151,7 +151,7 @@ def get_usages(
     query = db.query(Usage)
     if user_id is not None:
         query = query.filter(Usage.user_id == user_id)
-    return query.offset(skip).limit(limit).all()
+    return query.offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
 
 def create_usage(db: Session, obj_in: Any) -> Usage:

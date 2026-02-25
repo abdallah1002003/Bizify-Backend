@@ -21,11 +21,11 @@ from app.core.crud_utils import _to_update_dict, _apply_updates
 # ----------------------------
 
 def get_idea_comparison(db: Session, id: UUID) -> Optional[IdeaComparison]:
-    return db.query(IdeaComparison).filter(IdeaComparison.id == id).first()
+    return db.query(IdeaComparison).filter(IdeaComparison.id == id).first()  # type: ignore[no-any-return]
 
 
 def get_idea_comparisons(db: Session, skip: int = 0, limit: int = 100) -> List[IdeaComparison]:
-    return db.query(IdeaComparison).offset(skip).limit(limit).all()
+    return db.query(IdeaComparison).offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
 
 def create_idea_comparison(db: Session, obj_in: Any) -> IdeaComparison:

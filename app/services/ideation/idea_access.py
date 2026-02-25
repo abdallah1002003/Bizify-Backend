@@ -68,17 +68,17 @@ class IdeaAccessService(BaseService):
 
         self.db.commit()
         self.db.refresh(access)
-        return access
+        return access  # type: ignore[no-any-return]
 
     def get_idea_access(self, id: UUID) -> Optional[IdeaAccess]:
-        return self.db.query(IdeaAccess).filter(IdeaAccess.id == id).first()
+        return self.db.query(IdeaAccess).filter(IdeaAccess.id == id).first()  # type: ignore[no-any-return]
 
     def get_idea_accesses(self, skip: int = 0, limit: int = 100) -> List[IdeaAccess]:
-        return self.db.query(IdeaAccess).offset(skip).limit(limit).all()
+        return self.db.query(IdeaAccess).offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
     def get_idea_accesses_by_owner(self, owner_id: UUID, skip: int = 0, limit: int = 100) -> List[IdeaAccess]:
         from app.models.ideation.idea import Idea
-        return (
+        return (  # type: ignore[no-any-return]
             self.db.query(IdeaAccess)
             .join(Idea, IdeaAccess.idea_id == Idea.id)
             .filter(Idea.owner_id == owner_id)

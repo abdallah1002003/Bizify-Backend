@@ -22,11 +22,11 @@ from app.core.crud_utils import _to_update_dict, _apply_updates
 # ----------------------------
 
 def get_partner_request(db: Session, id: UUID) -> Optional[PartnerRequest]:
-    return db.query(PartnerRequest).filter(PartnerRequest.id == id).first()
+    return db.query(PartnerRequest).filter(PartnerRequest.id == id).first()  # type: ignore[no-any-return]
 
 
 def get_partner_requests(db: Session, skip: int = 0, limit: int = 100) -> List[PartnerRequest]:
-    return db.query(PartnerRequest).offset(skip).limit(limit).all()
+    return db.query(PartnerRequest).offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
 
 def submit_partner_request(

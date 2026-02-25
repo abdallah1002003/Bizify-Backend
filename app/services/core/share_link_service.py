@@ -32,7 +32,7 @@ def _is_expired(expires_at: datetime) -> bool:
 # ----------------------------
 
 def get_share_link(db: Session, id: UUID) -> Optional[ShareLink]:
-    return db.query(ShareLink).filter(ShareLink.id == id).first()
+    return db.query(ShareLink).filter(ShareLink.id == id).first()  # type: ignore[no-any-return]
 
 
 def get_share_links(
@@ -44,7 +44,7 @@ def get_share_links(
     query = db.query(ShareLink)
     if created_by is not None:
         query = query.filter(ShareLink.created_by == created_by)
-    return query.offset(skip).limit(limit).all()
+    return query.offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
 
 def create_share_link(
@@ -103,4 +103,4 @@ def validate_share_link(db: Session, token: str) -> Optional[ShareLink]:
     if link.expires_at is not None and _is_expired(link.expires_at):  # type: ignore
         return None
 
-    return link
+    return link  # type: ignore[no-any-return]

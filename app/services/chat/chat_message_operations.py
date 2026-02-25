@@ -55,7 +55,7 @@ def get_chat_message(db: Session, id: UUID) -> Optional[ChatMessage]:
         - Query time: < 5ms typical
         - Does not eagerly load parent session (use explicit join if needed)
     """
-    return db.query(ChatMessage).filter(ChatMessage.id == id).first()
+    return db.query(ChatMessage).filter(ChatMessage.id == id).first()  # type: ignore[no-any-return]
 
 
 def get_chat_messages(
@@ -96,7 +96,7 @@ def get_chat_messages(
             .join(ChatSession, ChatMessage.session_id == ChatSession.id)
             .filter(ChatSession.user_id == user_id)
         )
-    return query.offset(skip).limit(limit).all()
+    return query.offset(skip).limit(limit).all()  # type: ignore[no-any-return]
 
 
 def add_message(
@@ -264,7 +264,7 @@ def get_session_history(
         - add_message(): Add new message to session
         - get_chat_messages(): Get messages across all sessions
     """
-    return (
+    return (  # type: ignore[no-any-return]
         db.query(ChatMessage)
         .filter(ChatMessage.session_id == session_id)
         .order_by(ChatMessage.created_at.asc())
