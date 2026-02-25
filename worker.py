@@ -12,9 +12,27 @@ from app.core.structured_logging import setup_logging
 from app.core.cache import get_cache_manager
 from app.core.events import dispatcher
 from app.core.event_handlers import register_all_handlers
+from app.db.database import SessionLocal
+from app.services.core.cleanup_service import cleanup_all
+from app.services.core.email_worker import run_email_worker
 
 setup_logging("worker")
 logger = logging.getLogger("worker")
+
+_CLEANUP_INTERVAL_SECONDS = 24 * 60 * 60  # 24 hours
+
+async def _periodic_cleanup() -> None:
+    """Background task: runs cleanup_all every 24 hours."""
+    while True:
+        await asyncio.sleep(_CLEANUP_INTERVAL_SECONDS)
+        db = SessionLocal()
+        try:
+            summary = cleanup_all(db)
+            logger.info("Periodic cleanup completed: %s", summary)
+        except Exception:
+            logger.exception("Periodic cleanup failed")
+        finally:
+            db.close()
 
 async def process_queue():
     """Main background loop to process the event queue."""
@@ -62,8 +80,17 @@ async def process_queue():
             logger.error(f"Redis queue connection error: {queue_err}. Retrying in 5 seconds...")
             await asyncio.sleep(5)
 
+async def main():
+    logger.info("Starting background worker with multiple tasks...")
+    # Run the various tasks concurrently using gather
+    await asyncio.gather(
+        process_queue(),
+        run_email_worker(interval_seconds=10),
+        _periodic_cleanup()
+    )
+
 if __name__ == "__main__":
     try:
-        asyncio.run(process_queue())
+        asyncio.run(main())
     except KeyboardInterrupt:
         logger.info("Worker shutting down gracefully...")

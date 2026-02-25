@@ -15,7 +15,6 @@ from config.settings import settings
 from app.api.v1.api import api_router as api_router_v1
 from app.db.database import SessionLocal
 from app.services.core.cleanup_service import cleanup_all, cleanup_expired_tokens
-from app.services.core.email_worker import run_email_worker
 from app.core.structured_logging import configure_structured_logging, get_logger
 from app.core.event_handlers import register_all_handlers
 from app.core.metrics import REGISTRY
@@ -46,22 +45,6 @@ if settings.SENTRY_DSN:
 
 
 
-_CLEANUP_INTERVAL_SECONDS = 24 * 60 * 60  # 24 hours
-
-
-async def _periodic_cleanup() -> None:
-    """Background task: runs cleanup_all every 24 hours."""
-    while True:
-        await asyncio.sleep(_CLEANUP_INTERVAL_SECONDS)
-        db = SessionLocal()
-        try:
-            summary = cleanup_all(db)
-            logger.info("Periodic cleanup completed: %s", summary)
-        except Exception:
-            logger.exception("Periodic cleanup failed")
-        finally:
-            db.close()
-
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -83,32 +66,7 @@ async def lifespan(_: FastAPI):
         finally:
             db.close()
 
-    # Launch the 24-hour periodic cleanup task (only in non-test env)
-    cleanup_task = None
-    email_task = None
-    if settings.APP_ENV != "test":
-        cleanup_task = asyncio.create_task(_periodic_cleanup())
-        logger.info("Periodic cleanup task started (interval: %ds)", _CLEANUP_INTERVAL_SECONDS)
-        
-        email_task = asyncio.create_task(run_email_worker(interval_seconds=10))
-        logger.info("Email queue worker task started")
-
     yield
-
-    # Gracefully cancel the background tasks on shutdown
-    if cleanup_task:
-        cleanup_task.cancel()
-        try:
-            await cleanup_task
-        except asyncio.CancelledError:
-            pass
-            
-    if email_task:
-        email_task.cancel()
-        try:
-            await email_task
-        except asyncio.CancelledError:
-            pass
 
 app = FastAPI(
     title=settings.APP_NAME,
