@@ -43,13 +43,13 @@ class TestTokenBlacklist:
         self, client: TestClient, test_user, auth_headers: dict
     ):
         """After blacklisting the JTI, the same access token must return 401."""
-        from jose import jwt as jose_jwt
+        import jwt as jwt
         from config.settings import settings
         from datetime import datetime, timezone
         from app.core.token_blacklist import blacklist_token
 
         token = auth_headers["Authorization"].split(" ", 1)[1]
-        payload = jose_jwt.decode(
+        payload = jwt.decode(
             token, settings.jwt_verify_key, algorithms=[settings.jwt_algorithm]
         )
         jti = payload["jti"]

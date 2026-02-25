@@ -6,7 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, 
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr, Field
 import logging
-from jose import jwt as jose_jwt, JWTError
+import jwt
 from sqlalchemy.orm import Session
 
 import app.models as models
@@ -164,7 +164,7 @@ def logout(
     if auth_header.startswith("Bearer "):
         access_token = auth_header.split(" ", 1)[1]
         try:
-            token_data = jose_jwt.decode(
+            token_data = jwt.decode(
                 access_token,
                 settings.jwt_verify_key,
                 algorithms=[settings.jwt_algorithm],
@@ -174,7 +174,7 @@ def logout(
             if jti and exp:
                 remaining_ttl = int(exp - datetime.now(timezone.utc).timestamp())
                 blacklist_token(jti, remaining_ttl)
-        except JWTError:
+        except jwt.PyJWTError:
             pass  # Token already invalid — nothing to blacklist
 
     return {"message": "Logged out successfully"}

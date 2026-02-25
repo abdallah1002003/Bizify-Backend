@@ -59,7 +59,7 @@ class TestVerificationEmailFlow:
         import app.models as models
         from app.core.security import create_email_verification_token
         from config.settings import settings
-        from jose import jwt
+        import jwt
         from datetime import datetime, timezone
 
         # 1. Create an unverified user directly
@@ -105,7 +105,7 @@ class TestVerificationEmailFlow:
         import app.models as models
         from app.core.security import create_email_verification_token, get_password_hash
         from config.settings import settings
-        from jose import jwt
+        import jwt
         from datetime import datetime, timezone
 
         user = models.User(

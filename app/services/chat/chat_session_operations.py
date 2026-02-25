@@ -49,7 +49,7 @@ def get_chat_session(db: Session, id: UUID) -> Optional[ChatSession]:
     Example:
         >>> session = get_chat_session(db, session_id)
         >>> if session:
-        ...     print(f"Session type: {session.session_type}")
+        ...     logger.info(f"Session type: {session.session_type}")
         
     Notes:
         - Does not eagerly load related messages (use lazy loading or explicit join)
@@ -81,7 +81,7 @@ def get_chat_sessions(
         
     Example:
         >>> sessions = get_chat_sessions(db, skip=0, limit=20, user_id=user_id)
-        >>> print(f"Retrieved {len(sessions)} sessions")
+        >>> logger.info(f"Retrieved {len(sessions)} sessions")
         
     Performance Notes:
         - User filter requires indexed lookup on user_id
@@ -118,9 +118,9 @@ def get_chat_sessions_by_user(
         
     Example:
         >>> sessions = get_chat_sessions_by_user(db, user_id=user_id, limit=10)
-        >>> print(f"User has {len(sessions)} recent sessions")
+        >>> logger.info(f"User has {len(sessions)} recent sessions")
         >>> for session in sessions:
-        ...     print(f"  - {session.session_type} on {session.created_at}")
+        ...     logger.info(f"  - {session.session_type} on {session.created_at}")
         
     Performance Notes:
         - Requires index on (user_id, created_at) for optimal performance
@@ -173,7 +173,7 @@ def create_chat_session(
         ...     session_type=ChatSessionType.IDEA,
         ...     idea_id=idea_id
         ... )
-        >>> print(f"Created session: {session.id}")
+        >>> logger.info(f"Created session: {session.id}")
         
     Notes:
         - conversation_summary_json initialized as empty dict
@@ -248,7 +248,7 @@ def delete_chat_session(db: Session, id: UUID) -> Optional[ChatSession]:
     Example:
         >>> deleted = delete_chat_session(db, session_id)
         >>> if deleted:
-        ...     print(f"Deleted session {deleted.id} with all messages")
+        ...     logger.info(f"Deleted session {deleted.id} with all messages")
         
     Notes:
         - Cascade delete automatically removes all ChatMessage records

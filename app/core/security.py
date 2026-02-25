@@ -14,7 +14,7 @@ All tokens include an expiration time and are signed with the configured algorit
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional, Union, cast, Dict
 from uuid import uuid4
-from jose import jwt
+import jwt
 from passlib.context import CryptContext
 from config.settings import settings
 
@@ -52,7 +52,7 @@ def create_access_token(subject: Union[str, Any], expires_delta: Optional[timede
         expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
     to_encode = {"exp": expire, "sub": str(subject), "jti": str(uuid4()), "type": "access"}
-    return cast(str, jwt.encode(to_encode, settings.jwt_signing_key, algorithm=settings.jwt_algorithm))
+    return jwt.encode(to_encode, settings.jwt_signing_key, algorithm=settings.jwt_algorithm)
 
 
 def create_refresh_token(subject: Union[str, Any], expires_delta: Optional[timedelta] = None) -> str:
@@ -84,7 +84,7 @@ def create_refresh_token(subject: Union[str, Any], expires_delta: Optional[timed
         expire = datetime.now(timezone.utc) + timedelta(days=7)
 
     to_encode = {"exp": expire, "sub": str(subject), "jti": str(uuid4()), "type": "refresh"}
-    return cast(str, jwt.encode(to_encode, settings.jwt_signing_key, algorithm=settings.jwt_algorithm))
+    return jwt.encode(to_encode, settings.jwt_signing_key, algorithm=settings.jwt_algorithm)
 
 
 def create_password_reset_token(email: str) -> str:
@@ -111,7 +111,7 @@ def create_password_reset_token(email: str) -> str:
     """
     expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode = {"exp": expire, "sub": email, "type": "password_reset", "jti": str(uuid4())}
-    return cast(str, jwt.encode(to_encode, settings.jwt_signing_key, algorithm=settings.jwt_algorithm))
+    return jwt.encode(to_encode, settings.jwt_signing_key, algorithm=settings.jwt_algorithm)
 
 
 def verify_password_reset_token(token: str) -> Optional[Dict[str, Any]]:
@@ -142,7 +142,7 @@ def verify_password_reset_token(token: str) -> Optional[Dict[str, Any]]:
         if decoded_token.get("type") != "password_reset":
             return None
         return cast(Dict[str, Any], decoded_token)
-    except jwt.JWTError:
+    except jwt.InvalidTokenError:
         return None
 
 
@@ -217,7 +217,7 @@ def create_email_verification_token(email: str) -> str:
     """
     expire = datetime.now(timezone.utc) + timedelta(hours=24)
     to_encode = {"exp": expire, "sub": email, "type": "email_verification", "jti": str(uuid4())}
-    return cast(str, jwt.encode(to_encode, settings.jwt_signing_key, algorithm=settings.jwt_algorithm))
+    return jwt.encode(to_encode, settings.jwt_signing_key, algorithm=settings.jwt_algorithm)
 
 
 def verify_email_verification_token(token: str) -> Optional[Dict[str, Any]]:
@@ -248,5 +248,6 @@ def verify_email_verification_token(token: str) -> Optional[Dict[str, Any]]:
         if decoded_token.get("type") != "email_verification":
             return None
         return cast(Dict[str, Any], decoded_token)
-    except jwt.JWTError:
+    except jwt.InvalidTokenError:
         return None
+

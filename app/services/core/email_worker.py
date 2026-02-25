@@ -6,6 +6,7 @@ from sqlalchemy import select, and_, or_
 from config.settings import settings
 from app.db.database import SessionLocal
 from app.models.core.core import EmailMessage
+from app.core.crud_utils import _utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,19 @@ async def process_email_queue() -> None:
         if not emails:
             return
 
+        now = _utc_now()
         for email in emails:
+            # Implement exponential backoff for retries
+            if email.status == "RETRYING":
+                backoff_seconds = 10 * (2 ** email.retries)
+                # If updated_at is naive, assume UTC.
+                updated_at_tz = email.updated_at
+                if updated_at_tz and updated_at_tz.tzinfo is None:
+                    updated_at_tz = updated_at_tz.replace(tzinfo=now.tzinfo)
+                
+                if updated_at_tz and (now - updated_at_tz).total_seconds() < backoff_seconds:
+                    continue  # Skip this email for now
+
             try:
                 if settings.MAIL_ENABLED:
                     await _send_fastapi_mail(email.to_email, email.subject, email.html_body)

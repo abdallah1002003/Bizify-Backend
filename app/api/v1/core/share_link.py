@@ -7,7 +7,7 @@ import app.models as models
 from app.core.dependencies import get_current_active_user
 from app.db.database import get_db
 from app.schemas.core.share_link import ShareLinkCreate, ShareLinkUpdate, ShareLinkResponse
-from app.services.core import core_service as service
+from app.services.core import share_link_service as service
 
 router = APIRouter()
 

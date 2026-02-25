@@ -104,3 +104,30 @@ def _apply_updates(db_obj: Any, update_data: Dict[str, Any]) -> Any:
         if hasattr(db_obj, field):
             setattr(db_obj, field, value)
     return cast(Any, db_obj)
+
+
+from contextlib import contextmanager
+
+@contextmanager
+def transactional(db):
+    """
+    Context manager for safely executing database transactions.
+    
+    Wraps operations in a try...except block. If successful, commits the
+    transaction. If an exception occurs, rolls back the transaction entirely
+    and re-raises the exception.
+    
+    Args:
+        db: SQLAlchemy Session object
+        
+    Example:
+        >>> with transactional(db):
+        ...     db.add(new_user)
+        ...     db.add(new_profile)
+    """
+    try:
+        yield db
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise

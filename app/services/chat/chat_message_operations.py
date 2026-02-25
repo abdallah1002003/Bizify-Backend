@@ -50,7 +50,7 @@ def get_chat_message(db: Session, id: UUID) -> Optional[ChatMessage]:
     Example:
         >>> message = get_chat_message(db, message_id)
         >>> if message:
-        ...     print(f"{message.role}: {message.content}")
+        ...     logger.info(f"{message.role}: {message.content}")
         
     Notes:
         - Query time: < 5ms typical
@@ -82,7 +82,7 @@ def get_chat_messages(
         
     Example:
         >>> messages = get_chat_messages(db, skip=0, limit=50, user_id=user_id)
-        >>> print(f"Retrieved {len(messages)} messages")
+        >>> logger.info(f"Retrieved {len(messages)} messages")
         
     Performance Notes:
         - Without user_id: < 50ms for limit=100
@@ -133,7 +133,7 @@ def add_message(
         ...     role=ChatRole.USER,
         ...     content="What's the business strategy?"
         ... )
-        >>> print(f"Added message {message.id}")
+        >>> logger.info(f"Added message {message.id}")
         
     Notes:
         - created_at set by ORM default to current timestamp
@@ -204,7 +204,7 @@ def delete_chat_message(db: Session, id: UUID) -> Optional[ChatMessage]:
     Example:
         >>> deleted = delete_chat_message(db, message_id)
         >>> if deleted:
-        ...     print(f"Deleted message from {deleted.created_at}")
+        ...     logger.info(f"Deleted message from {deleted.created_at}")
         
     Notes:
         - Cannot be undone (no soft delete)
@@ -248,7 +248,7 @@ def get_session_history(
     Example:
         >>> history = get_session_history(db, session_id=session_id, limit=20)
         >>> for msg in history:
-        ...     print(f"[{msg.role}] {msg.content[:50]}...")
+        ...     logger.info(f"[{msg.role}] {msg.content[:50]}...")
         
     Performance Notes:
         - Limit defaults to 50 to avoid memory issues with large contexts

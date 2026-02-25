@@ -184,34 +184,6 @@ def test_core_service_crud_aliases_and_status(db):
     updated_file = core_service.update_file(db, file_obj, {"file_path": "/tmp/core-updated.txt", "ignore_me": True})
     assert updated_file.file_path == "/tmp/core-updated.txt"
 
-    link_from_params = core_service.create_share_link(
-        db,
-        business_id=business.id,
-        idea_id=idea.id,
-        creator_id=owner.id,
-        expires_in_days=1,
-    )
-    link_from_obj = core_service.create_share_link(
-        db,
-        DummyModel(created_by=owner.id, business_id=business.id, idea_id=idea.id, is_public=False),
-    )
-    assert link_from_obj.token
-
-    assert core_service.get_share_link(db, link_from_params.id).id == link_from_params.id
-    assert len(core_service.get_share_links(db, created_by=owner.id)) == 2
-    assert len(core_service.get_share_links(db, skip=0, limit=1)) == 1
-
-    link_from_obj = core_service.update_share_link(db, link_from_obj, {"is_public": True})
-    assert link_from_obj.is_public is True
-    assert core_service.validate_share_link(db, link_from_params.token).id == link_from_params.id
-    assert core_service.validate_share_link(db, "core-missing-token") is None
-
-    link_from_params.expires_at = datetime.utcnow() - timedelta(days=2)
-    db.add(link_from_params)
-    db.commit()
-    db.refresh(link_from_params)
-    assert core_service.validate_share_link(db, link_from_params.token) is None
-
     first_notification = core_service.create_notification(
         db,
         {"user_id": owner.id, "title": "Core A", "message": "a"},
@@ -229,11 +201,9 @@ def test_core_service_crud_aliases_and_status(db):
     assert updated_notification.is_read is True
 
     assert core_service.delete_notification(db, uuid4()) is None
-    assert core_service.delete_share_link(db, uuid4()) is None
     assert core_service.delete_file(db, uuid4()) is None
 
     assert core_service.delete_notification(db, second_notification.id) is not None
-    assert core_service.delete_share_link(db, link_from_obj.id) is not None
     assert core_service.delete_file(db, alias_file.id) is not None
 
     status = core_service.get_detailed_status()

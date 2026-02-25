@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db, SessionLocal
 from app.services.chat import chat_service
 from app.core.dependencies import get_current_user
-from jose import jwt, JWTError
+import jwt
 from config.settings import settings
 import app.models as models
 from app.models.enums import ChatRole
@@ -57,7 +57,7 @@ async def get_user_from_token(token: str, db: Session) -> models.User:
             return None
         return db.query(models.User).filter(models.User.id == user_id).first()
     except Exception as e:
-        print(f"FAILED TOKEN DECODE: {type(e).__name__} - {str(e)}")
+        logger.error(f"FAILED TOKEN DECODE: {type(e).__name__} - {str(e)}")
         return None
 
 @router.websocket("/ws/{session_id}")
@@ -70,14 +70,14 @@ async def websocket_endpoint(
     user = await get_user_from_token(token, db)
     
     if not user:
-        print(f"FAILED WS: User not found for token {token}. Payload parse result?")
+        logger.warning(f"FAILED WS: User not found for token {token}. Payload parse result?")
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
 
     # Verify session ownership
     chat_session = chat_service.get_chat_session(db, id=session_id)
     if not chat_session or chat_session.user_id != user.id:
-        print(f"FAILED WS: Session issue. Session: {chat_session}. user_id: {user.id}")
+        logger.warning(f"FAILED WS: Session issue. Session: {chat_session}. user_id: {user.id}")
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
 

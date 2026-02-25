@@ -4,7 +4,7 @@ import logging
 from typing import Any, Dict, List, Optional, Union, cast
 from uuid import UUID
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, Depends
 
@@ -56,15 +56,15 @@ class UserService(BaseService):
 
     def get_user(self, id: UUID) -> Optional[User]:
         """Retrieves a user by their unique UUID."""
-        return self.db.query(User).filter(User.id == id).first()
+        return self.db.query(User).options(joinedload(User.profile)).filter(User.id == id).first()
 
     def get_user_by_email(self, email: str) -> Optional[User]:
         """Retrieves a user by their registered email address."""
-        return self.db.query(User).filter(User.email == email).first()
+        return self.db.query(User).options(joinedload(User.profile)).filter(User.email == email).first()
 
     def get_users(self, skip: int = 0, limit: int = 100) -> List[User]:
         """Retrieves a list of users with pagination."""
-        return self.db.query(User).offset(skip).limit(limit).all()
+        return self.db.query(User).options(joinedload(User.profile)).offset(skip).limit(limit).all()
 
     def create_user(self, obj_in: Union[Dict[str, Any], Any]) -> User:
         """Creates a new user and an associated empty profile."""

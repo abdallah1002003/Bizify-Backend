@@ -110,7 +110,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title=settings.APP_NAME,
-    description="API for User Profiling and Idea Management",
+    description="Enterprise API for User Profiling, Idea Management, Billing, Payments & Chat",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -206,17 +206,35 @@ def health_check():
             
     return results
 
-@app.get("/metrics")
+from fastapi import Depends, HTTPException
+from fastapi.security import APIKeyHeader
+from starlette import status
+
+metrics_api_key_header = APIKeyHeader(name="X-Metrics-Key", auto_error=False)
+
+def verify_metrics_key(api_key: str = Depends(metrics_api_key_header)):
+    """Dependency to verify the API key for Prometheus metrics."""
+    # We can retrieve this from settings, or use a hardcoded value for now if it's missing.
+    expected_key = getattr(settings, "METRICS_API_KEY", "dev-metrics-key")
+    if not api_key or api_key != expected_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing X-Metrics-Key header",
+        )
+
+@app.get("/metrics", dependencies=[Depends(verify_metrics_key)])
 def get_metrics():
     """
     Prometheus metrics endpoint.
     
     Returns metrics in Prometheus text format for scraping.
+    Requires X-Metrics-Key header matching METRICS_API_KEY setting.
     Access at http://localhost:8001/metrics
     """
     from prometheus_client import REGISTRY as prom_registry, generate_latest
     
     return generate_latest(REGISTRY).decode("utf-8")
+
 
 # Initialize Prometheus instrumentation (after all routes are defined)
 setup_prometheus(app)

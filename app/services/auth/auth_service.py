@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from jose import jwt as jose_jwt, JWTError
+import jwt
 
 import app.models as models
 from app.db.database import get_db
@@ -29,7 +29,7 @@ class AuthService(BaseService):
     def _persist_refresh_token(self, user_id: UUID, refresh_token: str) -> None:
         """Persists a refresh token in the database."""
         try:
-            token_data = jose_jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            token_data = jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
             db_token = models.RefreshToken(
                 user_id=user_id,
                 jti=token_data["jti"],
@@ -37,7 +37,7 @@ class AuthService(BaseService):
             )
             self.db.add(db_token)
             self.db.commit()
-        except JWTError as e:
+        except jwt.PyJWTError as e:
             logger.error(f"Failed to persist refresh token: {e}")
             raise HTTPException(status_code=401, detail="Invalid refresh token")
 
@@ -60,7 +60,7 @@ class AuthService(BaseService):
     def refresh_access_token(self, refresh_token: str) -> Tuple[str, str]:
         """Refreshes an access token using a valid refresh token."""
         try:
-            token_data = jose_jwt.decode(
+            token_data = jwt.decode(
                 refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
             )
             if token_data.get("type") != "refresh":
@@ -68,7 +68,7 @@ class AuthService(BaseService):
             user_id = token_data.get("sub")
             if not user_id:
                 raise HTTPException(status_code=401, detail="Invalid token payload")
-        except JWTError:
+        except jwt.PyJWTError:
             raise HTTPException(status_code=401, detail="Could not validate refresh token")
 
         user = self.users.get_user(id=UUID(user_id))
@@ -91,7 +91,7 @@ class AuthService(BaseService):
     def revoke_refresh_token(self, refresh_token: str) -> None:
         """Revokes a refresh token."""
         try:
-            token_data = jose_jwt.decode(
+            token_data = jwt.decode(
                 refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
             )
             jti = token_data.get("jti")
@@ -99,13 +99,13 @@ class AuthService(BaseService):
             if stored:
                 stored.revoked = True
                 self.db.commit()
-        except JWTError:
+        except jwt.PyJWTError:
             pass  # Silent fail for invalid tokens
 
     async def create_verification_token(self, user_id: UUID, email: str) -> str:
         """Creates and persists an email verification token."""
         token = security.create_email_verification_token(email)
-        token_data = jose_jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        token_data = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         db_token = models.EmailVerificationToken(
             user_id=user_id,
             jti=token_data["jti"],
@@ -158,7 +158,7 @@ class AuthService(BaseService):
             return
 
         token = security.create_password_reset_token(user.email)
-        token_data = jose_jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        token_data = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         
         db_token = models.PasswordResetToken(
             user_id=user.id,

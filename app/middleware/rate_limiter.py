@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from config.settings import settings
-from jose import jwt, JWTError
+import jwt
 
 # Paths with stricter rate limit requirements
 STRICT_RATE_LIMIT_PATHS: Dict[str, int] = {
@@ -74,7 +74,7 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
                 user_id = payload.get("sub")
                 if user_id:
                     rate_key = f"user:{user_id}"
-            except (JWTError, Exception):
+            except (jwt.PyJWTError, Exception):
                 # Fallback to IP if token is invalid or decoding fails
                 pass
 

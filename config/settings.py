@@ -63,6 +63,8 @@ class Settings(BaseSettings):
 
     # Observability
     SENTRY_DSN: str = ""                 # https://<key>@sentry.io/<project>
+    METRICS_API_KEY: str = ""            # Expected X-Metrics-Key header for Prometheus endpoint
+
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
