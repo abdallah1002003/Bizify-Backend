@@ -22,7 +22,9 @@ class Idea(Base, TimestampMixin, SoftDeleteMixin):
         GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     business_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        GUID, ForeignKey("businesses.id", ondelete="SET NULL"), nullable=True
+        GUID,
+        ForeignKey("businesses.id", ondelete="SET NULL", use_alter=True, name="fk_ideas_business_id"),
+        nullable=True,
     )
     title: Mapped[str] = mapped_column(String, nullable=False, index=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
