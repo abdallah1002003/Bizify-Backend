@@ -17,7 +17,7 @@ from typing import AsyncGenerator, Generator  # noqa: E402
 
 from fastapi.testclient import TestClient  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
-from sqlalchemy import create_engine  # noqa: E402
+from sqlalchemy import create_engine, text  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
 from sqlalchemy.pool import StaticPool  # noqa: E402
 
@@ -63,8 +63,24 @@ def db():
         sqlite_engine.dispose()
         return
 
-    Base.metadata.drop_all(bind=test_engine)
-    Base.metadata.create_all(bind=test_engine)
+    # PostgreSQL: DROP SCHEMA CASCADE bypasses SQLAlchemy's topological sort
+    # which fails on circular FKs (ideas ↔ businesses). Then re-run migrations.
+    with test_engine.connect() as raw_conn:
+        raw_conn.execute(text("DROP SCHEMA public CASCADE"))
+        raw_conn.execute(text("CREATE SCHEMA public"))
+        raw_conn.execute(text("GRANT ALL ON SCHEMA public TO postgres"))
+        raw_conn.execute(text("GRANT ALL ON SCHEMA public TO public"))
+        raw_conn.commit()
+
+    # Re-run Alembic migrations on the clean schema
+    import subprocess, os
+    env = os.environ.copy()
+    env["DATABASE_URL"] = str(test_engine.url)
+    subprocess.run(
+        ["python", "-m", "alembic", "upgrade", "head"],
+        check=True, env=env, capture_output=True
+    )
+
     connection = test_engine.connect()
     session = TestingSessionLocal(bind=connection)
 
