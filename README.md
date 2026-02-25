@@ -1,4 +1,10 @@
-# P7 - Idea Spark API
+# Bizify Backend API
+
+[![CI/CD Pipeline](https://github.com/abdallah1002003/Bizify-Backend/actions/workflows/ci.yml/badge.svg)](https://github.com/abdallah1002003/Bizify-Backend/actions/workflows/ci.yml)
+[![CD - Build & Deploy](https://github.com/abdallah1002003/Bizify-Backend/actions/workflows/cd.yml/badge.svg)](https://github.com/abdallah1002003/Bizify-Backend/actions/workflows/cd.yml)
+[![codecov](https://codecov.io/gh/abdallah1002003/Bizify-Backend/branch/main/graph/badge.svg)](https://codecov.io/gh/abdallah1002003/Bizify-Backend)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 FastAPI backend for idea management, business workflows, AI agents, billing, chat, partners, and core collaboration utilities.
 
