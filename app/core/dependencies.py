@@ -7,6 +7,10 @@ Provides:
     require_roles(*roles)      — factory: returns a Depends that enforces role membership
     require_admin              — pre-built Depends: ADMIN only
     is_admin_or_self           — helper used by routes that allow admin OR same-user access
+
+Security note:
+    Access tokens are also checked against the JTI blacklist (populated on logout)
+    so that revoked tokens are rejected before their natural expiry.
 """
 
 from typing import Callable
@@ -22,6 +26,7 @@ from app.db.database import get_db
 from config.settings import settings
 import app.models as models
 from app.models.enums import UserRole
+from app.core.token_blacklist import is_token_blacklisted
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -38,6 +43,15 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Refresh token cannot be used as an access token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # Reject revoked tokens (blacklisted via logout)
+        jti: str | None = payload.get("jti")
+        if jti and is_token_blacklisted(jti):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 

@@ -10,9 +10,10 @@ from app.middleware.log_middleware import LogMiddleware
 from app.middleware.rate_limiter import RateLimiterMiddleware
 from app.middleware.rate_limiter_redis import RedisRateLimiterMiddleware
 from config.settings import settings
-from app.api.api import api_router
+from app.api.v1.api import api_router as api_router_v1
 from app.db.database import SessionLocal
 from app.services.core.cleanup_service import cleanup_all, cleanup_expired_tokens
+from app.services.core.email_worker import run_email_worker
 from app.core.structured_logging import configure_structured_logging, get_logger
 from app.core.event_handlers import register_all_handlers
 from app.core.metrics import REGISTRY
@@ -82,17 +83,28 @@ async def lifespan(_: FastAPI):
 
     # Launch the 24-hour periodic cleanup task (only in non-test env)
     cleanup_task = None
+    email_task = None
     if settings.APP_ENV != "test":
         cleanup_task = asyncio.create_task(_periodic_cleanup())
         logger.info("Periodic cleanup task started (interval: %ds)", _CLEANUP_INTERVAL_SECONDS)
+        
+        email_task = asyncio.create_task(run_email_worker(interval_seconds=10))
+        logger.info("Email queue worker task started")
 
     yield
 
-    # Gracefully cancel the background task on shutdown
+    # Gracefully cancel the background tasks on shutdown
     if cleanup_task:
         cleanup_task.cancel()
         try:
             await cleanup_task
+        except asyncio.CancelledError:
+            pass
+            
+    if email_task:
+        email_task.cancel()
+        try:
+            await email_task
         except asyncio.CancelledError:
             pass
 
@@ -109,7 +121,7 @@ app.add_middleware(
     allow_origins=settings.cors_allowed_origins_list,
     allow_credentials=settings.CORS_ALLOW_CREDENTIALS and "*" not in settings.cors_allowed_origins_list,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "Accept", "Origin"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Request-ID"],
 )
 
 # Custom middleware - Order matters (first added = last executed)
@@ -121,7 +133,7 @@ app.add_middleware(ErrorHandlerMiddleware)
 app.add_middleware(LogMiddleware)
 
 # Include routers
-app.include_router(api_router, prefix="/api/v1")
+app.include_router(api_router_v1, prefix="/api/v1")
 
 @app.get("/")
 def read_root():
@@ -167,13 +179,26 @@ def health_check():
             results["redis"] = "error"
             results["status"] = "degraded"
     
-    # 3. Stripe Check
+    # 3. Stripe Check (with timeout to avoid hanging health probes)
     if settings.STRIPE_ENABLED:
         try:
+            import signal
+
+            def _timeout_handler(signum, frame):
+                raise TimeoutError("Stripe health check timed out")
+
             stripe.api_key = settings.STRIPE_SECRET_KEY
-            # Simple check to verify connectivity
-            stripe.Balance.retrieve()
-            results["stripe"] = "ok"
+            signal.signal(signal.SIGALRM, _timeout_handler)
+            signal.alarm(3)  # 3-second timeout
+            try:
+                stripe.Balance.retrieve()
+                results["stripe"] = "ok"
+            finally:
+                signal.alarm(0)  # cancel alarm
+        except TimeoutError:
+            logger.warning("Health check - Stripe timed out (3s)")
+            results["stripe"] = "timeout"
+            results["status"] = "degraded"
         except Exception as e:
             logger.error(f"Health check - Stripe failed: {e}")
             results["stripe"] = "error"

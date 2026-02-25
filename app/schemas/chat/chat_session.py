@@ -4,21 +4,23 @@ from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from uuid import UUID
 
-class ChatSessionBase(BaseModel):
+from app.schemas.core_base import SafeBaseModel
+
+class ChatSessionBase(SafeBaseModel):
     user_id: UUID
     business_id: Optional[UUID] = None
     idea_id: Optional[UUID] = None
     session_type: ChatSessionType
     conversation_summary_json: Optional[dict] = None
 
-class ChatSessionCreate(BaseModel):
+class ChatSessionCreate(SafeBaseModel):
     user_id: UUID
     business_id: Optional[UUID] = None
     idea_id: Optional[UUID] = None
     session_type: ChatSessionType
     conversation_summary_json: Optional[dict] = None
 
-class ChatSessionUpdate(BaseModel):
+class ChatSessionUpdate(SafeBaseModel):
     user_id: Optional[UUID] = None
     business_id: Optional[UUID] = None
     idea_id: Optional[UUID] = None

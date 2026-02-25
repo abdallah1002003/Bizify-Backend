@@ -7,8 +7,9 @@ from app.db.guid import GUID
 from app.db.database import Base
 from app.models.enums import BusinessStage, CollaboratorRole, InviteStatus, StageType, RoadmapStageStatus
 from app.core.crud_utils import _utc_now as utc_now
+from app.models.mixins import TimestampMixin, SoftDeleteMixin
 
-class Business(Base):
+class Business(Base, TimestampMixin, SoftDeleteMixin):
     """Business entity created from an idea with collaborators and roadmap."""
     __tablename__ = "businesses"
 
@@ -23,10 +24,6 @@ class Business(Base):
     context_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False)
     archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=utc_now, onupdate=utc_now
-    )
 
     idea_backref: Mapped[Optional["Idea"]] = relationship(
         "Idea", foreign_keys="[Idea.business_id]", back_populates="business"
@@ -61,7 +58,7 @@ class Business(Base):
         cascade="all, delete-orphan"
     )
 
-class BusinessCollaborator(Base):
+class BusinessCollaborator(Base, TimestampMixin, SoftDeleteMixin):
     """Collaborator role assignment for business."""
     __tablename__ = "business_collaborators"
 
@@ -78,7 +75,7 @@ class BusinessCollaborator(Base):
     business: Mapped["Business"] = relationship("Business", back_populates="collaborators")
     user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
 
-class BusinessInvite(Base):
+class BusinessInvite(Base, TimestampMixin, SoftDeleteMixin):
     """Invitation to join a business with token tracking."""
     __tablename__ = "business_invites"
 
@@ -93,7 +90,6 @@ class BusinessInvite(Base):
         GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     business: Mapped["Business"] = relationship("Business", back_populates="invites")
     inviter: Mapped[Optional["User"]] = relationship(
@@ -103,7 +99,7 @@ class BusinessInvite(Base):
         "BusinessInviteIdea", back_populates="invite", cascade="all, delete-orphan"
     )
 
-class BusinessInviteIdea(Base):
+class BusinessInviteIdea(Base, TimestampMixin, SoftDeleteMixin):
     """Junction table for ideas included in an invite."""
     __tablename__ = "business_invite_ideas"
 
@@ -121,7 +117,7 @@ class BusinessInviteIdea(Base):
     idea: Mapped["Idea"] = relationship("Idea", back_populates="business_invites")
 
 
-class BusinessRoadmap(Base):
+class BusinessRoadmap(Base, TimestampMixin, SoftDeleteMixin):
     """Business development roadmap with stages."""
     __tablename__ = "business_roadmaps"
 
@@ -130,7 +126,6 @@ class BusinessRoadmap(Base):
         GUID, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False, unique=True
     )
     completion_percentage: Mapped[float] = mapped_column(Float, default=0.0)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     business: Mapped["Business"] = relationship("Business", back_populates="roadmap")
     stages: Mapped[List["RoadmapStage"]] = relationship(
@@ -138,7 +133,7 @@ class BusinessRoadmap(Base):
         order_by="RoadmapStage.order_index"
     )
 
-class RoadmapStage(Base):
+class RoadmapStage(Base, TimestampMixin, SoftDeleteMixin):
     """Individual stage in a business roadmap."""
     __tablename__ = "roadmap_stages"
 

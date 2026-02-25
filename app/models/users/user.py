@@ -7,8 +7,9 @@ from app.db.guid import GUID
 from app.db.database import Base
 from app.models.enums import UserRole
 from app.core.crud_utils import _utc_now as utc_now
+from app.models.mixins import TimestampMixin, SoftDeleteMixin
 
-class User(Base):
+class User(Base, TimestampMixin, SoftDeleteMixin):
     """User account model with profile and relationships.
     
     Represents a user account in the system with authentication, 
@@ -23,8 +24,6 @@ class User(Base):
         is_active: Account activation status
         is_verified: Email verification status
         stripe_customer_id: External Stripe customer ID for billing
-        created_at: Account creation timestamp (UTC)
-        updated_at: Last update timestamp (UTC)
     """
     __tablename__ = "users"
 
@@ -37,12 +36,6 @@ class User(Base):
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     stripe_customer_id: Mapped[Optional[str]] = mapped_column(
         String, unique=True, nullable=True, index=True
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=utc_now
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=utc_now, onupdate=utc_now
     )
 
     # Relationships mapped to other entities (will resolve dynamically in SQLAlchemy)
@@ -101,7 +94,7 @@ class User(Base):
         "IdeaAccess", back_populates="user", cascade="all, delete-orphan", lazy="select"
     )
 
-class UserProfile(Base):
+class UserProfile(Base, TimestampMixin, SoftDeleteMixin):
     """User profile for storing extended user information.
     
     Extends the User model with optional profile data including
@@ -116,8 +109,6 @@ class UserProfile(Base):
         preferences_json: User preferences stored as JSON
         risk_profile_json: Risk profile assessment stored as JSON
         onboarding_completed: Flag indicating if onboarding is complete
-        created_at: Profile creation timestamp (UTC)
-        updated_at: Last update timestamp (UTC)
     """
     __tablename__ = "user_profiles"
 
@@ -131,17 +122,11 @@ class UserProfile(Base):
     preferences_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     risk_profile_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     onboarding_completed: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=utc_now
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=utc_now, onupdate=utc_now
-    )
 
     user: Mapped["User"] = relationship("User", back_populates="profile")
 
 
-class AdminActionLog(Base):
+class AdminActionLog(Base, TimestampMixin, SoftDeleteMixin):
     """Audit log for administrative actions.
     
     Tracks administrative actions performed on the system for
@@ -153,7 +138,6 @@ class AdminActionLog(Base):
         action_type: Type of action (string descriptor)
         target_entity: Entity type being acted upon
         target_id: ID of the entity being acted upon
-        created_at: Action timestamp (UTC)
     """
     __tablename__ = "admin_action_logs"
 
@@ -164,12 +148,11 @@ class AdminActionLog(Base):
     action_type: Mapped[str] = mapped_column(String, nullable=False)
     target_entity: Mapped[str] = mapped_column(String, nullable=False)
     target_id: Mapped[uuid.UUID] = mapped_column(GUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     admin: Mapped[Optional["User"]] = relationship("User", back_populates="admin_actions")
 
 
-class RefreshToken(Base):
+class RefreshToken(Base, TimestampMixin, SoftDeleteMixin):
     """Refresh token store for token revocation and validation.
     
     Stores issued refresh tokens in the database for:
@@ -193,12 +176,11 @@ class RefreshToken(Base):
     jti: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
 
 
-class PasswordResetToken(Base):
+class PasswordResetToken(Base, TimestampMixin, SoftDeleteMixin):
     """Stores password reset tokens for one-time use tracking."""
     __tablename__ = "password_reset_tokens"
 
@@ -209,12 +191,11 @@ class PasswordResetToken(Base):
     jti: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     used: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
 
 
-class EmailVerificationToken(Base):
+class EmailVerificationToken(Base, TimestampMixin, SoftDeleteMixin):
     """Stores email verification tokens for one-time account confirmation."""
     __tablename__ = "email_verification_tokens"
 
@@ -225,7 +206,6 @@ class EmailVerificationToken(Base):
     jti: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     used: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
 

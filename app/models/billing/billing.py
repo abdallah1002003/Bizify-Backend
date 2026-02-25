@@ -9,23 +9,27 @@ from app.db.database import Base
 from app.models.enums import SubscriptionStatus, PaymentStatus
 from config.settings import settings
 from app.core.crud_utils import _utc_now as utc_now
+from app.models.mixins import TimestampMixin, SoftDeleteMixin
 
 
-class Plan(Base):
+class Plan(Base, TimestampMixin, SoftDeleteMixin):
     """Subscription plan definition."""
     __tablename__ = "plans"
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
+    description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     price: Mapped[float] = mapped_column(Float, nullable=False)
     features_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    stripe_price_id: Mapped[Optional[str]] = mapped_column(String, unique=True, nullable=True, index=True)
+    billing_cycle: Mapped[str] = mapped_column(String, default="month", nullable=False)
 
     subscriptions: Mapped[List["Subscription"]] = relationship(
         "Subscription", back_populates="plan", cascade="all, delete-orphan"
     )
 
-class Subscription(Base):
+class Subscription(Base, TimestampMixin, SoftDeleteMixin):
     """User subscription model with plan and payment relationships."""
     __tablename__ = "subscriptions"
 
@@ -53,7 +57,7 @@ class Subscription(Base):
         "Payment", back_populates="subscription", cascade="all, delete-orphan"
     )
 
-class PaymentMethod(Base):
+class PaymentMethod(Base, TimestampMixin, SoftDeleteMixin):
     """Payment method stored for a user with encryption."""
     __tablename__ = "payment_methods"
 
@@ -65,7 +69,6 @@ class PaymentMethod(Base):
     token_ref: Mapped[str] = mapped_column(EncryptedString, nullable=False)
     last4: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     user: Mapped["User"] = relationship(
         "User", foreign_keys=[user_id], back_populates="payment_methods"
@@ -74,7 +77,7 @@ class PaymentMethod(Base):
         "Payment", back_populates="payment_method"
     )
 
-class Payment(Base):
+class Payment(Base, TimestampMixin, SoftDeleteMixin):
     """Payment transaction record with status tracking."""
     __tablename__ = "payments"
 
@@ -93,7 +96,6 @@ class Payment(Base):
     status: Mapped[PaymentStatus] = mapped_column(
         Enum(PaymentStatus), default=PaymentStatus.PENDING, nullable=False
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     user: Mapped["User"] = relationship(
         "User", foreign_keys=[user_id], back_populates="payments"
@@ -105,7 +107,7 @@ class Payment(Base):
         "PaymentMethod", back_populates="payments"
     )
 
-class Usage(Base):
+class Usage(Base, TimestampMixin, SoftDeleteMixin):
     """Resource usage tracking per user and resource type."""
     __tablename__ = "usages"
 

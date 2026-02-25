@@ -22,7 +22,7 @@ from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
 # ----------------------------
 
 def get_idea_metric(db: Session, id: UUID) -> Optional[IdeaMetric]:
-    return db.query(IdeaMetric).filter(IdeaMetric.id == id).first()
+    return db.query(IdeaMetric).filter(IdeaMetric.id == id, IdeaMetric.is_deleted == False).first()
 
 
 def get_idea_metrics(
@@ -31,7 +31,7 @@ def get_idea_metrics(
     skip: int = 0,
     limit: int = 100,
 ) -> List[IdeaMetric]:
-    query = db.query(IdeaMetric)
+    query = db.query(IdeaMetric).filter(IdeaMetric.is_deleted == False)
     if idea_id is not None:
         query = query.filter(IdeaMetric.idea_id == idea_id)
     return query.offset(skip).limit(limit).all()
@@ -66,7 +66,8 @@ def delete_idea_metric(db: Session, id: UUID) -> Optional[IdeaMetric]:
     if not db_obj:
         return None
 
-    db.delete(db_obj)
+    db_obj.is_deleted = True
+    db_obj.deleted_at = _utc_now()
     db.commit()
     return db_obj
 
@@ -87,8 +88,8 @@ def record_metric(db: Session, idea_id: UUID, name: str, value: float, category:
 def get_metric_trends(db: Session, idea_id: UUID, metric_name: str) -> Dict[str, Any]:
     metrics = (
         db.query(IdeaMetric)
-        .filter(IdeaMetric.idea_id == idea_id, IdeaMetric.name == metric_name)
-        .order_by(IdeaMetric.recorded_at.desc())
+        .filter(IdeaMetric.idea_id == idea_id, IdeaMetric.name == metric_name, IdeaMetric.is_deleted == False)
+        .order_by(IdeaMetric.created_at.desc())
         .limit(2)
         .all()
     )

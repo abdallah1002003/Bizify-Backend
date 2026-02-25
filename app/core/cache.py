@@ -25,6 +25,7 @@ except ImportError:
     redis = None  # type: ignore
 
 from app.core.structured_logging import get_logger, PerformanceTimer
+from config.settings import settings
 
 logger = get_logger(__name__)
 
@@ -416,10 +417,10 @@ _cache_manager: Optional[CacheManager] = None
 
 
 def get_cache_manager(
-    redis_host: str = "localhost",
-    redis_port: int = 6379,
+    redis_host: Optional[str] = None,
+    redis_port: Optional[int] = None,
     redis_password: Optional[str] = None,
-    use_redis: bool = True,
+    use_redis: Optional[bool] = None,
 ) -> CacheManager:
     """
     Get or create the global cache manager.
@@ -434,6 +435,17 @@ def get_cache_manager(
         CacheManager instance
     """
     global _cache_manager
+    
+    # Dynamically inject settings at runtime instead of module parse time
+    if redis_host is None:
+        redis_host = settings.REDIS_HOST
+    if redis_port is None:
+        redis_port = settings.REDIS_PORT
+    if redis_password is None:
+        redis_password = settings.REDIS_PASSWORD
+    if use_redis is None:
+        use_redis = settings.REDIS_ENABLED
+
     if _cache_manager is None:
         _cache_manager = CacheManager(
             redis_host=redis_host,

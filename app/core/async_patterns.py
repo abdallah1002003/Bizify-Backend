@@ -16,6 +16,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from app.models import ChatMessage, ChatSession
+from app.models.enums import ChatSessionType
 from app.core.structured_logging import get_logger, PerformanceTimer
 import asyncio
 
@@ -107,7 +108,7 @@ async def get_chat_sessions_by_user_async(
 async def create_chat_session_async(
     db: AsyncSession,
     user_id: UUID,
-    session_type: str,
+    session_type: ChatSessionType,
     business_id: Optional[UUID] = None,
     idea_id: Optional[UUID] = None,
 ) -> ChatSession:
@@ -147,7 +148,7 @@ async def create_chat_session_async(
             extra={
                 "session_id": str(new_session.id),
                 "user_id": str(user_id),
-                "session_type": session_type,
+                "session_type": session_type.value,
             }
         )
         

@@ -56,7 +56,8 @@ async def get_user_from_token(token: str, db: Session) -> models.User:
         if user_id is None:
             return None
         return db.query(models.User).filter(models.User.id == user_id).first()
-    except (JWTError, Exception):
+    except Exception as e:
+        print(f"FAILED TOKEN DECODE: {type(e).__name__} - {str(e)}")
         return None
 
 @router.websocket("/ws/{session_id}")
@@ -64,20 +65,20 @@ async def websocket_endpoint(
     websocket: WebSocket,
     session_id: UUID,
     token: str = Query(...),
+    db: Session = Depends(get_db),
 ):
-    db: Session = SessionLocal()
     user = await get_user_from_token(token, db)
     
     if not user:
+        print(f"FAILED WS: User not found for token {token}. Payload parse result?")
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-        db.close()
         return
 
     # Verify session ownership
     chat_session = chat_service.get_chat_session(db, id=session_id)
     if not chat_session or chat_session.user_id != user.id:
+        print(f"FAILED WS: Session issue. Session: {chat_session}. user_id: {user.id}")
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-        db.close()
         return
 
     await manager.connect(websocket, session_id)
@@ -108,13 +109,13 @@ async def websocket_endpoint(
             chat_service.add_message(
                 db,
                 session_id=session_id,
-                role=ChatRole.ASSISTANT,
+                role=ChatRole.AI,
                 content=ai_response_content
             )
 
             # 3. Broadcast to all connections in this session
             response_payload = {
-                "role": ChatRole.ASSISTANT.value,
+                "role": ChatRole.AI.value,
                 "content": ai_response_content,
                 "session_id": str(session_id)
             }
@@ -122,5 +123,3 @@ async def websocket_endpoint(
 
     except WebSocketDisconnect:
         manager.disconnect(websocket, session_id)
-    finally:
-        db.close()

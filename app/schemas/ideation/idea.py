@@ -4,7 +4,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from uuid import UUID
 
-class IdeaBase(BaseModel):
+from app.schemas.core_base import SafeBaseModel
+
+class IdeaBase(SafeBaseModel):
     owner_id: UUID
     business_id: Optional[UUID] = None
     title: str
@@ -13,7 +15,7 @@ class IdeaBase(BaseModel):
     ai_score: float
     is_archived: Optional[bool] = None
 
-class IdeaCreate(BaseModel):
+class IdeaCreate(SafeBaseModel):
     owner_id: UUID
     business_id: Optional[UUID] = None
     title: str = Field(..., max_length=255)
@@ -22,7 +24,7 @@ class IdeaCreate(BaseModel):
     ai_score: float
     is_archived: Optional[bool] = None
 
-class IdeaUpdate(BaseModel):
+class IdeaUpdate(SafeBaseModel):
     business_id: Optional[UUID] = None
     title: Optional[str] = None
     description: Optional[str] = None

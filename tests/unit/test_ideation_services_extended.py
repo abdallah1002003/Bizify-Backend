@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import app.models as models
 from app.core.security import get_password_hash
-from app.models.enums import IdeaStatus, UserRole
+from app.models.enums import IdeaStatus, UserRole, ExperimentStatus
 from app.services.ideation.idea_access import IdeaAccessService
 from app.services.ideation import idea_metric
 from app.services.ideation.idea_version import IdeaVersionService
@@ -152,4 +152,66 @@ def test_idea_metric_trends_ai_score_and_delete(db):
     deleted = idea_metric.delete_idea_metric(db, second.id)
     assert deleted is not None
     assert idea_metric.delete_idea_metric(db, uuid4()) is None
+
+def test_idea_experiment_crud(db):
+    from app.services.ideation import idea_experiment
+    from app.services.ideation.idea_access import IdeaAccessService
+    
+    owner = _create_user(db, "exp_owner")
+    other = _create_user(db, "exp_other")
+    idea = _create_idea(db, owner.id, "Experiment Idea")
+    
+    # Give owner access since initiate_experiment checks it
+    access_svc = IdeaAccessService(db)
+    access_svc.create_idea_access(DummyModel(
+        idea_id=idea.id,
+        user_id=owner.id,
+        can_edit=True,
+        can_delete=True
+    ))
+    
+    # 1. initiate_experiment (fail auth)
+    import pytest
+    with pytest.raises(PermissionError, match="Not authorized"):
+        idea_experiment.initiate_experiment(db, idea.id, "Test hyp", other.id)
+        
+    # 2. initiate_experiment (success)
+    exp = idea_experiment.initiate_experiment(db, idea.id, "Test hyp", owner.id)
+    assert exp is not None
+    assert exp.hypothesis == "Test hyp"
+    assert exp.status == ExperimentStatus.RUNNING
+    
+    # 3. get_experiment
+    found = idea_experiment.get_experiment(db, exp.id)
+    assert found is not None
+    assert found.id == exp.id
+    
+    # 4. get_experiments
+    exps = idea_experiment.get_experiments(db, idea_id=idea.id, skip=0, limit=10)
+    assert len(exps) >= 1
+    
+    # 5. create_experiment (raw)
+    raw_exp = idea_experiment.create_experiment(db, {"idea_id": idea.id, "hypothesis": "Raw hyp", "status": ExperimentStatus.RUNNING})
+    assert raw_exp.hypothesis == "Raw hyp"
+    
+    # 6. update_experiment
+    updated = idea_experiment.update_experiment(db, exp, {"status": ExperimentStatus.FAILED})
+    assert updated.status == ExperimentStatus.FAILED
+    
+    # 7. finalize_experiment (success)
+    # this should change idea status to VALIDATED
+    final = idea_experiment.finalize_experiment(db, exp.id, {"conversion_rate": 0.5}, ExperimentStatus.COMPLETED)
+    assert final.status == ExperimentStatus.COMPLETED
+    assert "conversion_rate" in final.result_summary
+    
+    db.refresh(idea)
+    assert idea.status == IdeaStatus.VALIDATED
+    
+    # finalize non-existent
+    assert idea_experiment.finalize_experiment(db, uuid4(), {}, ExperimentStatus.COMPLETED) is None
+    
+    # 8. delete_experiment
+    deleted = idea_experiment.delete_experiment(db, exp.id)
+    assert deleted is not None
+    assert idea_experiment.delete_experiment(db, uuid4()) is None
 

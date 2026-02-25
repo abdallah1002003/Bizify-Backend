@@ -8,12 +8,16 @@ class PlanBase(BaseModel):
     price: float
     features_json: Optional[dict] = None
     is_active: Optional[bool] = None
+    stripe_price_id: Optional[str] = None
+    billing_cycle: Optional[str] = "month"
 
 class PlanCreate(BaseModel):
     name: str = Field(..., max_length=255)
     price: float
     features_json: Optional[dict] = None
     is_active: Optional[bool] = None
+    stripe_price_id: Optional[str] = None
+    billing_cycle: Optional[str] = "month"
     
     @field_validator('features_json', mode='before')
     @classmethod
@@ -35,6 +39,8 @@ class PlanUpdate(BaseModel):
     price: Optional[float] = None
     features_json: Optional[dict] = None
     is_active: Optional[bool] = None
+    stripe_price_id: Optional[str] = None
+    billing_cycle: Optional[str] = None
     
     @field_validator('features_json', mode='before')
     @classmethod

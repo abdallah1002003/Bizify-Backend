@@ -3,7 +3,9 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from typing import Optional, Any, Dict
 from uuid import UUID
 
-class UserProfileBase(BaseModel):
+from app.schemas.core_base import SafeBaseModel
+
+class UserProfileBase(SafeBaseModel):
     user_id: UUID
     bio: str
     skills_json: Optional[dict] = None
@@ -28,7 +30,7 @@ class UserProfileBase(BaseModel):
             raise ValueError(f"JSON field contains non-serializable values: {e}")
         return v
 
-class UserProfileCreate(BaseModel):
+class UserProfileCreate(SafeBaseModel):
     user_id: UUID
     bio: str
     skills_json: Optional[dict] = None
@@ -52,7 +54,7 @@ class UserProfileCreate(BaseModel):
             raise ValueError(f"JSON field contains non-serializable values: {e}")
         return v
 
-class UserProfileUpdate(BaseModel):
+class UserProfileUpdate(SafeBaseModel):
     user_id: Optional[UUID] = None
     bio: Optional[str] = None
     skills_json: Optional[dict] = None

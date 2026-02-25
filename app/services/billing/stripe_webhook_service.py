@@ -150,6 +150,52 @@ def handle_invoice_payment_succeeded(db: Session, data: Dict[str, Any]) -> None:
         logger.info("Invoice %s recorded (amount: %s %s) — no local user matched", invoice_id, amount_paid / 100, currency)
 
 
+def handle_checkout_session_completed(db: Session, data: Dict[str, Any]) -> None:
+    """checkout.session.completed → create a Subscription record in the database."""
+    session_id = data.get("id", "")
+    customer_id = data.get("customer", "")
+    subscription_id = data.get("subscription", "")
+    metadata = data.get("metadata", {})
+    user_id = metadata.get("user_id")
+    plan_id = metadata.get("plan_id")
+
+    logger.info("Stripe: checkout.session.completed — session=%s, user=%s, plan=%s", session_id, user_id, plan_id)
+
+    if not user_id or not plan_id:
+        logger.warning("Session %s missing user_id or plan_id in metadata, cannot create Subscription", session_id)
+        return
+
+    # Check if a subscription already exists for this stripe sub ID to prevent duplicates
+    if subscription_id:
+        existing = _find_subscription_by_stripe_id(db, subscription_id)
+        if existing:
+            logger.info("Local Subscription already exists for Stripe sub %s", subscription_id)
+            return
+
+    from app.models.billing.billing import Subscription
+    from app.models.enums import SubscriptionStatus
+    from datetime import datetime, timezone
+    
+    # Normally Stripe active means the payment succeeded.
+    status_str = data.get("payment_status", "")
+    if status_str == "paid":
+        status = SubscriptionStatus.ACTIVE
+    else:
+        status = SubscriptionStatus.PENDING
+
+    # Create the local Subscription record
+    new_sub = Subscription(
+        user_id=user_id,
+        plan_id=plan_id,
+        status=status,
+        stripe_subscription_id=subscription_id,
+        start_date=datetime.now(timezone.utc),
+    )
+    db.add(new_sub)
+    db.commit()
+    logger.info("Created local Subscription %s for user %s and plan %s", new_sub.id, user_id, plan_id)
+
+
 # ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
@@ -160,6 +206,7 @@ _HANDLERS = {
     "customer.subscription.deleted": handle_subscription_deleted,
     "customer.subscription.updated": handle_subscription_updated,
     "invoice.payment_succeeded": handle_invoice_payment_succeeded,
+    "checkout.session.completed": handle_checkout_session_completed,
 }
 
 

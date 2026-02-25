@@ -7,8 +7,9 @@ from app.db.guid import GUID
 from app.db.database import Base
 from app.models.enums import ChatSessionType, ChatRole
 from app.core.crud_utils import _utc_now as utc_now
+from app.models.mixins import TimestampMixin, SoftDeleteMixin
 
-class ChatSession(Base):
+class ChatSession(Base, TimestampMixin, SoftDeleteMixin):
     """Chat session for conversations with AI and business context."""
     __tablename__ = "chat_sessions"
 
@@ -24,7 +25,6 @@ class ChatSession(Base):
     )
     session_type: Mapped[ChatSessionType] = mapped_column(Enum(ChatSessionType), nullable=False)
     conversation_summary_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     user: Mapped["User"] = relationship(
         "User", foreign_keys=[user_id], back_populates="chat_sessions"
@@ -40,7 +40,7 @@ class ChatSession(Base):
         order_by="ChatMessage.created_at"
     )
 
-class ChatMessage(Base):
+class ChatMessage(Base, TimestampMixin, SoftDeleteMixin):
     """Individual chat message in a conversation."""
     __tablename__ = "chat_messages"
 
@@ -50,6 +50,5 @@ class ChatMessage(Base):
     )
     role: Mapped[ChatRole] = mapped_column(Enum(ChatRole), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     session: Mapped["ChatSession"] = relationship("ChatSession", back_populates="messages")

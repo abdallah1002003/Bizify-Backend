@@ -11,7 +11,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.models import Experiment, Idea
-from app.models.enums import IdeaStatus
+from app.models.enums import IdeaStatus, ExperimentStatus
 from app.services.ideation import idea_service
 
 logger = logging.getLogger(__name__)
@@ -74,7 +74,7 @@ def initiate_experiment(db: Session, idea_id: UUID, hypothesis: str, creator_id:
             "idea_id": idea_id,
             "created_by": creator_id,
             "hypothesis": hypothesis,
-            "status": "ACTIVE",
+            "status": ExperimentStatus.RUNNING,
             "result_summary": "",
         },
     )
@@ -90,7 +90,7 @@ def finalize_experiment(db: Session, exp_id: UUID, result_json: dict, status: st
     db.commit()
     db.refresh(db_obj)
 
-    if status == "SUCCESSFUL":
+    if status == ExperimentStatus.COMPLETED or status == "completed":
         idea = db.query(Idea).filter(Idea.id == db_obj.idea_id).first()
         if idea is not None:
             idea.status = IdeaStatus.VALIDATED

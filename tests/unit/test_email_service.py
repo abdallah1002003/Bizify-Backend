@@ -85,17 +85,19 @@ class TestEmailServiceEnabled:
         import app.services.core.email_service as svc
         importlib.reload(svc)
 
-        # Patch _send on the EmailService class
-        monkeypatch.setattr(svc.EmailService, "_send",
+        # Patch _queue_email on the EmailService class
+        monkeypatch.setattr(svc.EmailService, "_queue_email",
                             lambda self, to, subject, body: _record_send(sent, to, subject, body))
 
-        async def _record_send(bag, to, subject, body):
+        def _record_send(bag, to, subject, body):
             bag.append({"to": to, "subject": subject})
 
         email_service = svc.EmailService()
         run(email_service.send_verification_email("verify@example.com", "tok123"))
-        # _send is patched at module level — just check no exception raised
-        # (full round-trip is covered by integration tests with monkeypatched BackgroundTasks)
+        # _queue_email is patched at module level
+        assert len(sent) == 1
+        assert sent[0]["to"] == "verify@example.com"
+        assert "verify" in sent[0]["subject"].lower()
 
     def test_send_password_reset_email_calls_fastmail(self, monkeypatch):
         from config import settings as settings_module
@@ -106,10 +108,10 @@ class TestEmailServiceEnabled:
 
         import app.services.core.email_service as svc
 
-        async def _fake_send(self, to, subject, body):
+        def _fake_send(self, to, subject, body):
             sent.append({"to": to, "subject": subject})
 
-        monkeypatch.setattr(svc.EmailService, "_send", _fake_send)
+        monkeypatch.setattr(svc.EmailService, "_queue_email", _fake_send)
 
         email_service = svc.EmailService()
         run(email_service.send_password_reset_email("reset@example.com", "tok456"))

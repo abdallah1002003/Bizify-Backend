@@ -18,6 +18,7 @@ from fastapi.testclient import TestClient
 from app.models import User, Idea, Subscription, Plan
 
 
+@pytest.mark.performance
 class TestListEndpointPerformance:
     """Performance tests for paginated list endpoints."""
 
@@ -112,6 +113,7 @@ class TestListEndpointPerformance:
         assert elapsed < 1.5, f"Large offset pagination took {elapsed:.2f}s"
 
 
+@pytest.mark.performance
 class TestCreateOperationPerformance:
     """Performance tests for create operations."""
 
@@ -165,6 +167,7 @@ class TestCreateOperationPerformance:
         assert avg_time < 0.5, f"Avg create time {avg_time:.2f}s, expected < 0.5s"
 
 
+@pytest.mark.performance
 class TestDatabaseQueryPerformance:
     """Performance tests for database operations."""
 
@@ -216,6 +219,7 @@ class TestDatabaseQueryPerformance:
         assert elapsed < 0.1, f"Pagination query took {elapsed:.3f}s"
 
 
+@pytest.mark.performance
 class TestConcurrentRequests:
     """Tests for handling concurrent requests."""
 
@@ -262,6 +266,7 @@ class TestConcurrentRequests:
         assert elapsed < 0.5, f"Concurrent queries took {elapsed:.2f}s"
 
 
+@pytest.mark.performance
 class TestMemoryEfficiency:
     """Tests for memory-efficient operation."""
 

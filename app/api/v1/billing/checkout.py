@@ -89,27 +89,31 @@ def create_checkout_session(
             logger.error("Stripe customer creation failed for user %s: %s", current_user.id, exc)
             raise HTTPException(status_code=502, detail="Failed to create Stripe customer")
 
-    # Convert plan price to cents (Stripe requires integer cents)
-    unit_amount = int(round(plan.price * 100))
+    if plan.stripe_price_id:
+        line_item = {
+            "price": plan.stripe_price_id,
+            "quantity": 1,
+        }
+    else:
+        unit_amount = int(round(plan.price * 100))
+        line_item = {
+            "price_data": {
+                "currency": settings.DEFAULT_CURRENCY.lower(),
+                "unit_amount": unit_amount,
+                "product_data": {
+                    "name": plan.name,
+                    "description": f"{settings.APP_NAME} {plan.name} Plan",
+                },
+                "recurring": {"interval": plan.billing_cycle or "month"},
+            },
+            "quantity": 1,
+        }
 
     try:
         session = stripe.checkout.Session.create(
             customer=customer_id,
             payment_method_types=["card"],
-            line_items=[
-                {
-                    "price_data": {
-                        "currency": settings.DEFAULT_CURRENCY.lower(),
-                        "unit_amount": unit_amount,
-                        "product_data": {
-                            "name": plan.name,
-                            "description": f"{settings.APP_NAME} {plan.name} Plan",
-                        },
-                        "recurring": {"interval": "month"},
-                    },
-                    "quantity": 1,
-                }
-            ],
+            line_items=[line_item],
             mode="subscription",
             success_url=body.success_url,
             cancel_url=body.cancel_url,

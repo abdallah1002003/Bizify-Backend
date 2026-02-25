@@ -4,21 +4,23 @@ from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from uuid import UUID
 
-class BusinessBase(BaseModel):
+from app.schemas.core_base import SafeBaseModel
+
+class BusinessBase(SafeBaseModel):
     idea_id: Optional[UUID] = None
     owner_id: UUID
     stage: BusinessStage
     context_json: Optional[dict] = None
     is_archived: Optional[bool] = None
 
-class BusinessCreate(BaseModel):
+class BusinessCreate(SafeBaseModel):
     idea_id: Optional[UUID] = None
     owner_id: UUID
     stage: BusinessStage
     context_json: Optional[dict] = None
     is_archived: Optional[bool] = None
 
-class BusinessUpdate(BaseModel):
+class BusinessUpdate(SafeBaseModel):
     idea_id: Optional[UUID] = None
     stage: Optional[BusinessStage] = None
     context_json: Optional[dict] = None

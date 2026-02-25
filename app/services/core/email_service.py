@@ -37,38 +37,30 @@ class EmailService:
             # Fallback to a very basic string if template rendering fails
             return f"<html><body>{context.get('content_html', '')}</body></html>"
 
-    async def _send(self, to_email: str, subject: str, html_body: str) -> None:
-        """Low-level async sender. Imports fastapi-mail only when needed."""
-        from fastapi_mail import FastMail, MessageSchema, MessageType, ConnectionConfig
+    def _queue_email(self, to_email: str, subject: str, html_body: str) -> None:
+        """Add email to the database queue for asynchronous processing."""
+        from app.db.database import SessionLocal
+        from app.models.core.core import EmailMessage
 
-        conf = ConnectionConfig(
-            MAIL_USERNAME=settings.MAIL_USERNAME,
-            MAIL_PASSWORD=settings.MAIL_PASSWORD,
-            MAIL_FROM=settings.MAIL_FROM,
-            MAIL_PORT=settings.MAIL_PORT,
-            MAIL_SERVER=settings.MAIL_SERVER,
-            MAIL_STARTTLS=settings.MAIL_TLS,
-            MAIL_SSL_TLS=settings.MAIL_SSL,
-            USE_CREDENTIALS=bool(settings.MAIL_USERNAME),
-            VALIDATE_CERTS=True,
-        )
-
-        message = MessageSchema(
-            subject=subject,
-            recipients=[to_email],
-            body=html_body,
-            subtype=MessageType.html,
-        )
-
-        fm = FastMail(conf)
-        await fm.send_message(message)
+        db = SessionLocal()
+        try:
+            msg = EmailMessage(
+                to_email=to_email,
+                subject=subject,
+                html_body=html_body,
+                status="PENDING"
+            )
+            db.add(msg)
+            db.commit()
+            logger.info("Email queued for %s (subject: %s)", to_email, subject)
+        except Exception as e:
+            db.rollback()
+            logger.error("Failed to queue email for %s: %s", to_email, e)
+        finally:
+            db.close()
 
     async def send_verification_email(self, email: str, token: str) -> None:
-        """Send an account verification email using HTML template."""
-        if not settings.MAIL_ENABLED:
-            logger.info("MAIL_ENABLED=False — skipping verification email to %s", email)
-            return
-
+        """Queue an account verification email using HTML template."""
         link = f"{settings.FRONTEND_URL}/verify-email?token={token}"
         html_body = self.render_template(
             "base.html",
@@ -80,19 +72,10 @@ class EmailService:
             footer_text="This link expires in 24 hours. If you didn't create an account, you can safely ignore this.",
             fallback_url=link
         )
-
-        try:
-            await self._send(email, "Verify your Bizify account", html_body)
-            logger.info("Verification email sent to %s", email)
-        except Exception:
-            logger.exception("Failed to send verification email to %s", email)
+        self._queue_email(email, "Verify your Bizify account", html_body)
 
     async def send_password_reset_email(self, email: str, token: str) -> None:
-        """Send a password-reset email using HTML template."""
-        if not settings.MAIL_ENABLED:
-            logger.info("MAIL_ENABLED=False — skipping password reset email to %s", email)
-            return
-
+        """Queue a password-reset email using HTML template."""
         link = f"{settings.FRONTEND_URL}/reset-password?token={token}"
         html_body = self.render_template(
             "base.html",
@@ -104,12 +87,7 @@ class EmailService:
             footer_text="This link expires in 15 minutes. If you didn't request a reset, you can safely ignore this.",
             fallback_url=link
         )
-
-        try:
-            await self._send(email, "Reset your Bizify password", html_body)
-            logger.info("Password reset email sent to %s", email)
-        except Exception:
-            logger.exception("Failed to send password reset email to %s", email)
+        self._queue_email(email, "Reset your Bizify password", html_body)
 
     @staticmethod
     async def handle_auth_event(event_type: str, payload: Dict[str, Any]):

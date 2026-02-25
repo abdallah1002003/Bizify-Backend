@@ -7,8 +7,9 @@ from app.db.guid import GUID
 from app.db.database import Base
 from app.models.enums import IdeaStatus, ExperimentStatus, MetricType
 from app.core.crud_utils import _utc_now as utc_now
+from app.models.mixins import TimestampMixin, SoftDeleteMixin
 
-class Idea(Base):
+class Idea(Base, TimestampMixin, SoftDeleteMixin):
     """Business idea with versions, metrics, and experiments."""
     __tablename__ = "ideas"
     __table_args__ = (
@@ -28,10 +29,6 @@ class Idea(Base):
     ai_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False)
     archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=utc_now, onupdate=utc_now
-    )
     converted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     
     owner: Mapped["User"] = relationship(
@@ -67,7 +64,7 @@ class Idea(Base):
         "BusinessInviteIdea", back_populates="idea", cascade="all, delete-orphan"
     )
 
-class IdeaVersion(Base):
+class IdeaVersion(Base, TimestampMixin, SoftDeleteMixin):
     """Version snapshot of an idea for tracking changes."""
     __tablename__ = "idea_versions"
 
@@ -79,12 +76,11 @@ class IdeaVersion(Base):
         GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     snapshot_json: Mapped[dict] = mapped_column(JSON, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     idea: Mapped["Idea"] = relationship("Idea", back_populates="versions")
     creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])
 
-class IdeaMetric(Base):
+class IdeaMetric(Base, TimestampMixin, SoftDeleteMixin):
     """Metric tracking for idea validation and analysis."""
     __tablename__ = "idea_metrics"
 
@@ -100,12 +96,11 @@ class IdeaMetric(Base):
     type: Mapped[MetricType] = mapped_column(
         Enum(MetricType), nullable=False, default=MetricType.CUSTOM
     )
-    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     idea: Mapped["Idea"] = relationship("Idea", back_populates="metrics")
     creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])
 
-class Experiment(Base):
+class Experiment(Base, TimestampMixin, SoftDeleteMixin):
     """Experiment for testing idea hypotheses."""
     __tablename__ = "experiments"
 
@@ -121,12 +116,11 @@ class Experiment(Base):
         Enum(ExperimentStatus), nullable=False, default=ExperimentStatus.RUNNING
     )
     result_summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     idea: Mapped["Idea"] = relationship("Idea", back_populates="experiments")
     creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])
 
-class IdeaAccess(Base):
+class IdeaAccess(Base, TimestampMixin, SoftDeleteMixin):
     """Access control permissions for ideas."""
     __tablename__ = "idea_accesses"
 
@@ -144,7 +138,6 @@ class IdeaAccess(Base):
     can_delete: Mapped[bool] = mapped_column(Boolean, default=False)
     can_experiment: Mapped[bool] = mapped_column(Boolean, default=False)
     assigned_job: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     idea: Mapped["Idea"] = relationship("Idea", back_populates="accesses")
     business: Mapped[Optional["Business"]] = relationship(

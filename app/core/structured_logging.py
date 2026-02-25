@@ -25,6 +25,7 @@ _context = threading.local()
 class LogContext:
     """Context information for structured logging."""
     correlation_id: str
+    request_id: Optional[str] = None  # X-Request-ID (client-supplied or auto-generated)
     user_id: Optional[str] = None
     request_path: Optional[str] = None
     request_method: Optional[str] = None
@@ -87,20 +88,30 @@ def clear_log_context() -> None:
 @contextmanager
 def log_context(
     correlation_id: str,
+    request_id: Optional[str] = None,
     user_id: Optional[str] = None,
     request_path: Optional[str] = None,
     request_method: Optional[str] = None,
     session_id: Optional[str] = None,
 ):
     """
-    Context manager for structured logging with correlation ID.
-    
+    Context manager for structured logging with correlation ID and request ID.
+
+    Args:
+        correlation_id: Internal trace ID (always present)
+        request_id: Client-supplied X-Request-ID header value (may be None)
+        user_id: Authenticated user ID (optional)
+        request_path: Sanitised URL path (optional)
+        request_method: HTTP method (optional)
+        session_id: Chat/session ID (optional)
+
     Usage:
-        with log_context(correlation_id="abc-123", user_id="user-123"):
+        with log_context(correlation_id="abc-123", request_id="req-xyz", user_id="user-123"):
             logger.info("Processing request")
     """
     context = LogContext(
         correlation_id=correlation_id,
+        request_id=request_id,
         user_id=user_id,
         request_path=request_path,
         request_method=request_method,

@@ -46,9 +46,16 @@ class LogMiddleware(BaseHTTPMiddleware):
         Returns:
             Response with correlation ID header
         """
-        # Generate or retrieve correlation ID
-        correlation_id = request.headers.get("X-Correlation-ID", str(uuid.uuid4()))
-        
+        # Resolve request ID: prefer X-Request-ID (industry standard), then
+        # X-Correlation-ID (legacy), then generate a fresh UUID.
+        request_id: str = (
+            request.headers.get("X-Request-ID")
+            or request.headers.get("X-Correlation-ID")
+            or str(uuid.uuid4())
+        )
+        # Internal correlation ID — always a UUID we control
+        correlation_id: str = request.headers.get("X-Correlation-ID") or request_id
+
         # Extract user ID if available (from JWT or session)
         user_id = None
         if hasattr(request.state, "user_id"):
@@ -61,12 +68,13 @@ class LogMiddleware(BaseHTTPMiddleware):
             request.url.path
         )
 
-        # Store in request state for access in routes
+        # Store in request state for access in route handlers
+        request.state.request_id = request_id
         request.state.correlation_id = correlation_id
-        request.state.request_id = correlation_id  # For backward compatibility
 
         with log_context(
             correlation_id=correlation_id,
+            request_id=request_id,
             user_id=user_id,
             request_path=path,
             request_method=request.method,
@@ -82,10 +90,12 @@ class LogMiddleware(BaseHTTPMiddleware):
                         "duration_ms": timer.duration_ms,
                         "path": path,
                         "method": request.method,
+                        "request_id": request_id,
                     }
                 )
 
-                # Add correlation ID to response headers
+                # Echo both headers so clients can trace their request IDs
+                response.headers["X-Request-ID"] = request_id
                 response.headers["X-Correlation-ID"] = correlation_id
                 return response
 

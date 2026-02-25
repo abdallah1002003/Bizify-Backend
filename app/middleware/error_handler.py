@@ -74,6 +74,8 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
                 status_code=exc.status_code,
                 content=error.to_dict()
             )
+
+        except ValidationError as exc:
             """Handle Pydantic validation errors."""
             logger.warning(
                 f"Validation error on {request.method} {request.url.path}",

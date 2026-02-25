@@ -1,0 +1,100 @@
+import asyncio
+import logging
+from sqlalchemy.orm import Session
+from sqlalchemy import select, and_, or_
+
+from config.settings import settings
+from app.db.database import SessionLocal
+from app.models.core.core import EmailMessage
+
+logger = logging.getLogger(__name__)
+
+async def _send_fastapi_mail(to_email: str, subject: str, html_body: str) -> None:
+    """Low-level async sender using fastapi-mail."""
+    from fastapi_mail import FastMail, MessageSchema, MessageType, ConnectionConfig
+
+    conf = ConnectionConfig(
+        MAIL_USERNAME=settings.MAIL_USERNAME,
+        MAIL_PASSWORD=settings.MAIL_PASSWORD,
+        MAIL_FROM=settings.MAIL_FROM,
+        MAIL_PORT=settings.MAIL_PORT,
+        MAIL_SERVER=settings.MAIL_SERVER,
+        MAIL_STARTTLS=settings.MAIL_TLS,
+        MAIL_SSL_TLS=settings.MAIL_SSL,
+        USE_CREDENTIALS=bool(settings.MAIL_USERNAME),
+        VALIDATE_CERTS=True,
+    )
+
+    message = MessageSchema(
+        subject=subject,
+        recipients=[to_email],
+        body=html_body,
+        subtype=MessageType.html,
+    )
+
+    fm = FastMail(conf)
+    await fm.send_message(message)
+
+
+async def process_email_queue() -> None:
+    """
+    Process pending and retrying emails from the database queue.
+    Should be run periodically as a background task.
+    """
+    db: Session = SessionLocal()
+    try:
+        # Fetch emails that need to be sent
+        stmt = select(EmailMessage).where(
+            or_(
+                EmailMessage.status == "PENDING",
+                EmailMessage.status == "RETRYING"
+            )
+        ).limit(50)  # Process in batches
+        
+        emails = db.execute(stmt).scalars().all()
+        
+        if not emails:
+            return
+
+        for email in emails:
+            try:
+                if settings.MAIL_ENABLED:
+                    await _send_fastapi_mail(email.to_email, email.subject, email.html_body)
+                    logger.info("Successfully sent queued email to %s", email.to_email)
+                else:
+                    logger.info("MAIL_ENABLED=False - Mocked sending to %s", email.to_email)
+                
+                email.status = "SENT"
+                email.error_message = None
+            except Exception as e:
+                logger.error("Failed to send queued email to %s: %s", email.to_email, str(e))
+                email.retries += 1
+                email.error_message = str(e)
+                if email.retries >= email.max_retries:
+                    email.status = "FAILED"
+                else:
+                    email.status = "RETRYING"
+            
+            db.commit()
+
+    except Exception as e:
+        logger.exception("Error processing email queue: %s", str(e))
+        db.rollback()
+    finally:
+        db.close()
+
+async def run_email_worker(interval_seconds: int = 10) -> None:
+    """
+    Continuous background loop for processing emails.
+    """
+    logger.info("Email worker started (interval: %ds)", interval_seconds)
+    while True:
+        try:
+            await process_email_queue()
+        except asyncio.CancelledError:
+            logger.info("Email worker shutting down")
+            break
+        except Exception as e:
+            logger.error("Unhandled exception in email worker: %s", str(e))
+        
+        await asyncio.sleep(interval_seconds)

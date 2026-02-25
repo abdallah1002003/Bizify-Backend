@@ -2,10 +2,11 @@ from datetime import timedelta, datetime, timezone
 from typing import Any, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, status, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request, status, Query
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr, Field
 import logging
+from jose import jwt as jose_jwt, JWTError
 from sqlalchemy.orm import Session
 
 import app.models as models
@@ -15,6 +16,7 @@ from app.services.users.user_service import UserService, get_user_service
 from app.services.auth.auth_service import AuthService, get_auth_service
 from app.schemas.users.user import UserCreate
 from app.services.core.email_service import send_verification_email, send_password_reset_email
+from app.core.token_blacklist import blacklist_token
 from config.settings import settings
 
 logger = logging.getLogger(__name__)
@@ -149,11 +151,32 @@ def bootstrap_admin(
 
 @router.post("/logout")
 def logout(
+    request: Request,
     payload: RefreshTokenRequest,
     auth_service: AuthService = Depends(get_auth_service),
 ):
-    """Revoke a refresh token (manual logout)."""
+    """Revoke refresh token and blacklist the current access token."""
+    # 1. Revoke refresh token in DB
     auth_service.revoke_refresh_token(payload.refresh_token)
+
+    # 2. Blacklist the access token so it cannot be reused until expiry
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        access_token = auth_header.split(" ", 1)[1]
+        try:
+            token_data = jose_jwt.decode(
+                access_token,
+                settings.jwt_verify_key,
+                algorithms=[settings.jwt_algorithm],
+            )
+            jti = token_data.get("jti")
+            exp = token_data.get("exp")
+            if jti and exp:
+                remaining_ttl = int(exp - datetime.now(timezone.utc).timestamp())
+                blacklist_token(jti, remaining_ttl)
+        except JWTError:
+            pass  # Token already invalid — nothing to blacklist
+
     return {"message": "Logged out successfully"}
 
 

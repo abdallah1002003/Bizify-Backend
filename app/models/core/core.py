@@ -45,3 +45,22 @@ class ShareLink(Base):
     idea = relationship("Idea", foreign_keys=[idea_id], back_populates="share_links")
     business = relationship("Business", foreign_keys=[business_id], back_populates="share_links")
     creator = relationship("User", foreign_keys=[created_by], back_populates="share_links")
+
+class EmailMessage(Base):
+    """Database-backed queue for outgoing emails."""
+    __tablename__ = "email_messages"
+
+    id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    to_email = Column(String, nullable=False, index=True)
+    subject = Column(String, nullable=False)
+    html_body = Column(Text, nullable=False)
+    
+    # Statuses: PENDING, SENT, FAILED, RETRYING
+    status = Column(String, default="PENDING", index=True, nullable=False)
+    
+    retries = Column(Integer, default=0, nullable=False)
+    max_retries = Column(Integer, default=3, nullable=False)
+    error_message = Column(Text, nullable=True)
+    
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
