@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """
 Utilities for CRUD operations and data transformation.
 

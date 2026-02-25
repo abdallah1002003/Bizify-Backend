@@ -1,12 +1,13 @@
+# ruff: noqa: F821
+from __future__ import annotations
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import List, Optional
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text, Enum, JSON, Float, CheckConstraint
+from sqlalchemy import String, Boolean, DateTime, ForeignKey, Text, Enum, JSON, Float, CheckConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.guid import GUID
 from app.db.database import Base
 from app.models.enums import IdeaStatus, ExperimentStatus, MetricType
-from app.core.crud_utils import _utc_now as utc_now
 from app.models.mixins import TimestampMixin, SoftDeleteMixin
 
 class Idea(Base, TimestampMixin, SoftDeleteMixin):

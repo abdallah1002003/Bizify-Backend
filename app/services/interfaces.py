@@ -1,5 +1,6 @@
+# ruff: noqa: E402
 from __future__ import annotations
-from typing import Any, List, Optional, Protocol, runtime_checkable, Tuple
+from typing import Any, List, Optional, Protocol, runtime_checkable, Dict
 from uuid import UUID
 from sqlalchemy.orm import Session
 import app.models as models

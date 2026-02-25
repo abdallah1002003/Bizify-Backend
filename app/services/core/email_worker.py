@@ -1,7 +1,8 @@
+# ruff: noqa: E402
 import asyncio
 import logging
 from sqlalchemy.orm import Session
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select, or_
 
 from config.settings import settings
 from app.db.database import SessionLocal
@@ -61,7 +62,8 @@ async def process_email_queue() -> None:
         for email in emails:
             # Implement exponential backoff for retries
             if email.status == "RETRYING":
-                backoff_seconds = 10 * (2 ** email.retries)
+                current_retries = int(email.retries or 0)
+                backoff_seconds = 10 * (2 ** current_retries)
                 # If updated_at is naive, assume UTC.
                 updated_at_tz = email.updated_at
                 if updated_at_tz and updated_at_tz.tzinfo is None:
@@ -81,9 +83,12 @@ async def process_email_queue() -> None:
                 email.error_message = None
             except Exception as e:
                 logger.error("Failed to send queued email to %s: %s", email.to_email, str(e))
-                email.retries += 1
+                current_retries = int(email.retries or 0)
+                max_retries = int(email.max_retries or 3)
+                
+                email.retries = current_retries + 1
                 email.error_message = str(e)
-                if email.retries >= email.max_retries:
+                if current_retries + 1 >= max_retries:
                     email.status = "FAILED"
                 else:
                     email.status = "RETRYING"

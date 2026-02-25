@@ -1,7 +1,9 @@
+# ruff: noqa: F821
+from __future__ import annotations
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import List, Optional
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Enum, JSON, Float, Integer
+from sqlalchemy import String, Boolean, DateTime, ForeignKey, Enum, JSON, Float, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.guid import GUID
 from app.db.database import Base
