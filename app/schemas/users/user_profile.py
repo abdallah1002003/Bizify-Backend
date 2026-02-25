@@ -1,7 +1,7 @@
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import ConfigDict, field_validator
 # ruff: noqa: B904
-from typing import Optional, Any, Dict
+from typing import Optional
 from uuid import UUID
 
 from app.schemas.core_base import SafeBaseModel
