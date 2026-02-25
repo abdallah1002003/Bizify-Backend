@@ -83,3 +83,11 @@ webencodings==0.5.1
 zipp==3.23.0
 zope.event==6.0
 zope.interface==8.0.1
+
+# Dev / CI Dependencies
+ruff==0.1.14
+mypy==1.8.0
+pytest==8.0.0
+pytest-cov==4.1.0
+coverage==7.10.7
+types-bleach==6.1.0.20240331
