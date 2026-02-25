@@ -63,24 +63,17 @@ def db():
         sqlite_engine.dispose()
         return
 
-    # PostgreSQL: DROP SCHEMA CASCADE bypasses SQLAlchemy's topological sort
-    # which fails on circular FKs (ideas ↔ businesses). Then re-run migrations.
+    # PostgreSQL: TRUNCATE all tables with CASCADE to clear data between tests.
+    # This avoids drop_all's circular FK topological sort failure (ideas ↔ businesses).
+    # The schema already exists from the CI `alembic upgrade head` step.
     with test_engine.connect() as raw_conn:
-        raw_conn.execute(text("DROP SCHEMA public CASCADE"))
-        raw_conn.execute(text("CREATE SCHEMA public"))
-        raw_conn.execute(text("GRANT ALL ON SCHEMA public TO postgres"))
-        raw_conn.execute(text("GRANT ALL ON SCHEMA public TO public"))
+        # Get all table names from Base metadata
+        table_names = ", ".join(
+            f'"{name}"' for name in Base.metadata.tables.keys()
+        )
+        if table_names:
+            raw_conn.execute(text(f"TRUNCATE TABLE {table_names} RESTART IDENTITY CASCADE"))
         raw_conn.commit()
-
-    # Re-run Alembic migrations on the clean schema
-    import os
-    import subprocess
-    env = os.environ.copy()
-    env["DATABASE_URL"] = str(test_engine.url)
-    subprocess.run(
-        ["python", "-m", "alembic", "upgrade", "head"],
-        check=True, env=env, capture_output=True
-    )
 
     connection = test_engine.connect()
     session = TestingSessionLocal(bind=connection)
