@@ -1,7 +1,8 @@
 # ruff: noqa
 import uvicorn
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
+from fastapi.security import APIKeyHeader
 from starlette.middleware.cors import CORSMiddleware
 
 from app.db.database import Base, engine, verify_database_connection
@@ -145,29 +146,54 @@ def read_root():
         "docs": "/docs"
     }
 
+_internal_key_header = APIKeyHeader(name="X-Internal-Key", auto_error=False)
+
+
 @app.get("/health")
-def health_check():
-    """Health check endpoint for monitoring and load balancers."""
+async def health_check(
+    x_internal_key: str = Depends(_internal_key_header),
+):
+    """
+    Health check endpoint — two-tier response:
+
+    * **Public** (no key): returns ``{status, version}`` only.
+      Safe for load balancers and uptime monitors.
+    * **Internal** (valid ``X-Internal-Key`` header): returns full
+      diagnostics including database, Redis, and Stripe status.
+      Use the same key as ``METRICS_API_KEY`` in your environment.
+    """
+    # ── Always check the database so the top-level status is accurate ──
     from sqlalchemy import text
-    import stripe
-    from app.middleware.rate_limiter_redis import redis_client
-    
-    results = {
-        "status": "ok",
-        "database": "ok",
-        "version": "1.0.0"
-    }
-    
-    # 1. Database Check
+    db_status = "ok"
+    overall_status = "ok"
+
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
     except Exception as e:
-        logger.error(f"Health check - Database failed: {e}")
-        results["database"] = "error"
-        results["status"] = "degraded"
-        
-    # 2. Redis Check
+        logger.error("Health check - Database failed: %s", e)
+        db_status = "error"
+        overall_status = "degraded"
+
+    # ── Public response (no key or wrong key) ───────────────────────────
+    expected_key = getattr(settings, "METRICS_API_KEY", "")
+    is_internal = bool(x_internal_key and x_internal_key == expected_key)
+
+    if not is_internal:
+        # Reveal only enough for a load-balancer / uptime probe
+        return {"status": overall_status, "version": "1.0.0"}
+
+    # ── Internal (authenticated) — full diagnostics ──────────────────────
+    import stripe
+    from app.middleware.rate_limiter_redis import redis_client
+
+    results: dict = {
+        "status": overall_status,
+        "database": db_status,
+        "version": "1.0.0",
+    }
+
+    # Redis check
     if settings.REDIS_ENABLED:
         try:
             if redis_client and redis_client.ping():
@@ -176,35 +202,32 @@ def health_check():
                 results["redis"] = "disconnected"
                 results["status"] = "degraded"
         except Exception as e:
-            logger.error(f"Health check - Redis failed: {e}")
+            logger.error("Health check - Redis failed: %s", e)
             results["redis"] = "error"
             results["status"] = "degraded"
-    
-    # 3. Stripe Check (with timeout to avoid hanging health probes)
+
+    # Stripe check — asyncio-safe timeout via asyncio.wait_for
     if settings.STRIPE_ENABLED:
-        try:
-            import signal
+        stripe_status = "ok"
 
-            def _timeout_handler(signum, frame):
-                raise TimeoutError("Stripe health check timed out")
-
+        def _call_stripe() -> None:
             stripe.api_key = settings.STRIPE_SECRET_KEY
-            signal.signal(signal.SIGALRM, _timeout_handler)
-            signal.alarm(3)  # 3-second timeout
-            try:
-                stripe.Balance.retrieve()
-                results["stripe"] = "ok"
-            finally:
-                signal.alarm(0)  # cancel alarm
-        except TimeoutError:
-            logger.warning("Health check - Stripe timed out (3s)")
-            results["stripe"] = "timeout"
+            stripe.Balance.retrieve()
+
+        try:
+            # Run the synchronous Stripe call in a thread pool, with a 3-second timeout
+            await asyncio.wait_for(asyncio.to_thread(_call_stripe), timeout=3.0)
+        except asyncio.TimeoutError:
+            logger.warning("Health check - Stripe timed out (3 s)")
+            stripe_status = "timeout"
             results["status"] = "degraded"
-        except Exception as e:
-            logger.error(f"Health check - Stripe failed: {e}")
-            results["stripe"] = "error"
+        except Exception as exc:
+            logger.error("Health check - Stripe failed: %s", exc)
+            stripe_status = "error"
             results["status"] = "degraded"
-            
+
+        results["stripe"] = stripe_status
+
     return results
 
 from fastapi import Depends, HTTPException

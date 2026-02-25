@@ -15,12 +15,17 @@ from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
 from app.models import AdminActionLog, User, UserProfile
 from app.models.enums import UserRole
 from app.services.base_service import BaseService
+from app.repositories.user_repository import UserRepository
 
 logger = logging.getLogger(__name__)
 
 
 class UserService(BaseService):
     """Service for managing user accounts, profiles, and admin logs."""
+
+    def __init__(self, db: Session):
+        super().__init__(db)
+        self.user_repo = UserRepository(db, User)
 
     def _record_admin_action(
         self,
@@ -54,15 +59,15 @@ class UserService(BaseService):
 
     def get_user(self, id: UUID) -> Optional[User]:
         """Retrieves a user by their unique UUID."""
-        return self.db.query(User).options(joinedload(User.profile)).filter(User.id == id).first()  # type: ignore[no-any-return]
+        return self.user_repo.get_with_profile(id)
 
     def get_user_by_email(self, email: str) -> Optional[User]:
         """Retrieves a user by their registered email address."""
-        return self.db.query(User).options(joinedload(User.profile)).filter(User.email == email).first()  # type: ignore[no-any-return]
+        return self.user_repo.get_by_email(email)
 
     def get_users(self, skip: int = 0, limit: int = 100) -> List[User]:
         """Retrieves a list of users with pagination."""
-        return self.db.query(User).options(joinedload(User.profile)).offset(skip).limit(limit).all()  # type: ignore[no-any-return]
+        return self.user_repo.get_all_with_profiles(skip=skip, limit=limit)
 
     def create_user(self, obj_in: Union[Dict[str, Any], Any]) -> User:
         """Creates a new user and an associated empty profile."""
