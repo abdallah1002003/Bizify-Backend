@@ -97,6 +97,12 @@ services:
     restart: unless-stopped
     ports:
       - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
 
   # ---------------------------------------------------------------------------
   # Background Worker
@@ -108,8 +114,10 @@ services:
       target: runtime
     restart: unless-stopped
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     env_file:
       - .env
     environment:
