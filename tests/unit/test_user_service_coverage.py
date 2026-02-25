@@ -118,10 +118,22 @@ def test_missing_profile_crud(db: Session, test_user):
     # update_user_profile_by_user_id (existing)
     svc.update_user_profile_by_user_id(test_user.id, {"bio": "by_user"}, performer_id=test_user.id)
     
-    # update_user_profile_by_user_id (new creation branch)
+    # update_user_profile_by_user_id (new creation branch — needs a real user to satisfy the FK)
     import uuid
-    new_uuid = uuid.uuid4()
-    new_prof = svc.update_user_profile_by_user_id(new_uuid, {"bio": "brand new"}, performer_id=test_user.id)
+    from app.core.security import get_password_hash as _hash
+    import app.models as _models
+    ghost_user = _models.User(
+        email=f"ghost_{uuid.uuid4().hex[:8]}@ex.com",
+        password_hash=_hash("ghostpass"),
+        name="Ghost User",
+        role="entrepreneur",
+        is_active=True,
+        is_verified=True,
+    )
+    db.add(ghost_user)
+    db.commit()
+    db.refresh(ghost_user)
+    new_prof = svc.update_user_profile_by_user_id(ghost_user.id, {"bio": "brand new"}, performer_id=test_user.id)
     assert new_prof is not None
     
     # delete_user_profile

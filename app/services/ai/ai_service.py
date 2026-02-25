@@ -7,6 +7,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.models import Agent, AgentRun, Business, BusinessRoadmap, Embedding, RoadmapStage, ValidationLog
+from app.services.ai import provider_runtime  # noqa: F401 — exposed for monkeypatching in tests
 from app.services.ai.agent_run_service import AgentRunService
 from app.services.ai.embedding_service import EmbeddingService
 from app.services.billing.usage_service import UsageService
