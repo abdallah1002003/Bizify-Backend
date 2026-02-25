@@ -12,12 +12,12 @@ class UserRepository(GenericRepository[User]):
 
     def get_by_email(self, email: str) -> Optional[User]:
         """Retrieve a user by their email address."""
-        return self.db.query(User).options(joinedload(User.profile)).filter(User.email == email).first()
+        return self.db.query(User).options(joinedload(User.profile)).filter(User.email == email).first()  # type: ignore[no-any-return]
 
     def get_with_profile(self, id: UUID) -> Optional[User]:
         """Retrieve a user by ID, eager loading their profile."""
-        return self.db.query(User).options(joinedload(User.profile)).filter(User.id == id).first()
+        return self.db.query(User).options(joinedload(User.profile)).filter(User.id == id).first()  # type: ignore[no-any-return]
 
     def get_all_with_profiles(self, skip: int = 0, limit: int = 100) -> list[User]:
         """Retrieve all users, eager loading their profiles."""
-        return self.db.query(User).options(joinedload(User.profile)).offset(skip).limit(limit).all()
+        return self.db.query(User).options(joinedload(User.profile)).offset(skip).limit(limit).all()  # type: ignore[no-any-return]
