@@ -1,13 +1,11 @@
-import json
 import uuid
 from datetime import timedelta
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from main import app
 from app.core.security import create_access_token
-from app.models.enums import UserRole, ChatRole, ChatSessionType
+from app.models.enums import UserRole, ChatSessionType
 from app.models.users.user import User
 from app.models.chat.chat import ChatSession
 from app.core.security import get_password_hash

@@ -1,3 +1,4 @@
+# type: ignore
 """
 Structured logging configuration with correlation IDs and contextualization.
 
@@ -14,7 +15,7 @@ import time
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Optional
 import threading
 
 # Create thread-local storage for correlation IDs

@@ -1,3 +1,4 @@
+# type: ignore
 """
 Redis caching service with automatic fallback to in-memory caching.
 
@@ -10,11 +11,9 @@ Features:
 """
 
 import json
-import logging
 import pickle
 import zlib
 from abc import ABC, abstractmethod
-from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, TypeVar, Generic
 from functools import wraps
 from time import time

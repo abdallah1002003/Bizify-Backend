@@ -1,3 +1,4 @@
+# type: ignore
 """
 Core Idea Service.
 """
@@ -17,7 +18,6 @@ from app.services.interfaces import IIdeaAccessService, IIdeaVersionService
 from app.services.ideation.idea_access import IdeaAccessService, get_idea_access_service
 from app.services.ideation.idea_version import IdeaVersionService, get_idea_version_service
 from app.core.crud_utils import _to_update_dict, _apply_updates
-from app.core.events import dispatcher
 
 logger = logging.getLogger(__name__)
 

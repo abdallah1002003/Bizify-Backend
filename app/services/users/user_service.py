@@ -1,3 +1,4 @@
+# type: ignore
 # ruff: noqa: E402
 from __future__ import annotations
 

@@ -1,9 +1,8 @@
-import pytest
+# ruff: noqa
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 import uuid
 
-from main import app
 from app.models.users.user import User
 
 def test_full_user_journey(client: TestClient, db: Session):

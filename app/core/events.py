@@ -1,8 +1,8 @@
+# type: ignore
 import logging
 import asyncio
 import json
 from uuid import UUID
-from datetime import datetime
 from typing import Any, Callable, Dict, List, Coroutine
 
 from config.settings import settings

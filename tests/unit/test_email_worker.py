@@ -1,5 +1,4 @@
 import pytest
-import asyncio
 from unittest.mock import patch, MagicMock
 from app.services.core.email_worker import process_email_queue
 from app.models.core.core import EmailMessage

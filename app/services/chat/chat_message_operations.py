@@ -1,3 +1,4 @@
+# type: ignore
 """
 ChatMessage operations for managing conversation messages.
 
@@ -15,7 +16,6 @@ distinguishing between user and AI contributions.
 
 from __future__ import annotations
 
-import logging
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 

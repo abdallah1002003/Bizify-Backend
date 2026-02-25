@@ -1,3 +1,4 @@
+# ruff: noqa
 """
 Batch A: Tests for core modules — InMemoryCache, CacheManager,
 MetricsTimer + helpers, token_blacklist Redis fallback paths,

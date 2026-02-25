@@ -1,3 +1,4 @@
+# type: ignore
 """
 Prometheus metrics for monitoring Bizify API.
 

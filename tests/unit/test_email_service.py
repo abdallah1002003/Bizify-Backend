@@ -9,7 +9,6 @@ These tests verify that:
 
 import asyncio
 import importlib
-import pytest
 
 
 # ---------------------------------------------------------------------------

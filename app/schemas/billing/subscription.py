@@ -12,7 +12,7 @@ relationships between users, plans, and usage limits.
 
 from app.models.enums import SubscriptionStatus
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from uuid import UUID
 

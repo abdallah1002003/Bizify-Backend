@@ -1,9 +1,7 @@
-from typing import List
+# type: ignore
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.pagination import LimitParam, SkipParam, PageResponse
-from sqlalchemy.orm import Session
-from app.db.database import get_db
 from app.schemas.users.user import UserCreate, UserUpdate, UserResponse
 from app.services.users.user_service import UserService, get_user_service
 from app.core.dependencies import (

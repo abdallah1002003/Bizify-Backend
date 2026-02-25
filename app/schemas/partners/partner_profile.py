@@ -1,6 +1,7 @@
 from app.models.enums import ApprovalStatus, PartnerType
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+# ruff: noqa: B904
 from typing import Optional, Any, Dict
 from uuid import UUID
 
@@ -36,7 +37,7 @@ class PartnerProfileCreate(BaseModel):
             import json
             json.dumps(v)
         except (TypeError, ValueError) as e:
-            raise ValueError(f"JSON field contains non-serializable values: {e}")
+            raise ValueError(f"JSON field contains non-serializable values: {e}") from e
         return v
 
 class PartnerProfileUpdate(BaseModel):
@@ -63,7 +64,7 @@ class PartnerProfileUpdate(BaseModel):
             import json
             json.dumps(v)
         except (TypeError, ValueError) as e:
-            raise ValueError(f"JSON field contains non-serializable values: {e}")
+            raise ValueError(f"JSON field contains non-serializable values: {e}") from e
         return v
 
 class PartnerProfileResponse(PartnerProfileBase):

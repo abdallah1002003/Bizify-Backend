@@ -12,7 +12,6 @@ Example patterns:
 
 from typing import Optional
 from pydantic import BaseModel, Field
-from fastapi import APIRouter, HTTPException, status
 
 # ============================================================================
 # Common Response Models for Consistency

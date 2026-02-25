@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 from uuid import uuid4
 
 import pytest
@@ -6,7 +5,6 @@ import pytest
 import app.models as models
 from app.core.security import get_password_hash
 from app.models.enums import SubscriptionStatus, PaymentStatus, UserRole
-from app.services.billing import billing_service
 from app.services.billing import payment_method as payment_method_service
 from app.services.billing import payment_service
 from app.services.billing import plan_service

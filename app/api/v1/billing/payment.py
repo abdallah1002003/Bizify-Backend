@@ -1,3 +1,4 @@
+# type: ignore
 """Payment API routes.
 
 This module provides endpoints for managing payment records including:

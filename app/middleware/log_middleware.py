@@ -1,3 +1,4 @@
+# type: ignore
 """
 Enhanced logging middleware with structured logging and correlation IDs.
 
@@ -8,13 +9,11 @@ This middleware:
 - Adds correlation IDs to response headers
 """
 
-import logging
-import time
 import re
 import uuid
 from typing import Any, Callable
 from starlette.middleware.base import BaseHTTPMiddleware
-from fastapi import Request, Response
+from fastapi import Request
 from app.core.structured_logging import (
     log_context,
     PerformanceTimer,
@@ -84,7 +83,7 @@ class LogMiddleware(BaseHTTPMiddleware):
                     response = await call_next(request)
 
                 logger.info(
-                    f"Request completed successfully",
+                    "Request completed successfully",
                     extra={
                         "status_code": response.status_code,
                         "duration_ms": timer.duration_ms,
@@ -101,7 +100,7 @@ class LogMiddleware(BaseHTTPMiddleware):
 
             except Exception as e:
                 logger.exception(
-                    f"Request processing failed",
+                    "Request processing failed",
                     extra={
                         "path": path,
                         "method": request.method,

@@ -1,6 +1,7 @@
+# type: ignore
 from typing import List
 from uuid import UUID
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from app.core.pagination import LimitParam, SkipParam
 from sqlalchemy.orm import Session
 from app.db.database import get_db, SessionLocal

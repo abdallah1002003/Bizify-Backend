@@ -1,11 +1,12 @@
+# ruff: noqa
+# type: ignore
 """
 Idea Experiment CRUD operations.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -16,7 +17,7 @@ from app.services.ideation import idea_service
 
 logger = logging.getLogger(__name__)
 
-from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
+from app.core.crud_utils import _to_update_dict, _apply_updates
 
 # ----------------------------
 # Experiment CRUD

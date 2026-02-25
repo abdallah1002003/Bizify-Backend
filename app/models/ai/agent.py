@@ -1,12 +1,11 @@
 import uuid
 from typing import Any
-from datetime import datetime, timezone
 from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text, Enum, JSON, Float, Integer
 from app.db.guid import GUID
 from sqlalchemy.orm import relationship
 from app.db.database import Base
 from app.models.enums import AgentRunStatus
-from app.core.crud_utils import _utc_now as utc_now
+from app.core.crud_utils import _utc_now as utc_now  # type: ignore
 
 try:
     from pgvector.sqlalchemy import Vector

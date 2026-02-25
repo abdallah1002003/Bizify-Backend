@@ -6,10 +6,9 @@ Covers all three cleanup functions and the cleanup_all aggregate.
 
 from datetime import datetime, timedelta, timezone
 
-import pytest
 
 import app.models as models
-from app.core.security import get_password_hash, create_email_verification_token, create_password_reset_token
+from app.core.security import get_password_hash
 from app.services.core.cleanup_service import (
     cleanup_all,
     cleanup_expired_refresh_tokens,

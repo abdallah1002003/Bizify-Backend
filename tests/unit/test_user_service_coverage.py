@@ -2,8 +2,6 @@ import pytest
 from uuid import uuid4
 from sqlalchemy.orm import Session
 from app.services.users.user_service import UserService, get_user, update_user
-from app.models.users.user import User, AdminActionLog
-from app.models.enums import UserRole
 
 def test_record_admin_action_no_target_id(db: Session):
     svc = UserService(db)

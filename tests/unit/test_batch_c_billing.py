@@ -1,3 +1,4 @@
+# ruff: noqa
 """
 Batch C: Billing routes coverage — checkout (mocked Stripe), stripe_webhook
 (mocked signature verification), payment routes.

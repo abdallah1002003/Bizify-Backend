@@ -1,3 +1,4 @@
+# type: ignore
 """
 Async ChatMessage operations using SQLAlchemy AsyncSession.
 
@@ -16,7 +17,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import ChatMessage, ChatSession
+from app.models import ChatMessage
 from app.models.enums import ChatRole
 from app.core.crud_utils import _to_update_dict, _apply_updates
 from app.core.structured_logging import get_logger

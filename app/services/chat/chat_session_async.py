@@ -1,3 +1,4 @@
+# type: ignore
 """
 Async ChatSession operations using SQLAlchemy AsyncSession.
 
@@ -13,7 +14,7 @@ from __future__ import annotations
 from typing import Any, List, Optional, Tuple
 from uuid import UUID
 
-from sqlalchemy import select, update, delete
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import ChatSession

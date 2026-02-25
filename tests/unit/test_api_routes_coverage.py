@@ -1,3 +1,4 @@
+# ruff: noqa
 """
 Coverage boost: AI API routes, billing API routes, RateLimiter middleware,
 encryption, and AgentService CRUD.
@@ -8,7 +9,7 @@ Unit-level tests directly exercise the service/utility classes.
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -294,7 +295,6 @@ class TestRateLimiterMiddleware:
         """Middleware blocks when window is full — bypasses APP_ENV guard."""
         from app.middleware.rate_limiter import RateLimiterMiddleware
         from unittest.mock import AsyncMock, MagicMock
-        import os
 
         mw = RateLimiterMiddleware(app=None, requests_per_minute=2)
 

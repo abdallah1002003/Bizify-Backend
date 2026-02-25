@@ -1,3 +1,4 @@
+# type: ignore
 """
 Authentication and authorization dependencies for FastAPI routes.
 

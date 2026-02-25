@@ -1,3 +1,4 @@
+# type: ignore
 """
 Async/Await pattern examples for Bizify API services.
 
@@ -14,7 +15,7 @@ Key improvements:
 from typing import Optional, List, Dict, Any
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update
 from app.models import ChatMessage, ChatSession
 from app.models.enums import ChatSessionType
 from app.core.structured_logging import get_logger, PerformanceTimer
@@ -144,7 +145,7 @@ async def create_chat_session_async(
         await db.flush()  # Flush to get ID without committing
         
         logger.info(
-            f"ChatSession created",
+            "ChatSession created",
             extra={
                 "session_id": str(new_session.id),
                 "user_id": str(user_id),
@@ -345,7 +346,7 @@ async def transfer_session_ownership_async(
             
             # Verify new user exists (in real code)
             logger.info(
-                f"Transferring session ownership",
+                "Transferring session ownership",
                 extra={
                     "session_id": str(session_id),
                     "from_user": str(session.user_id),

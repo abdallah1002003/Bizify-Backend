@@ -6,8 +6,6 @@ Integration tests for the auth email flow:
   - Full reset flow: forgot → reset-password
 """
 
-import pytest
-from unittest.mock import AsyncMock, patch
 
 
 # ---------------------------------------------------------------------------

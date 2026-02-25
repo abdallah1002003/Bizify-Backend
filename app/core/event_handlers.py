@@ -1,3 +1,4 @@
+# type: ignore
 import logging
 from app.services.ideation.idea_version import register_idea_version_handlers
 from app.services.business.business_roadmap import register_business_roadmap_handlers

@@ -9,7 +9,6 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
-import pgvector.sqlalchemy
 revision: str = '54033c1a85e8'
 down_revision: Union[str, None] = 'c420a8a9fc2f'
 branch_labels: Union[str, Sequence[str], None] = None

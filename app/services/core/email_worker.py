@@ -7,7 +7,7 @@ from sqlalchemy import select, or_
 from config.settings import settings
 from app.db.database import SessionLocal
 from app.models.core.core import EmailMessage
-from app.core.crud_utils import _utc_now
+from app.core.crud_utils import _utc_now  # type: ignore
 
 logger = logging.getLogger(__name__)
 

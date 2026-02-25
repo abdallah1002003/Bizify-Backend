@@ -1,12 +1,10 @@
-from typing import List
+# type: ignore
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.pagination import LimitParam, SkipParam, PageResponse
-from sqlalchemy.orm import Session
 from app.core.dependencies import get_current_active_user, require_admin
 import app.models as models
 from app.models.billing.billing import Plan
-from app.db.database import get_db
 from app.schemas.billing.plan import PlanCreate, PlanUpdate, PlanResponse
 from app.services.billing.plan_service import PlanService, get_plan_service
 

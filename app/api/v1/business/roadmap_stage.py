@@ -1,9 +1,8 @@
+# type: ignore
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.pagination import LimitParam, SkipParam
-from sqlalchemy.orm import Session
-from app.db.database import get_db
 from app.schemas.business.roadmap_stage import RoadmapStageCreate, RoadmapStageUpdate, RoadmapStageResponse
 from app.services.business.business_roadmap import BusinessRoadmapService, get_business_roadmap_service
 

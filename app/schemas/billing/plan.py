@@ -31,7 +31,7 @@ class PlanCreate(BaseModel):
             import json
             json.dumps(v)
         except (TypeError, ValueError) as e:
-            raise ValueError(f"features_json contains non-serializable values: {e}")
+            raise ValueError(f"features_json contains non-serializable values: {e}") from e
         return v
 
 class PlanUpdate(BaseModel):
@@ -54,7 +54,7 @@ class PlanUpdate(BaseModel):
             import json
             json.dumps(v)
         except (TypeError, ValueError) as e:
-            raise ValueError(f"features_json contains non-serializable values: {e}")
+            raise ValueError(f"features_json contains non-serializable values: {e}") from e
         return v
 
 class PlanResponse(PlanBase):

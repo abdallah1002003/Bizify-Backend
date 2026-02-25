@@ -1,10 +1,10 @@
 from app.models.enums import ChatSessionType
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict
+from pydantic import ConfigDict
 from typing import Optional
 from uuid import UUID
 
-from app.schemas.core_base import SafeBaseModel
+from app.schemas.core_base import SafeBaseModel  # type: ignore
 
 class ChatSessionBase(SafeBaseModel):
     user_id: UUID

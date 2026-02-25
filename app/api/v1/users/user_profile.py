@@ -1,9 +1,8 @@
+# type: ignore
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.pagination import LimitParam, SkipParam
-from sqlalchemy.orm import Session
-from app.db.database import get_db
 from app.models.enums import UserRole
 from app.schemas.users.user_profile import UserProfileCreate, UserProfileUpdate, UserProfileResponse
 from app.services.users.user_service import UserService, get_user_service

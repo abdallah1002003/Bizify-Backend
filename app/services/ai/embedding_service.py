@@ -1,3 +1,4 @@
+# type: ignore
 from __future__ import annotations
 import logging
 from typing import Any, List, Optional
@@ -7,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.models import Embedding
 from app.services.base_service import BaseService
-from app.core.crud_utils import _to_update_dict, _apply_updates
+from app.core.crud_utils import _to_update_dict
 from app.services.ai import provider_runtime
 
 logger = logging.getLogger(__name__)

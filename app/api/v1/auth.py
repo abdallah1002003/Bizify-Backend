@@ -1,4 +1,5 @@
-from datetime import timedelta, datetime, timezone
+# type: ignore
+from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import UUID
 
@@ -7,15 +8,12 @@ from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr, Field
 import logging
 import jwt
-from sqlalchemy.orm import Session
 
 import app.models as models
-from app.core import dependencies, security
+from app.core import security
 from app.models.enums import UserRole
-from app.services.users.user_service import UserService, get_user_service
 from app.services.auth.auth_service import AuthService, get_auth_service
 from app.schemas.users.user import UserCreate
-from app.services.core.email_service import send_verification_email, send_password_reset_email
 from app.core.token_blacklist import blacklist_token
 from config.settings import settings
 

@@ -13,10 +13,8 @@ from app.core.exceptions import (
     ValidationError,
     ResourceNotFoundError,
     AccessDeniedError,
-    InvalidStateError,
-    DatabaseError
+    InvalidStateError
 )
-from app.models.enums import SubscriptionStatus
 from app.services.billing import subscription_service
 
 

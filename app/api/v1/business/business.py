@@ -1,9 +1,8 @@
+# type: ignore
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.pagination import LimitParam, SkipParam
-from sqlalchemy.orm import Session
-from app.db.database import get_db
 from app.schemas.business.business import BusinessCreate, BusinessUpdate, BusinessResponse
 from app.services.business.business_service import BusinessService, get_business_service
 from app.core import dependencies

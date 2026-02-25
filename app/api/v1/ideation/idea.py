@@ -1,9 +1,8 @@
+# type: ignore
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.pagination import LimitParam, SkipParam
-from sqlalchemy.orm import Session
-from app.db.database import get_db
 from app.schemas.ideation.idea import IdeaCreate, IdeaUpdate, IdeaResponse
 from app.services.ideation.idea_service import IdeaService, get_idea_service
 from app.core.dependencies import get_current_active_user

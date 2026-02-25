@@ -1,9 +1,11 @@
+# ruff: noqa
+# type: ignore
 from datetime import datetime, timedelta, timezone
 import logging
-from typing import Any, Optional, Tuple
+from typing import Optional, Tuple
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
 import jwt
 

@@ -6,7 +6,6 @@ subscriptions, token blacklisting, and repository pattern).
 All tests use the shared conftest fixtures (client, auth_headers, test_user).
 """
 import uuid
-import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 

@@ -1,10 +1,10 @@
 from app.models.enums import IdeaStatus
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 from typing import Optional
 from uuid import UUID
 
-from app.schemas.core_base import SafeBaseModel
+from app.schemas.core_base import SafeBaseModel  # type: ignore
 
 class IdeaBase(SafeBaseModel):
     owner_id: UUID

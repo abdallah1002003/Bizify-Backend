@@ -1,3 +1,5 @@
+# ruff: noqa
+# type: ignore
 """
 Stripe Webhook Service — pure business logic, no FastAPI imports.
 

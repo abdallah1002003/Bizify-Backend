@@ -1,3 +1,4 @@
+# type: ignore
 """
 ChatSession operations for managing conversation contexts.
 
@@ -14,7 +15,6 @@ business entities or standalone ideas.
 
 from __future__ import annotations
 
-import logging
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 

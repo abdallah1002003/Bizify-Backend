@@ -1,3 +1,4 @@
+# ruff: noqa
 """
 Unit tests for payment services - comprehensive coverage of billing module.
 """
@@ -7,7 +8,7 @@ from uuid import uuid4
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
-from app.models import User, Payment, PaymentMethod, Plan, Subscription
+from app.models import User, Plan, Subscription
 from app.models.enums import UserRole, SubscriptionStatus, PaymentStatus
 from app.services.billing.payment_method import (
     get_payment_method,

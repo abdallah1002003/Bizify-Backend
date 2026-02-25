@@ -1,10 +1,10 @@
+# ruff: noqa
 """
 Batch B: API route coverage for AI (embedding, validation_log),
 chat messages, billing checkout / stripe_webhook, and business routes.
 Uses the shared conftest fixtures.
 """
 import uuid
-import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 

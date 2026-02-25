@@ -6,7 +6,7 @@ from typing import List, Optional
 from sqlalchemy import String, Boolean, DateTime, ForeignKey, Enum, JSON, Float, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.guid import GUID
-from app.core.encryption import EncryptedString
+from app.core.encryption import EncryptedString  # type: ignore
 from app.db.database import Base
 from app.models.enums import SubscriptionStatus, PaymentStatus
 from config.settings import settings

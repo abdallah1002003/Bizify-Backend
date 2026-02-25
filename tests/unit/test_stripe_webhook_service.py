@@ -5,8 +5,6 @@ We mock the stripe.Webhook.construct_event and test the dispatch / handler
 logic directly against the in-memory SQLite test DB.
 """
 
-from unittest.mock import MagicMock, patch
-import pytest
 
 from app.services.billing.stripe_webhook_service import (
     dispatch,

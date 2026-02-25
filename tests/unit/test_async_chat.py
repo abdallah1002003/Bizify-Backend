@@ -1,15 +1,12 @@
 import pytest
 import uuid
-from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 from app.models import ChatMessage, ChatSession
 from app.models.enums import ChatRole, ChatSessionType
 from app.services.chat.chat_session_async import (
     get_chat_session_async,
     create_chat_session_async,
-    update_chat_session_async,
-    delete_chat_session_async,
     get_chat_sessions_by_user_async,
 )
 from app.services.chat.chat_message_async import (

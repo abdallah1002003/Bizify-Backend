@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+# type: ignore
 import logging
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -10,7 +10,7 @@ from app.db.database import get_db
 from app.models import BusinessCollaborator
 from app.models.enums import CollaboratorRole
 from app.services.base_service import BaseService
-from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
+from app.core.crud_utils import _to_update_dict, _apply_updates
 from app.core.events import dispatcher
 
 logger = logging.getLogger(__name__)

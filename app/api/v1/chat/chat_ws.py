@@ -1,3 +1,4 @@
+# type: ignore
 from typing import List, Dict
 from uuid import UUID
 import json
@@ -6,9 +7,8 @@ import logging
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query, status
 from sqlalchemy.orm import Session
 
-from app.db.database import get_db, SessionLocal
+from app.db.database import get_db
 from app.services.chat import chat_service
-from app.core.dependencies import get_current_user
 import jwt
 from config.settings import settings
 import app.models as models

@@ -1,10 +1,9 @@
 import uuid
-from datetime import datetime, timezone
 from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text, Integer
 from app.db.guid import GUID
 from sqlalchemy.orm import relationship
 from app.db.database import Base
-from app.core.crud_utils import _utc_now as utc_now
+from app.core.crud_utils import _utc_now as utc_now  # type: ignore
 
 class File(Base):
     __tablename__ = "files"

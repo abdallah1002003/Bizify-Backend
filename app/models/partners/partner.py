@@ -1,11 +1,10 @@
 import uuid
-from datetime import datetime, timezone
 from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Enum, JSON
 from app.db.guid import GUID
 from sqlalchemy.orm import relationship
 from app.db.database import Base
 from app.models.enums import PartnerType, ApprovalStatus, RequestStatus
-from app.core.crud_utils import _utc_now as utc_now
+from app.core.crud_utils import _utc_now as utc_now  # type: ignore
 
 class PartnerProfile(Base):
     __tablename__ = "partner_profiles"

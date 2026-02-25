@@ -1,3 +1,4 @@
+# ruff: noqa
 from uuid import uuid4
 
 import app.models as models

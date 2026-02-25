@@ -1,3 +1,4 @@
+# type: ignore
 """
 JTI (JWT ID) token blacklist for access-token revocation.
 

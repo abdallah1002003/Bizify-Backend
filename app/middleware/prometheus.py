@@ -1,7 +1,6 @@
 from prometheus_fastapi_instrumentator import Instrumentator, metrics
 from prometheus_client import Counter, Histogram, Gauge
 from fastapi import FastAPI
-from typing import Any
 
 # Custom Metrics
 # 1. User registrations

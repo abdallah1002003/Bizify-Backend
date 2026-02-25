@@ -1,5 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, field_validator
+# ruff: noqa: B904
 from typing import Optional, Any, Dict
 from uuid import UUID
 
@@ -27,7 +28,7 @@ class UserProfileBase(SafeBaseModel):
             import json
             json.dumps(v)
         except (TypeError, ValueError) as e:
-            raise ValueError(f"JSON field contains non-serializable values: {e}")
+            raise ValueError(f"JSON field contains non-serializable values: {e}") from e
         return v
 
 class UserProfileCreate(SafeBaseModel):
@@ -51,7 +52,7 @@ class UserProfileCreate(SafeBaseModel):
             import json
             json.dumps(v)
         except (TypeError, ValueError) as e:
-            raise ValueError(f"JSON field contains non-serializable values: {e}")
+            raise ValueError(f"JSON field contains non-serializable values: {e}") from e
         return v
 
 class UserProfileUpdate(SafeBaseModel):
@@ -77,7 +78,7 @@ class UserProfileUpdate(SafeBaseModel):
             import json
             json.dumps(v)
         except (TypeError, ValueError) as e:
-            raise ValueError(f"JSON field contains non-serializable values: {e}")
+            raise ValueError(f"JSON field contains non-serializable values: {e}") from e
         return v
 
 class UserProfileResponse(UserProfileBase):

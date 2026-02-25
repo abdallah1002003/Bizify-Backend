@@ -5,10 +5,8 @@ Verifies that each custom exception type is translated to the correct
 HTTP status code and error_code without leaking internal details.
 """
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from pydantic import ValidationError as PydanticValidationError
 
 from app.middleware.error_handler import ErrorHandlerMiddleware
 

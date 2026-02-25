@@ -8,7 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.guid import GUID
 from app.db.database import Base
 from app.models.enums import BusinessStage, CollaboratorRole, InviteStatus, StageType, RoadmapStageStatus
-from app.core.crud_utils import _utc_now as utc_now
+from app.core.crud_utils import _utc_now as utc_now  # type: ignore
 from app.models.mixins import TimestampMixin, SoftDeleteMixin
 
 class Business(Base, TimestampMixin, SoftDeleteMixin):

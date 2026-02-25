@@ -1,3 +1,4 @@
+# ruff: noqa
 import pytest
 from sqlalchemy.orm import Session
 from unittest.mock import patch

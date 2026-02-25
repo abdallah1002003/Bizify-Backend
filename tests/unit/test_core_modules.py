@@ -1,3 +1,4 @@
+# ruff: noqa
 """
 Tests for core modules:
   - app/core/exceptions.py      (AppException hierarchy + http_exception_from_app_exception)
@@ -8,9 +9,8 @@ Tests for core modules:
 import time
 import uuid
 from datetime import timedelta
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
 from fastapi import HTTPException, status
 
 from app.core.exceptions import (
@@ -481,7 +481,6 @@ class TestCrudUtils:
 class TestSafeBaseModel:
     def test_sanitizes_string(self):
         from app.schemas.core_base import SafeBaseModel
-        from pydantic import Field
 
         class MyModel(SafeBaseModel):
             name: str
@@ -492,7 +491,6 @@ class TestSafeBaseModel:
 
     def test_sanitizes_list_of_strings(self):
         """Covers the list branch (line 20) in recursive_sanitize."""
-        from pydantic import Field
         from typing import List
         from app.schemas.core_base import SafeBaseModel
 

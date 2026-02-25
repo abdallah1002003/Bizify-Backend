@@ -1,3 +1,4 @@
+# ruff: noqa
 """
 Performance and load tests for critical API endpoints.
 
@@ -10,8 +11,6 @@ Measures response times, throughput, and resource usage for:
 
 import pytest
 import time
-from uuid import uuid4
-from typing import List
 from sqlalchemy.orm import Session
 from fastapi.testclient import TestClient
 

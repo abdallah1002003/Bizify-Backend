@@ -14,7 +14,7 @@ from app.models import Plan
 from app.db.database import get_db
 from app.services.base_service import BaseService
 from app.services.billing.crud_utils import get_by_id, list_records
-from app.core.crud_utils import _to_update_dict, _apply_updates
+from app.core.crud_utils import _to_update_dict, _apply_updates  # type: ignore
 
 logger = logging.getLogger(__name__)
 

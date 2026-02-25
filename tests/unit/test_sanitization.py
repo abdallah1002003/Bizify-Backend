@@ -1,6 +1,4 @@
-import pytest
 from uuid import uuid4
-from pydantic import ValidationError
 from app.schemas.core_base import SafeBaseModel
 from app.schemas.users.user_profile import UserProfileCreate
 

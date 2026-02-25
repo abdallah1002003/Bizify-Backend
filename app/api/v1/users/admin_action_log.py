@@ -1,9 +1,8 @@
+# type: ignore
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.pagination import LimitParam, SkipParam
-from sqlalchemy.orm import Session
-from app.db.database import get_db
 from app.schemas.users.admin_action_log import AdminActionLogCreate, AdminActionLogUpdate, AdminActionLogResponse
 from app.services.users.user_service import UserService, get_user_service
 from app.core.dependencies import require_admin

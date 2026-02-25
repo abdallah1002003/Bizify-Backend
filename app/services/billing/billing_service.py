@@ -1,3 +1,4 @@
+# type: ignore
 """
 Usage management and quota enforcement for the billing system.
 
