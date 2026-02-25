@@ -10,7 +10,7 @@ from app.models.enums import AgentRunStatus
 from app.services.base_service import BaseService
 from app.services.interfaces import IBillingService
 from app.services.billing.usage_service import get_usage_service
-from app.services.billing.billing_service import _to_update_dict, _apply_updates
+from app.core.crud_utils import _to_update_dict, _apply_updates
 from app.services.ai import provider_runtime
 from app.core.events import dispatcher
 

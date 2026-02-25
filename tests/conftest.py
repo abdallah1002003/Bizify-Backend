@@ -173,3 +173,91 @@ def user_subscription(test_user, db):
         plan_id=plan.id
     ))
     return subscription
+
+
+# =============================================================================
+# Factory helpers — reusable across test modules
+# =============================================================================
+
+def make_user(db, *, email=None, role: str = "entrepreneur", **overrides):
+    """
+    Factory: create and persist a User with sensible defaults.
+
+    Args:
+        db: SQLAlchemy session
+        email: unique email — auto-generated when omitted
+        role: user role string (default: 'entrepreneur')
+        **overrides: any User field to override
+
+    Returns:
+        Persisted User instance
+    """
+    import uuid as _uuid
+    from app.core.security import get_password_hash as _hash
+
+    data = {
+        "email": email or f"user_{_uuid.uuid4().hex[:8]}@factory.test",
+        "password_hash": _hash("factory_pass_123"),
+        "name": "Factory User",
+        "role": role,
+        "is_active": True,
+        "is_verified": True,
+        **overrides,
+    }
+    user = models.User(**data)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def make_business(db, owner_id, *, stage: str = "early", **overrides):
+    """
+    Factory: create and persist a Business and its default roadmap.
+
+    Args:
+        db: SQLAlchemy session
+        owner_id: UUID of the business owner
+        stage: BusinessStage string (default: 'early')
+        **overrides: any Business field to override
+
+    Returns:
+        Persisted Business instance
+    """
+    from app.models.enums import BusinessStage
+    from app.services.business.business_service import get_business_service_manual
+
+    stage_enum = BusinessStage(stage) if isinstance(stage, str) else stage
+    svc = get_business_service_manual(db)
+
+    class _In:
+        def model_dump(self, **_):
+            return {"owner_id": owner_id, "stage": stage_enum, **overrides}
+
+    return svc.create_business(_In())
+
+
+def make_plan(db, *, name: str = "Test Plan", price: float = 9.99, **overrides):
+    """
+    Factory: create and persist a billing Plan.
+
+    Args:
+        db: SQLAlchemy session
+        name: plan name (default: 'Test Plan')
+        price: plan price in USD (default: 9.99)
+        **overrides: any Plan field to override
+
+    Returns:
+        Persisted Plan instance
+    """
+    plan = models.Plan(
+        name=name,
+        price=price,
+        features_json=overrides.pop("features_json", {}),
+        is_active=overrides.pop("is_active", True),
+        **overrides,
+    )
+    db.add(plan)
+    db.commit()
+    db.refresh(plan)
+    return plan

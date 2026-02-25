@@ -249,3 +249,32 @@ def delete_payment(
         raise HTTPException(status_code=404, detail="Payment not found")
     _ensure_payment_owner(db_obj, current_user)
     return service.delete_payment(db, id=id)
+
+@router.post("/{id}/refund", response_model=PaymentResponse)
+def refund_payment(
+    id: UUID,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+):
+    """Refund a specific payment.
+    
+    Args:
+        id: The UUID of the payment to refund
+        db: Database session
+        current_user: The authenticated user
+        
+    Returns:
+        The updated Payment record with REFUNDED status
+        
+    Raises:
+        HTTPException: 404 if payment not found
+        HTTPException: 403 if user doesn't own the payment
+    """
+    db_obj = service.get_payment(db, id=id)
+    if not db_obj:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    _ensure_payment_owner(db_obj, current_user)
+    
+    service.handle_payment_reversal(db, payment_id=id)
+    db.refresh(db_obj)
+    return db_obj

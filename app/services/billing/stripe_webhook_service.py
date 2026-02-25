@@ -96,7 +96,7 @@ def handle_subscription_deleted(db: Session, data: Dict[str, Any]) -> None:
         logger.warning("No local Subscription found for Stripe sub %s — skipping", stripe_sub_id)
         return
 
-    sub.status = SubscriptionStatus.CANCELLED
+    sub.status = SubscriptionStatus.CANCELED
     db.commit()
     logger.info("Subscription %s cancelled", sub.id)
 
@@ -114,7 +114,7 @@ def handle_subscription_updated(db: Session, data: Dict[str, Any]) -> None:
     stripe_status = data.get("status", "")
     status_map = {
         "active": SubscriptionStatus.ACTIVE,
-        "canceled": SubscriptionStatus.CANCELLED,
+        "canceled": SubscriptionStatus.CANCELED,
         "past_due": SubscriptionStatus.EXPIRED,
         "unpaid": SubscriptionStatus.EXPIRED,
     }

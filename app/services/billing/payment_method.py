@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.models import PaymentMethod
 from app.services.billing.crud_utils import get_by_id, list_records
-from app.services.billing.billing_service import _to_update_dict, _apply_updates
+from app.core.crud_utils import _to_update_dict, _apply_updates
 
 logger = logging.getLogger(__name__)
 

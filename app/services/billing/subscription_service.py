@@ -16,7 +16,7 @@ from app.db.database import get_db
 from app.services.base_service import BaseService
 from app.services.billing import plan_service
 from app.services.billing.crud_utils import get_by_id, list_records
-from app.services.billing.billing_service import _utc_now, _to_update_dict, _apply_updates
+from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
 from app.core.exceptions import (
     ResourceNotFoundError,
     InvalidStateError,

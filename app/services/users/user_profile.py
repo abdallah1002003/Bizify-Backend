@@ -10,7 +10,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.models import UserProfile
-from app.services.billing.billing_service import _to_update_dict, _apply_updates
+from app.core.crud_utils import _to_update_dict, _apply_updates
 
 logger = logging.getLogger(__name__)
 

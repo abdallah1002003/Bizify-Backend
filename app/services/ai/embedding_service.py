@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.models import Embedding
 from app.services.base_service import BaseService
-from app.services.billing.billing_service import _to_update_dict, _apply_updates
+from app.core.crud_utils import _to_update_dict, _apply_updates
 from app.services.ai import provider_runtime
 
 logger = logging.getLogger(__name__)

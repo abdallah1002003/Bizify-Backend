@@ -80,12 +80,12 @@ async def test_ai_service_success_paths_and_crud(db, test_user, monkeypatch):
         "run_agent_execution",
         mock_run_agent,
     )
-    executed = await ai_service.execute_agent_run_sync(db, run.id)
+    executed = await ai_service.execute_agent_run_async(db, run.id)
     assert executed is not None
     assert executed.status == AgentRunStatus.SUCCESS
     assert executed.confidence_score == 0.88
 
-    assert await ai_service.execute_agent_run_sync(db, uuid4()) is None
+    assert await ai_service.execute_agent_run_async(db, uuid4()) is None
 
     validation_logs = ai_service.get_validation_logs(db, skip=0, limit=20)
     assert any(log.agent_run_id == run.id for log in validation_logs)
@@ -174,7 +174,7 @@ async def test_ai_service_failure_path_marks_run_failed(db, test_user, monkeypat
         raise RuntimeError("provider failure")
 
     monkeypatch.setattr(ai_service.provider_runtime, "run_agent_execution", _raise)
-    failed = await ai_service.execute_agent_run_sync(db, run.id)
+    failed = await ai_service.execute_agent_run_async(db, run.id)
     assert failed is not None
     assert failed.status == AgentRunStatus.FAILED
     assert failed.confidence_score == 0.0

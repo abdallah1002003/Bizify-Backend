@@ -13,10 +13,10 @@ POST /api/v1/billing/webhooks/stripe
 import logging
 
 import stripe
-from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi import APIRouter, Header, HTTPException, Request, Depends
 from sqlalchemy.orm import Session
 
-from app.db.database import SessionLocal
+from app.db.database import get_db
 from app.services.billing import stripe_webhook_service
 from config.settings import settings
 
@@ -34,6 +34,7 @@ router = APIRouter()
 async def stripe_webhook(
     request: Request,
     stripe_signature: str = Header(..., alias="Stripe-Signature"),
+    db: Session = Depends(get_db),
 ):
     """
     Receive and process Stripe webhook events.
@@ -66,14 +67,5 @@ async def stripe_webhook(
         logger.error("Stripe webhook payload error: %s", exc)
         raise HTTPException(status_code=400, detail="Invalid webhook payload")
 
-    db: Session = SessionLocal()
-    try:
-        stripe_webhook_service.dispatch(db, event)
-    except Exception:
-        logger.exception("Stripe webhook dispatch error for event %s", event.get("type"))
-        # Return 500 — Stripe will retry automatically
-        raise HTTPException(status_code=500, detail="Webhook processing failed")
-    finally:
-        db.close()
-
+    stripe_webhook_service.dispatch(db, event)
     return {"status": "ok", "event_type": event.get("type")}

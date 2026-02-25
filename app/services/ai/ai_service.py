@@ -13,7 +13,7 @@ from app.services.ai.agent_service import AgentService
 from app.services.ai.agent_run_service import AgentRunService
 from app.services.ai.embedding_service import EmbeddingService
 from app.services.billing.usage_service import UsageService
-from app.services.billing.billing_service import _utc_now, _to_update_dict, _apply_updates
+from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
 
 logger = logging.getLogger(__name__)
 
@@ -138,8 +138,7 @@ def initiate_agent_run(
 
 
 def update_agent_run(db: Session, db_obj: AgentRun, obj_in: Any) -> AgentRun:
-    # Adding missing generic update if needed, but AgentRunService should probably have it
-    from app.services.billing.billing_service import _to_update_dict, _apply_updates
+    """Apply partial updates to an existing AgentRun."""
     _apply_updates(db_obj, _to_update_dict(obj_in))
     db.add(db_obj)
     db.commit()
@@ -161,8 +160,7 @@ async def execute_agent_run_async(db: Session, run_id: UUID) -> Optional[AgentRu
     return await AgentRunService(db, billing).execute_agent_run_async(run_id)
 
 
-# Backward-compat alias (old name was misleading — function is async, not sync)
-execute_agent_run_sync = execute_agent_run_async
+
 
 
 def run_agent_in_background(db: Session, run_id: UUID) -> None:
@@ -197,7 +195,7 @@ def get_validation_logs(db: Session, skip: int = 0, limit: int = 100) -> List[Va
 
 
 def update_validation_log(db: Session, db_obj: ValidationLog, obj_in: Any) -> ValidationLog:
-    from app.services.billing.billing_service import _to_update_dict, _apply_updates
+    """Apply partial updates to an existing ValidationLog."""
     _apply_updates(db_obj, _to_update_dict(obj_in))
     db.add(db_obj)
     db.commit()
@@ -229,7 +227,7 @@ def create_embedding(db: Session, obj_in: Any) -> Embedding:
 
 
 def update_embedding(db: Session, db_obj: Embedding, obj_in: Any) -> Embedding:
-    from app.services.billing.billing_service import _to_update_dict, _apply_updates
+    """Apply partial updates to an existing Embedding."""
     _apply_updates(db_obj, _to_update_dict(obj_in))
     db.add(db_obj)
     db.commit()
@@ -252,7 +250,7 @@ async def trigger_vectorization(
 
 
 def get_detailed_status() -> Dict[str, Any]:
-    from app.services.billing.billing_service import _utc_now
+    """Get detailed status information for the AI service."""
     return {
         "module": "ai_service",
         "status": "operational",

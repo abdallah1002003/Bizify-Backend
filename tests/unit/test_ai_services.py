@@ -6,7 +6,7 @@ from app.models.ai.agent import Agent
 from app.models.business.business import BusinessRoadmap, RoadmapStage
 from app.models.enums import AgentRunStatus
 from app.schemas.ai.agent_run import AgentRunCreate
-from app.services.ai.ai_service import initiate_agent_run, execute_agent_run_sync, trigger_vectorization, record_validation_log
+from app.services.ai.ai_service import initiate_agent_run, execute_agent_run_async, trigger_vectorization, record_validation_log
 
 @pytest.fixture
 def test_agent(db: Session):
@@ -57,7 +57,7 @@ async def test_agent_run_lifecycle(mock_record_usage, mock_check_usage, mock_run
     assert run.status == AgentRunStatus.PENDING
     
     # 2. Execute run (Transition SUCCESS)
-    updated_run = await execute_agent_run_sync(db, run.id)
+    updated_run = await execute_agent_run_async(db, run.id)
     assert updated_run.status == AgentRunStatus.SUCCESS
     assert updated_run.confidence_score == 0.92
     
