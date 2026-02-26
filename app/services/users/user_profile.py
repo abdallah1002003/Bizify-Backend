@@ -1,5 +1,5 @@
 """
-User Profile CRUD operations.
+User Profile CRUD operations (Async).
 """
 from __future__ import annotations
 
@@ -7,23 +7,23 @@ import logging
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
-from app.models import UserProfile
+from app.models import UserProfile, AdminActionLog
 from app.core.crud_utils import _to_update_dict, _apply_updates
 
 logger = logging.getLogger(__name__)
 
 
-def _record_admin_action(
-    db: Session,
+async def _record_admin_action(
+    db: AsyncSession,
     admin_id: Optional[UUID],
     action_type: str,
     target_id: Optional[UUID],
     target_entity: str = "user_profile",
 ) -> None:
-    from app.models import AdminActionLog
-    
+    """Async admin action logging."""
     if target_id is None:
         raise ValueError("target_id is required for admin log")
 
@@ -34,39 +34,52 @@ def _record_admin_action(
         target_id=target_id,
     )
     db.add(log)
-    db.commit()
+    await db.commit()
 
 
 # ----------------------------
-# UserProfile CRUD
+# UserProfile CRUD (Async)
 # ----------------------------
 
-def get_user_profile(
-    db: Session,
+async def get_user_profile(
+    db: AsyncSession,
     id: Optional[UUID] = None,
     user_id: Optional[UUID] = None,
 ) -> Optional[UserProfile]:
+    """Get user profile by ID or user_id."""
     if id is not None:
-        return db.query(UserProfile).filter(UserProfile.id == id).first()  # type: ignore[no-any-return]
+        return await db.get(UserProfile, id)
+
     if user_id is not None:
-        return db.query(UserProfile).filter(UserProfile.user_id == user_id).first()  # type: ignore[no-any-return]
+        stmt = select(UserProfile).where(UserProfile.user_id == user_id)
+        result = await db.execute(stmt)
+        return result.scalars().first()
+    
     return None
 
 
-def get_user_profiles(db: Session, skip: int = 0, limit: int = 100) -> List[UserProfile]:
-    return db.query(UserProfile).offset(skip).limit(limit).all()  # type: ignore[no-any-return]
+async def get_user_profiles(
+    db: AsyncSession, 
+    skip: int = 0, 
+    limit: int = 100
+) -> List[UserProfile]:
+    """Get user profiles with pagination."""
+    stmt = select(UserProfile).offset(skip).limit(limit)
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
 
 
-def create_user_profile(db: Session, obj_in: Any) -> UserProfile:
+async def create_user_profile(db: AsyncSession, obj_in: Any) -> UserProfile:
+    """Create a new user profile."""
     db_obj = UserProfile(**_to_update_dict(obj_in))
     db.add(db_obj)
-    db.commit()
-    db.refresh(db_obj)
+    await db.commit()
+    await db.refresh(db_obj)
     return db_obj
 
 
-def update_user_profile(
-    db: Session,
+async def update_user_profile(
+    db: AsyncSession,
     db_obj: UserProfile,
     obj_in: Any,
     performer_id: Optional[UUID] = None,
@@ -76,11 +89,11 @@ def update_user_profile(
     _apply_updates(db_obj, update_data)
 
     db.add(db_obj)
-    db.commit()
-    db.refresh(db_obj)
+    await db.commit()
+    await db.refresh(db_obj)
 
     if performer_id is not None:
-        _record_admin_action(
+        await _record_admin_action(
             db,
             admin_id=performer_id,
             action_type="PROFILE_UPDATED",
@@ -91,40 +104,43 @@ def update_user_profile(
     return db_obj
 
 
-def update_user_profile_by_user_id(
-    db: Session,
+async def update_user_profile_by_user_id(
+    db: AsyncSession,
     user_id: UUID,
     profile_data: Dict[str, Any],
     performer_id: Optional[UUID] = None,
 ) -> UserProfile:
     """Update a user profile by resolving the user_id first."""
-    db_obj = get_user_profile(db, user_id=user_id)
+    db_obj = await get_user_profile(db, user_id=user_id)
     if db_obj is None:
         db_obj = UserProfile(user_id=user_id, bio="", preferences_json={})
         db.add(db_obj)
-        db.commit()
-        db.refresh(db_obj)
+        await db.commit()
+        await db.refresh(db_obj)
 
     _apply_updates(db_obj, profile_data)
     db.add(db_obj)
-    db.commit()
-    db.refresh(db_obj)
+    await db.commit()
+    await db.refresh(db_obj)
 
-    _record_admin_action(
-        db,
-        admin_id=performer_id,
-        action_type="PROFILE_UPDATED",
-        target_id=user_id,
-        target_entity="user_profile",
-    )
+    if performer_id is not None:
+        await _record_admin_action(
+            db,
+            admin_id=performer_id,
+            action_type="PROFILE_UPDATED",
+            target_id=user_id,
+            target_entity="user_profile",
+        )
+    
     return db_obj
 
 
-def delete_user_profile(db: Session, id: UUID) -> Optional[UserProfile]:
-    db_obj = get_user_profile(db, id=id)
+async def delete_user_profile(db: AsyncSession, id: UUID) -> Optional[UserProfile]:
+    """Delete a user profile."""
+    db_obj = await get_user_profile(db, id=id)
     if not db_obj:
         return None
 
-    db.delete(db_obj)
-    db.commit()
+    await db.delete(db_obj)
+    await db.commit()
     return db_obj

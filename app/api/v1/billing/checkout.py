@@ -5,19 +5,20 @@ Stripe Checkout Session endpoint.
 POST /api/v1/billing/checkout
 """
 
+import asyncio
 import logging
+from typing import Any, cast
 
 import stripe
+from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
-from uuid import UUID
-
 from app.core.dependencies import get_current_active_user
-from app.db.database import get_db
-from app.models.billing.billing import Plan
-import app.models as models
 from config.settings import settings
+import app.models as models
+
+from app.services.billing.plan_service import PlanService, get_plan_service
+from app.services.users.user_service import UserService, get_user_service
 
 logger = logging.getLogger(__name__)
 
@@ -46,9 +47,10 @@ class CheckoutResponse(BaseModel):
     response_model=CheckoutResponse,
     summary="Create Stripe Checkout Session",
 )
-def create_checkout_session(  # type: ignore
+async def create_checkout_session(
     body: CheckoutRequest,
-    db: Session = Depends(get_db),
+    plan_service: PlanService = Depends(get_plan_service),
+    user_service: UserService = Depends(get_user_service),
     current_user: models.User = Depends(get_current_active_user),
 ):
     """
@@ -65,9 +67,9 @@ def create_checkout_session(  # type: ignore
             detail="Stripe payments are not enabled on this server.",
         )
 
-    # Fetch the plan
-    plan = db.query(Plan).filter(Plan.id == body.plan_id, Plan.is_active == True).first()
-    if not plan:
+    # Fetch the plan via service
+    plan = await plan_service.get_plan(body.plan_id)
+    if not plan or not plan.is_active:
         raise HTTPException(status_code=404, detail="Plan not found or inactive")
 
     stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -76,14 +78,15 @@ def create_checkout_session(  # type: ignore
     customer_id = current_user.stripe_customer_id
     if not customer_id:
         try:
-            customer = stripe.Customer.create(
+            customer = await asyncio.to_thread(
+                stripe.Customer.create,
                 email=current_user.email,
                 name=current_user.name,
                 metadata={"user_id": str(current_user.id)},
             )
             customer_id = customer.id
-            current_user.stripe_customer_id = customer_id
-            db.commit()
+            # Update user via service
+            await user_service.update_user(current_user, {"stripe_customer_id": customer_id})
         except stripe.error.StripeError as exc:
             logger.error("Stripe customer creation failed for user %s: %s", current_user.id, exc)
             raise HTTPException(status_code=502, detail="Failed to create Stripe customer") from exc
@@ -108,11 +111,14 @@ def create_checkout_session(  # type: ignore
             "quantity": 1,
         }
 
+    line_items = cast(list[Any], [line_item])
+
     try:
-        session = stripe.checkout.Session.create(
+        session = await asyncio.to_thread(
+            stripe.checkout.Session.create,
             customer=customer_id,
             payment_method_types=["card"],
-            line_items=[line_item],  # type: ignore
+            line_items=line_items,
             mode="subscription",
             success_url=body.success_url,
             cancel_url=body.cancel_url,
@@ -130,4 +136,4 @@ def create_checkout_session(  # type: ignore
         session.id, current_user.id, plan.id,
     )
 
-    return CheckoutResponse(checkout_url=session.url, session_id=session.id)  # type: ignore
+    return CheckoutResponse(checkout_url=str(session.url or ""), session_id=str(session.id))

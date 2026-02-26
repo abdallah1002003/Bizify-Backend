@@ -1,13 +1,16 @@
 # ruff: noqa: F821
 from __future__ import annotations
 import uuid
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 from sqlalchemy import ForeignKey, Text, Enum, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.guid import GUID
 from app.db.database import Base
 from app.models.enums import ChatSessionType, ChatRole
 from app.models.mixins import TimestampMixin, SoftDeleteMixin
+
+if TYPE_CHECKING:
+    from app.models import User, Business, Idea
 
 class ChatSession(Base, TimestampMixin, SoftDeleteMixin):
     """Chat session for conversations with AI and business context."""
@@ -26,13 +29,13 @@ class ChatSession(Base, TimestampMixin, SoftDeleteMixin):
     session_type: Mapped[ChatSessionType] = mapped_column(Enum(ChatSessionType), nullable=False)
     conversation_summary_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
-    user: Mapped["User"] = relationship(  # type: ignore
+    user: Mapped["User"] = relationship(
         "User", foreign_keys=[user_id], back_populates="chat_sessions"
     )
-    business: Mapped[Optional["Business"]] = relationship(  # type: ignore
+    business: Mapped[Optional["Business"]] = relationship(
         "Business", foreign_keys=[business_id], back_populates="chat_sessions"
     )
-    idea: Mapped[Optional["Idea"]] = relationship(  # type: ignore
+    idea: Mapped[Optional["Idea"]] = relationship(
         "Idea", foreign_keys=[idea_id], back_populates="chat_sessions"
     )
     messages: Mapped[List["ChatMessage"]] = relationship(

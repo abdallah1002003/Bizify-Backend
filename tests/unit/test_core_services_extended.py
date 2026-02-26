@@ -1,5 +1,5 @@
-# ruff: noqa
-from datetime import datetime, timedelta
+import pytest
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import app.models as models
@@ -17,7 +17,7 @@ class DummyModel:
         return dict(self._data)
 
 
-def _create_user(db, prefix: str) -> models.User:
+async def _create_user(db, prefix: str) -> models.User:
     user = models.User(
         name=f"{prefix}-user",
         email=f"{prefix}_{uuid4().hex[:8]}@example.com",
@@ -27,20 +27,20 @@ def _create_user(db, prefix: str) -> models.User:
         is_verified=True,
     )
     db.add(user)
-    db.commit()
-    db.refresh(user)
+    await db.commit()
+    await db.refresh(user)
     return user
 
 
-def _create_business(db, owner_id) -> models.Business:
+async def _create_business(db, owner_id) -> models.Business:
     business = models.Business(owner_id=owner_id, stage=BusinessStage.EARLY)
     db.add(business)
-    db.commit()
-    db.refresh(business)
+    await db.commit()
+    await db.refresh(business)
     return business
 
 
-def _create_idea(db, owner_id, title: str) -> models.Idea:
+async def _create_idea(db, owner_id, title: str) -> models.Idea:
     idea = models.Idea(
         owner_id=owner_id,
         title=title,
@@ -48,16 +48,17 @@ def _create_idea(db, owner_id, title: str) -> models.Idea:
         status=IdeaStatus.DRAFT,
     )
     db.add(idea)
-    db.commit()
-    db.refresh(idea)
+    await db.commit()
+    await db.refresh(idea)
     return idea
 
 
-def test_file_service_crud_and_alias(db):
-    owner = _create_user(db, "file_owner")
+@pytest.mark.asyncio
+async def test_file_service_crud_and_alias(async_db):
+    owner = await _create_user(async_db, "file_owner")
 
-    created = file_service.create_file(
-        db,
+    created = await file_service.create_file(
+        async_db,
         {
             "owner_id": owner.id,
             "file_path": "/tmp/doc-a.txt",
@@ -66,10 +67,10 @@ def test_file_service_crud_and_alias(db):
         },
     )
     assert created.id is not None
-    assert file_service.get_file(db, created.id).id == created.id
+    assert (await file_service.get_file(async_db, created.id)).id == created.id
 
-    alias_created = file_service.create_file_record(
-        db,
+    alias_created = await file_service.create_file_record(
+        async_db,
         DummyModel(
             owner_id=owner.id,
             file_path="/tmp/doc-b.pdf",
@@ -79,62 +80,64 @@ def test_file_service_crud_and_alias(db):
     )
     assert alias_created.file_type == "application/pdf"
 
-    owner_files = file_service.get_files(db, owner_id=owner.id)
+    owner_files = await file_service.get_files(async_db, owner_id=owner.id)
     assert len(owner_files) == 2
-    assert len(file_service.get_files(db, skip=0, limit=1)) == 1
+    assert len(await file_service.get_files(async_db, skip=0, limit=1)) == 1
 
-    updated = file_service.update_file(db, created, {"file_type": "text/markdown", "missing_field": "ignored"})
+    updated = await file_service.update_file(async_db, created, {"file_type": "text/markdown", "missing_field": "ignored"})
     assert updated.file_type == "text/markdown"
     assert not hasattr(updated, "missing_field")
 
-    deleted = file_service.delete_file(db, created.id)
+    deleted = await file_service.delete_file(async_db, created.id)
     assert deleted is not None
-    assert file_service.delete_file(db, uuid4()) is None
+    assert await file_service.delete_file(async_db, uuid4()) is None
 
 
-def test_notification_service_crud_and_alias(db):
-    user_a = _create_user(db, "notif_a")
-    user_b = _create_user(db, "notif_b")
+@pytest.mark.asyncio
+async def test_notification_service_crud_and_alias(async_db):
+    user_a = await _create_user(async_db, "notif_a")
+    user_b = await _create_user(async_db, "notif_b")
 
-    first = notification_service.create_notification(
-        db,
+    first = await notification_service.create_notification(
+        async_db,
         {"user_id": user_a.id, "title": "A", "message": "hello"},
     )
-    second = notification_service.emit_notification(
-        db,
+    second = await notification_service.emit_notification(
+        async_db,
         DummyModel(user_id=user_b.id, title="B", message="world"),
     )
 
-    assert notification_service.get_notification(db, first.id).id == first.id
-    assert len(notification_service.get_notifications(db, user_id=user_a.id)) == 1
-    assert len(notification_service.get_notifications(db, skip=0, limit=10)) >= 2
+    assert (await notification_service.get_notification(async_db, first.id)).id == first.id
+    assert len(await notification_service.get_notifications(async_db, user_id=user_a.id)) == 1
+    assert len(await notification_service.get_notifications(async_db, skip=0, limit=10)) >= 2
 
-    updated = notification_service.update_notification(
-        db,
+    updated = await notification_service.update_notification(
+        async_db,
         first,
         {"is_read": True, "does_not_exist": True},
     )
     assert updated.is_read is True
     assert not hasattr(updated, "does_not_exist")
 
-    deleted = notification_service.delete_notification(db, second.id)
+    deleted = await notification_service.delete_notification(async_db, second.id)
     assert deleted is not None
-    assert notification_service.delete_notification(db, uuid4()) is None
+    assert await notification_service.delete_notification(async_db, uuid4()) is None
 
 
-def test_share_link_service_crud_and_validation(db):
-    creator = _create_user(db, "share_creator")
-    business = _create_business(db, creator.id)
-    idea = _create_idea(db, creator.id, "share idea")
+@pytest.mark.asyncio
+async def test_share_link_service_crud_and_validation(async_db):
+    creator = await _create_user(async_db, "share_creator")
+    business = await _create_business(async_db, creator.id)
+    idea = await _create_idea(async_db, creator.id, "share idea")
 
-    generated_token_link = share_link_service.create_share_link(
-        db,
+    generated_token_link = await share_link_service.create_share_link(
+        async_db,
         DummyModel(created_by=creator.id, business_id=business.id, idea_id=idea.id, is_public=False),
     )
     assert generated_token_link.token
 
-    explicit_link = share_link_service.create_share_link(
-        db,
+    explicit_link = await share_link_service.create_share_link(
+        async_db,
         business_id=business.id,
         idea_id=idea.id,
         creator_id=creator.id,
@@ -142,75 +145,74 @@ def test_share_link_service_crud_and_validation(db):
     )
     assert explicit_link.created_by == creator.id
 
-    assert share_link_service.get_share_link(db, explicit_link.id).id == explicit_link.id
-    assert len(share_link_service.get_share_links(db, created_by=creator.id)) == 2
-    assert len(share_link_service.get_share_links(db, skip=0, limit=1)) == 1
+    assert (await share_link_service.get_share_link(async_db, explicit_link.id)).id == explicit_link.id
+    assert len(await share_link_service.get_share_links(async_db, created_by=creator.id)) == 2
+    assert len(await share_link_service.get_share_links(async_db, skip=0, limit=1)) == 1
 
-    updated = share_link_service.update_share_link(db, explicit_link, {"is_public": True})
+    updated = await share_link_service.update_share_link(async_db, explicit_link, {"is_public": True})
     assert updated.is_public is True
 
-    assert share_link_service.validate_share_link(db, explicit_link.token).id == explicit_link.id
-    assert share_link_service.validate_share_link(db, "missing-token") is None
+    assert (await share_link_service.validate_share_link(async_db, explicit_link.token)).id == explicit_link.id
+    assert await share_link_service.validate_share_link(async_db, "missing-token") is None
 
-    explicit_link.expires_at = datetime.utcnow() - timedelta(days=1)
-    db.add(explicit_link)
-    db.commit()
-    db.refresh(explicit_link)
-    assert share_link_service.validate_share_link(db, explicit_link.token) is None
+    explicit_link.expires_at = datetime.now(timezone.utc) - timedelta(days=1)
+    async_db.add(explicit_link)
+    await async_db.commit()
+    await async_db.refresh(explicit_link)
+    assert await share_link_service.validate_share_link(async_db, explicit_link.token) is None
 
-    deleted = share_link_service.delete_share_link(db, generated_token_link.id)
+    deleted = await share_link_service.delete_share_link(async_db, generated_token_link.id)
     assert deleted is not None
-    assert share_link_service.delete_share_link(db, uuid4()) is None
+    assert await share_link_service.delete_share_link(async_db, uuid4()) is None
 
 
-def test_core_service_crud_aliases_and_status(db):
-    owner = _create_user(db, "core_owner")
-    viewer = _create_user(db, "core_viewer")
-    business = _create_business(db, owner.id)
-    idea = _create_idea(db, owner.id, "core idea")
+@pytest.mark.asyncio
+async def test_core_service_crud_aliases_and_status(async_db):
+    owner = await _create_user(async_db, "core_owner")
+    viewer = await _create_user(async_db, "core_viewer")
 
-    file_obj = core_service.create_file(
-        db,
+    file_obj = await core_service.create_file(
+        async_db,
         {"owner_id": owner.id, "file_path": "/tmp/core.txt", "file_type": "text/plain", "size": 64},
     )
-    alias_file = core_service.create_file_record(
-        db,
+    alias_file = await core_service.create_file_record(
+        async_db,
         DummyModel(owner_id=owner.id, file_path="/tmp/core-2.txt", file_type="text/plain", size=65),
     )
     assert alias_file.id is not None
-    assert core_service.get_file(db, file_obj.id).id == file_obj.id
-    assert len(core_service.get_files(db, owner_id=owner.id)) == 2
-    assert len(core_service.get_files(db, skip=0, limit=1)) == 1
+    assert (await core_service.get_file(async_db, file_obj.id)).id == file_obj.id
+    assert len(await core_service.get_files(async_db, owner_id=owner.id)) == 2
+    assert len(await core_service.get_files(async_db, skip=0, limit=1)) == 1
 
-    updated_file = core_service.update_file(db, file_obj, {"file_path": "/tmp/core-updated.txt", "ignore_me": True})
+    updated_file = await core_service.update_file(async_db, file_obj, {"file_path": "/tmp/core-updated.txt", "ignore_me": True})
     assert updated_file.file_path == "/tmp/core-updated.txt"
 
-    first_notification = core_service.create_notification(
-        db,
+    first_notification = await core_service.create_notification(
+        async_db,
         {"user_id": owner.id, "title": "Core A", "message": "a"},
     )
-    second_notification = core_service.emit_notification(
-        db,
+    second_notification = await core_service.emit_notification(
+        async_db,
         DummyModel(user_id=viewer.id, title="Core B", message="b"),
     )
     assert second_notification.id is not None
-    assert core_service.get_notification(db, first_notification.id).id == first_notification.id
-    assert len(core_service.get_notifications(db, user_id=owner.id)) == 1
-    assert len(core_service.get_notifications(db, skip=0, limit=10)) >= 2
+    assert (await core_service.get_notification(async_db, first_notification.id)).id == first_notification.id
+    assert len(await core_service.get_notifications(async_db, user_id=owner.id)) == 1
+    assert len(await core_service.get_notifications(async_db, skip=0, limit=10)) >= 2
 
-    updated_notification = core_service.update_notification(db, first_notification, {"is_read": True})
+    updated_notification = await core_service.update_notification(async_db, first_notification, {"is_read": True})
     assert updated_notification.is_read is True
 
-    assert core_service.delete_notification(db, uuid4()) is None
-    assert core_service.delete_file(db, uuid4()) is None
+    assert await core_service.delete_notification(async_db, uuid4()) is None
+    assert await core_service.delete_file(async_db, uuid4()) is None
 
-    assert core_service.delete_notification(db, second_notification.id) is not None
-    assert core_service.delete_file(db, alias_file.id) is not None
+    assert await core_service.delete_notification(async_db, second_notification.id) is not None
+    assert await core_service.delete_file(async_db, alias_file.id) is not None
 
-    status = core_service.get_detailed_status()
+    status = await core_service.get_detailed_status()
     assert status["module"] == "core_service"
     assert status["status"] == "operational"
     assert "timestamp" in status
 
-    core_service.reset_internal_state()
+    await core_service.reset_internal_state()
 

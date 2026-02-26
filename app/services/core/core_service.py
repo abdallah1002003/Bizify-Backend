@@ -1,119 +1,68 @@
 # ruff: noqa: E402
 from __future__ import annotations
 
-from datetime import datetime
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 from uuid import UUID
 
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import File, Notification
+from app.services.core.file_service import FileService
+from app.services.core.notification_service import NotificationService
+from app.core.crud_utils import _utc_now
 
 logger = logging.getLogger(__name__)
 
 
-from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
-
-def _is_expired(expires_at: datetime) -> bool:
-    now = _utc_now()
-    if expires_at.tzinfo is None and now.tzinfo is not None:
-        now = now.replace(tzinfo=None)
-    return expires_at < now
-
-
 # ----------------------------
-# File
+# File (Delegated to FileService)
 # ----------------------------
 
-def get_file(db: Session, id: UUID) -> Optional[File]:
-    return db.query(File).filter(File.id == id).first()  # type: ignore[no-any-return]
+async def get_file(db: AsyncSession, id: UUID) -> Optional[File]:
+    return await FileService(db).get_file(id)
 
-
-def get_files(
-    db: Session,
+async def get_files(
+    db: AsyncSession,
     skip: int = 0,
     limit: int = 100,
     owner_id: Optional[UUID] = None,
 ) -> List[File]:
-    query = db.query(File)
-    if owner_id is not None:
-        query = query.filter(File.owner_id == owner_id)
-    return query.offset(skip).limit(limit).all()  # type: ignore[no-any-return]
+    return await FileService(db).get_files(skip, limit, owner_id)
 
+async def create_file(db: AsyncSession, obj_in: Any) -> File:
+    return await FileService(db).create_file(obj_in)
 
-def create_file(db: Session, obj_in: Any) -> File:
-    db_obj = File(**_to_update_dict(obj_in))
-    db.add(db_obj)
-    db.commit()
-    db.refresh(db_obj)
-    return db_obj
+async def update_file(db: AsyncSession, db_obj: File, obj_in: Any) -> File:
+    return await FileService(db).update_file(db_obj, obj_in)
 
-
-def update_file(db: Session, db_obj: File, obj_in: Any) -> File:
-    _apply_updates(db_obj, _to_update_dict(obj_in))
-    db.add(db_obj)
-    db.commit()
-    db.refresh(db_obj)
-    return db_obj
-
-
-def delete_file(db: Session, id: UUID) -> Optional[File]:
-    db_obj = get_file(db, id=id)
-    if not db_obj:
-        return None
-
-    db.delete(db_obj)
-    db.commit()
-    return db_obj
-
-
+async def delete_file(db: AsyncSession, id: UUID) -> Optional[File]:
+    return await FileService(db).delete_file(id)
 
 
 # ----------------------------
-# Notification
+# Notification (Delegated to NotificationService)
 # ----------------------------
 
-def get_notification(db: Session, id: UUID) -> Optional[Notification]:
-    return db.query(Notification).filter(Notification.id == id).first()  # type: ignore[no-any-return]
+async def get_notification(db: AsyncSession, id: UUID) -> Optional[Notification]:
+    return cast(Optional[Notification], await NotificationService(db).get_notification(id))
 
-
-def get_notifications(
-    db: Session,
+async def get_notifications(
+    db: AsyncSession,
     skip: int = 0,
     limit: int = 100,
     user_id: Optional[UUID] = None,
 ) -> List[Notification]:
-    query = db.query(Notification)
-    if user_id is not None:
-        query = query.filter(Notification.user_id == user_id)
-    return query.offset(skip).limit(limit).all()  # type: ignore[no-any-return]
+    return await NotificationService(db).get_notifications(skip, limit, user_id)
 
+async def create_notification(db: AsyncSession, obj_in: Any) -> Notification:
+    return await NotificationService(db).create_notification(obj_in)
 
-def create_notification(db: Session, obj_in: Any) -> Notification:
-    db_obj = Notification(**_to_update_dict(obj_in))
-    db.add(db_obj)
-    db.commit()
-    db.refresh(db_obj)
-    return db_obj
+async def update_notification(db: AsyncSession, db_obj: Notification, obj_in: Any) -> Notification:
+    return await NotificationService(db).update_notification(db_obj, obj_in)
 
-
-def update_notification(db: Session, db_obj: Notification, obj_in: Any) -> Notification:
-    _apply_updates(db_obj, _to_update_dict(obj_in))
-    db.add(db_obj)
-    db.commit()
-    db.refresh(db_obj)
-    return db_obj
-
-
-def delete_notification(db: Session, id: UUID) -> Optional[Notification]:
-    db_obj = get_notification(db, id=id)
-    if not db_obj:
-        return None
-
-    db.delete(db_obj)
-    db.commit()
-    return db_obj
+async def delete_notification(db: AsyncSession, id: UUID) -> Optional[Notification]:
+    return await NotificationService(db).delete_notification(id)
 
 
 # Backward compatibility aliases.
@@ -121,7 +70,7 @@ create_file_record = create_file
 emit_notification = create_notification
 
 
-def get_detailed_status() -> Dict[str, Any]:
+async def get_detailed_status() -> Dict[str, Any]:
     return {
         "module": "core_service",
         "status": "operational",
@@ -129,5 +78,5 @@ def get_detailed_status() -> Dict[str, Any]:
     }
 
 
-def reset_internal_state() -> None:
+async def reset_internal_state() -> None:
     logger.info("core_service reset_internal_state called")

@@ -10,71 +10,71 @@ import app.models as models
 
 router = APIRouter()
 
-def _require_idea_owner(idea_service: IdeaService, idea_id: UUID, current_user_id: UUID) -> None:
-    idea = idea_service.get_idea(id=idea_id)
+async def _require_idea_owner(idea_service: IdeaService, idea_id: UUID, current_user_id: UUID) -> None:
+    idea = await idea_service.get_idea(id=idea_id)
     if not idea or idea.owner_id != current_user_id:
         raise HTTPException(status_code=403, detail="Not authorized to access this idea")
 
 
 @router.get("/", response_model=List[IdeaAccessResponse])
-def read_idea_accesses(  # type: ignore
+async def read_idea_accesses(
     skip: SkipParam = 0, 
     limit: LimitParam = 100, 
     service: IdeaAccessService = Depends(get_idea_access_service), 
     current_user: models.User = Depends(get_current_active_user)
 ):
     # Returns only idea accesses for ideas owned by the current user
-    return service.get_idea_accesses_by_owner(owner_id=current_user.id, skip=skip, limit=limit)
+    return await service.get_idea_accesses_by_owner(owner_id=current_user.id, skip=skip, limit=limit)
 
 @router.post("/", response_model=IdeaAccessResponse)
-def create_idea_access(  # type: ignore
+async def create_idea_access(
     item_in: IdeaAccessCreate, 
     service: IdeaAccessService = Depends(get_idea_access_service),
     idea_service: IdeaService = Depends(get_idea_service),
     current_user: models.User = Depends(get_current_active_user)
 ):
-    _require_idea_owner(idea_service, item_in.idea_id, current_user.id)
-    return service.create_idea_access(obj_in=item_in)
+    await _require_idea_owner(idea_service, item_in.idea_id, current_user.id)
+    return await service.create_idea_access(obj_in=item_in)
 
 @router.get("/{id}", response_model=IdeaAccessResponse)
-def read_idea_access(  # type: ignore
+async def read_idea_access(
     id: UUID, 
     service: IdeaAccessService = Depends(get_idea_access_service),
     idea_service: IdeaService = Depends(get_idea_service),
     current_user: models.User = Depends(get_current_active_user)
 ):
-    db_obj = service.get_idea_access(id=id)
+    db_obj = await service.get_idea_access(id=id)
     if not db_obj:
         raise HTTPException(status_code=404, detail="IdeaAccess not found")
-    _require_idea_owner(idea_service, db_obj.idea_id, current_user.id)
+    await _require_idea_owner(idea_service, db_obj.idea_id, current_user.id)
     return db_obj
 
 @router.put("/{id}", response_model=IdeaAccessResponse)
-def update_idea_access(  # type: ignore
+async def update_idea_access(
     id: UUID, 
     item_in: IdeaAccessUpdate, 
     service: IdeaAccessService = Depends(get_idea_access_service),
     idea_service: IdeaService = Depends(get_idea_service),
     current_user: models.User = Depends(get_current_active_user)
 ):
-    db_obj = service.get_idea_access(id=id)
+    db_obj = await service.get_idea_access(id=id)
     if not db_obj:
         raise HTTPException(status_code=404, detail="IdeaAccess not found")
-    _require_idea_owner(idea_service, db_obj.idea_id, current_user.id)
+    await _require_idea_owner(idea_service, db_obj.idea_id, current_user.id)
     if item_in.idea_id and item_in.idea_id != db_obj.idea_id:
-        _require_idea_owner(idea_service, item_in.idea_id, current_user.id)
-    return service.update_idea_access(db_obj=db_obj, obj_in=item_in)
+        await _require_idea_owner(idea_service, item_in.idea_id, current_user.id)
+    return await service.update_idea_access(db_obj=db_obj, obj_in=item_in)
 
 @router.delete("/{id}", response_model=IdeaAccessResponse)
-def delete_idea_access(  # type: ignore
+async def delete_idea_access(
     id: UUID, 
     service: IdeaAccessService = Depends(get_idea_access_service),
     idea_service: IdeaService = Depends(get_idea_service),
     current_user: models.User = Depends(get_current_active_user)
 ):
-    db_obj = service.get_idea_access(id=id)
+    db_obj = await service.get_idea_access(id=id)
     if not db_obj:
         raise HTTPException(status_code=404, detail="IdeaAccess not found")
-    _require_idea_owner(idea_service, db_obj.idea_id, current_user.id)
-    return service.delete_idea_access(id=id)
+    await _require_idea_owner(idea_service, db_obj.idea_id, current_user.id)
+    return await service.delete_idea_access(id=id)
 

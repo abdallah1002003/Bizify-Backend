@@ -8,7 +8,8 @@ import logging
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.models import PartnerProfile
 from app.models.enums import ApprovalStatus, PartnerType
@@ -21,16 +22,20 @@ from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
 # PartnerProfile CRUD
 # ----------------------------
 
-def get_partner_profile(db: Session, id: UUID) -> Optional[PartnerProfile]:
-    return db.query(PartnerProfile).filter(PartnerProfile.id == id).first()  # type: ignore[no-any-return]
+async def get_partner_profile(db: AsyncSession, id: UUID) -> Optional[PartnerProfile]:
+    return await db.get(PartnerProfile, id)
 
 
-def get_partner_profiles(db: Session, skip: int = 0, limit: int = 100) -> List[PartnerProfile]:
-    return db.query(PartnerProfile).offset(skip).limit(limit).all()  # type: ignore[no-any-return]
+
+async def get_partner_profiles(db: AsyncSession, skip: int = 0, limit: int = 100) -> List[PartnerProfile]:
+    stmt = select(PartnerProfile).offset(skip).limit(limit)
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
 
 
-def create_partner_profile(
-    db: Session,
+
+async def create_partner_profile(
+    db: AsyncSession,
     user_id: Optional[UUID] = None,
     partner_type: Optional[PartnerType] = None,
     bio: Optional[str] = None,
@@ -40,7 +45,7 @@ def create_partner_profile(
     if obj_in is not None:
         data = _to_update_dict(obj_in)
     elif hasattr(user_id, "model_dump"):
-        data = user_id.model_dump(exclude_unset=True)  # type: ignore
+        data = user_id.model_dump(exclude_unset=True)
     else:
         data = {
             "user_id": user_id,
@@ -55,59 +60,60 @@ def create_partner_profile(
 
     db_obj = PartnerProfile(**data)
     db.add(db_obj)
-    db.commit()
-    db.refresh(db_obj)
+    await db.commit()
+    await db.refresh(db_obj)
     return db_obj
 
 
-def update_partner_profile(db: Session, db_obj: PartnerProfile, obj_in: Any) -> PartnerProfile:
+async def update_partner_profile(db: AsyncSession, db_obj: PartnerProfile, obj_in: Any) -> PartnerProfile:
     _apply_updates(db_obj, _to_update_dict(obj_in))
     db.add(db_obj)
-    db.commit()
-    db.refresh(db_obj)
+    await db.commit()
+    await db.refresh(db_obj)
     return db_obj
 
 
-def delete_partner_profile(db: Session, id: UUID) -> Optional[PartnerProfile]:
-    db_obj = get_partner_profile(db, id=id)
+async def delete_partner_profile(db: AsyncSession, id: UUID) -> Optional[PartnerProfile]:
+    db_obj = await get_partner_profile(db, id=id)
     if not db_obj:
         return None
 
-    db.delete(db_obj)
-    db.commit()
+    await db.delete(db_obj)
+    await db.commit()
     return db_obj
 
 
-def approve_partner_profile(db: Session, profile_id: UUID, approver_id: UUID) -> Optional[PartnerProfile]:
-    profile = get_partner_profile(db, profile_id)
+async def approve_partner_profile(db: AsyncSession, profile_id: UUID, approver_id: UUID) -> Optional[PartnerProfile]:
+    profile = await get_partner_profile(db, profile_id)
     if profile is None:
         return None
 
-    profile.approval_status = ApprovalStatus.APPROVED  # type: ignore
-    profile.approved_by = approver_id  # type: ignore
-    profile.approved_at = _utc_now()  # type: ignore
-    db.commit()
-    db.refresh(profile)
+    profile.approval_status = ApprovalStatus.APPROVED
+    profile.approved_by = approver_id
+    profile.approved_at = _utc_now()
+    await db.commit()
+    await db.refresh(profile)
     return profile
 
 
-def match_partners_by_capability(db: Session, business_needs: Dict[str, Any]) -> List[PartnerProfile]:
+async def match_partners_by_capability(db: AsyncSession, business_needs: Dict[str, Any]) -> List[PartnerProfile]:
     required_type = business_needs.get("required_type")
     required_skills = set(business_needs.get("skills", []))
     required_industry = business_needs.get("industry")
     budget = business_needs.get("budget", 0)
 
-    query = db.query(PartnerProfile).filter(PartnerProfile.approval_status == ApprovalStatus.APPROVED)
+    stmt = select(PartnerProfile).where(PartnerProfile.approval_status == ApprovalStatus.APPROVED)
     if required_type is not None:
-        query = query.filter(PartnerProfile.partner_type == required_type)
+        stmt = stmt.where(PartnerProfile.partner_type == required_type)
         
-    candidates = query.all()
+    result = await db.execute(stmt)
+    candidates = result.scalars().all()
     scored_candidates = []
     
     for partner in candidates:
         score = 0
-        services = partner.services_json or {}  # type: ignore
-        experience = partner.experience_json or {}  # type: ignore
+        services = partner.services_json or {}
+        experience = partner.experience_json or {}
         
         # Skill matching (+2 per skill)
         partner_skills = set(services.get("skills", []) + experience.get("skills", []))

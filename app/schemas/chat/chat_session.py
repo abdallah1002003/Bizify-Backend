@@ -4,7 +4,8 @@ from pydantic import ConfigDict
 from typing import Optional
 from uuid import UUID
 
-from app.schemas.core_base import SafeBaseModel  # type: ignore
+from app.schemas.core_base import SafeBaseModel
+
 
 class ChatSessionBase(SafeBaseModel):
     user_id: UUID

@@ -5,6 +5,7 @@ from unittest.mock import patch, MagicMock
 # Mock the entire redis module BEFORE importing app.core
 mock_redis_module = MagicMock()
 sys.modules['redis'] = mock_redis_module
+sys.modules['redis.asyncio'] = mock_redis_module
 
 import pytest
 from app.core.cache import get_cache_manager, clear_cache_manager, InMemoryCache, RedisCache
@@ -46,10 +47,8 @@ def test_cache_manager_falls_back_to_in_memory_on_redis_failure():
     """Ensure standard graceful degradation to InMemoryCache if Redis crashes."""
     settings.REDIS_ENABLED = True
     
-    # Mock an exception when pinging Redis
-    mock_instance = MagicMock()
-    mock_instance.ping.side_effect = Exception("Connection Refused")
-    mock_redis_module.Redis.return_value = mock_instance
+    # Mock an exception when instantiating Redis
+    mock_redis_module.Redis.side_effect = Exception("Connection Refused")
     
     with patch("app.core.cache.redis", new=mock_redis_module):
         # Act
@@ -58,11 +57,12 @@ def test_cache_manager_falls_back_to_in_memory_on_redis_failure():
         # Assert it gracefully swallowed the error and instantiated InMemoryCache
         assert isinstance(manager.backend, InMemoryCache)
 
-def test_in_memory_cache_operations():
+@pytest.mark.asyncio
+async def test_in_memory_cache_operations():
     """Test standard dictionary behaviors for the fallback cache."""
     cache = InMemoryCache()
-    assert cache.set("user:1", {"name": "Test"}) is True
-    assert cache.get("user:1") == {"name": "Test"}
-    assert cache.exists("user:1") is True
-    assert cache.delete("user:1") is True
-    assert cache.get("user:1") is None
+    assert await cache.set("user:1", {"name": "Test"}) is True
+    assert await cache.get("user:1") == {"name": "Test"}
+    assert await cache.exists("user:1") is True
+    assert await cache.delete("user:1") is True
+    assert await cache.get("user:1") is None

@@ -8,7 +8,8 @@ import logging
 from typing import Any, List, Optional
 from uuid import UUID
 
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.models import PartnerRequest
 from app.models.enums import RequestStatus
@@ -21,16 +22,20 @@ from app.core.crud_utils import _to_update_dict, _apply_updates
 # PartnerRequest CRUD
 # ----------------------------
 
-def get_partner_request(db: Session, id: UUID) -> Optional[PartnerRequest]:
-    return db.query(PartnerRequest).filter(PartnerRequest.id == id).first()  # type: ignore[no-any-return]
+async def get_partner_request(db: AsyncSession, id: UUID) -> Optional[PartnerRequest]:
+    return await db.get(PartnerRequest, id)
 
 
-def get_partner_requests(db: Session, skip: int = 0, limit: int = 100) -> List[PartnerRequest]:
-    return db.query(PartnerRequest).offset(skip).limit(limit).all()  # type: ignore[no-any-return]
+
+async def get_partner_requests(db: AsyncSession, skip: int = 0, limit: int = 100) -> List[PartnerRequest]:
+    stmt = select(PartnerRequest).offset(skip).limit(limit)
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
 
 
-def submit_partner_request(
-    db: Session,
+
+async def submit_partner_request(
+    db: AsyncSession,
     business_id: UUID,
     partner_id: UUID,
     request_type: Optional[str] = None,
@@ -46,54 +51,54 @@ def submit_partner_request(
         status=RequestStatus.PENDING,
     )
     db.add(db_obj)
-    db.commit()
-    db.refresh(db_obj)
+    await db.commit()
+    await db.refresh(db_obj)
     return db_obj
 
 
-def create_partner_request(db: Session, obj_in: Any) -> PartnerRequest:
+async def create_partner_request(db: AsyncSession, obj_in: Any) -> PartnerRequest:
     data = _to_update_dict(obj_in)
     db_obj = PartnerRequest(**data)
     db.add(db_obj)
-    db.commit()
-    db.refresh(db_obj)
+    await db.commit()
+    await db.refresh(db_obj)
     return db_obj
 
 
-def update_partner_request(db: Session, db_obj: PartnerRequest, obj_in: Any) -> PartnerRequest:
+async def update_partner_request(db: AsyncSession, db_obj: PartnerRequest, obj_in: Any) -> PartnerRequest:
     _apply_updates(db_obj, _to_update_dict(obj_in))
     db.add(db_obj)
-    db.commit()
-    db.refresh(db_obj)
+    await db.commit()
+    await db.refresh(db_obj)
     return db_obj
 
 
-def delete_partner_request(db: Session, id: UUID) -> Optional[PartnerRequest]:
-    db_obj = get_partner_request(db, id=id)
+async def delete_partner_request(db: AsyncSession, id: UUID) -> Optional[PartnerRequest]:
+    db_obj = await get_partner_request(db, id=id)
     if not db_obj:
         return None
 
-    db.delete(db_obj)
-    db.commit()
+    await db.delete(db_obj)
+    await db.commit()
     return db_obj
 
 
-def transition_request_status(
-    db: Session,
+async def transition_request_status(
+    db: AsyncSession,
     request_id: UUID,
     new_status: RequestStatus,
     performer_id: Optional[UUID] = None,
 ) -> Optional[PartnerRequest]:
     _ = performer_id
-    request = get_partner_request(db, request_id)
+    request = await get_partner_request(db, request_id)
     if request is None:
         return None
 
-    request.status = new_status  # type: ignore
-    db.commit()
-    db.refresh(request)
+    request.status = new_status
+    await db.commit()
+    await db.refresh(request)
     return request
 
 
-def accept_partner_request(db: Session, request_id: UUID) -> Optional[PartnerRequest]:
-    return transition_request_status(db, request_id, RequestStatus.ACCEPTED)
+async def accept_partner_request(db: AsyncSession, request_id: UUID) -> Optional[PartnerRequest]:
+    return await transition_request_status(db, request_id, RequestStatus.ACCEPTED)

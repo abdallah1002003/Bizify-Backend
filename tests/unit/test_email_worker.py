@@ -1,25 +1,27 @@
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, AsyncMock, MagicMock
 from app.services.core.email_worker import process_email_queue
 from app.models.core.core import EmailMessage
 
 @pytest.fixture
 def mock_db_session():
-    with patch("app.services.core.email_worker.SessionLocal") as mock_session_local:
-        mock_db = MagicMock()
-        mock_session_local.return_value = mock_db
+    with patch("app.services.core.email_worker.AsyncSessionLocal") as mock_session_local:
+        mock_db = AsyncMock()
+        # Mocking the async context manager: async with AsyncSessionLocal() as db
+        mock_session_local.return_value.__aenter__.return_value = mock_db
         yield mock_db
 
 @pytest.mark.asyncio
 async def test_process_email_queue_empty(mock_db_session):
     """Test that process_email_queue handles empty queue gracefully."""
-    mock_db_session.execute.return_value.scalars.return_value.all.return_value = []
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.all.return_value = []
+    mock_db_session.execute.return_value = mock_result
     
     await process_email_queue()
     
     mock_db_session.execute.assert_called_once()
     mock_db_session.commit.assert_not_called()
-    mock_db_session.close.assert_called_once()
 
 @pytest.mark.asyncio
 @patch("app.services.core.email_worker.settings")
@@ -38,13 +40,17 @@ async def test_process_email_queue_success(mock_send_mail, mock_settings, mock_d
         max_retries=3
     )
     
-    mock_db_session.execute.return_value.scalars.return_value.all.return_value = [mock_email]
+    # Mock result for scalars().all()
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.all.return_value = [mock_email]
+    mock_db_session.execute.return_value = mock_result
     
     await process_email_queue()
     
     mock_send_mail.assert_called_once_with("test@example.com", "Test", "<p>Body</p>")
     assert mock_email.status == "SENT"
     assert mock_email.error_message is None
+    # Called once per email in this implementation (inside the loop)
     mock_db_session.commit.assert_called_once()
 
 @pytest.mark.asyncio
@@ -63,7 +69,9 @@ async def test_process_email_queue_failure_retry(mock_send_mail, mock_settings, 
         max_retries=3
     )
     
-    mock_db_session.execute.return_value.scalars.return_value.all.return_value = [mock_email]
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.all.return_value = [mock_email]
+    mock_db_session.execute.return_value = mock_result
     
     await process_email_queue()
     
@@ -88,7 +96,9 @@ async def test_process_email_queue_failure_max_retries(mock_send_mail, mock_sett
         max_retries=3
     )
     
-    mock_db_session.execute.return_value.scalars.return_value.all.return_value = [mock_email]
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.all.return_value = [mock_email]
+    mock_db_session.execute.return_value = mock_result
     
     await process_email_queue()
     
@@ -106,7 +116,9 @@ async def test_process_email_queue_mocked_disabled(mock_send_mail, mock_settings
     
     mock_email = EmailMessage(to_email="test@example.com", status="PENDING", retries=0)
     
-    mock_db_session.execute.return_value.scalars.return_value.all.return_value = [mock_email]
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.all.return_value = [mock_email]
+    mock_db_session.execute.return_value = mock_result
     
     await process_email_queue()
     

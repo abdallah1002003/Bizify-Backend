@@ -26,39 +26,38 @@ jinja_env = Environment(loader=FileSystemLoader(template_dir))
 class EmailService:
     """Service for sending transactional emails."""
 
-    def render_template(self, template_name: str, **context) -> str:  # type: ignore
+    def render_template(self, template_name: str, **context) -> str:
         """Helper to render a Jinja2 template."""
         try:
             # Inject global branding context
             context.setdefault("app_name", settings.APP_NAME)
             template = jinja_env.get_template(template_name)
-            return template.render(**context)  # type: ignore[no-any-return]
+            return template.render(**context)
+
         except Exception:
             logger.exception("Failed to render template %s", template_name)
             # Fallback to a very basic string if template rendering fails
             return f"<html><body>{context.get('content_html', '')}</body></html>"
 
-    def _queue_email(self, to_email: str, subject: str, html_body: str) -> None:
+    async def _queue_email(self, to_email: str, subject: str, html_body: str) -> None:
         """Add email to the database queue for asynchronous processing."""
-        from app.db.database import SessionLocal
+        from app.db.database import AsyncSessionLocal
         from app.models.core.core import EmailMessage
 
-        db = SessionLocal()
-        try:
-            msg = EmailMessage(
-                to_email=to_email,
-                subject=subject,
-                html_body=html_body,
-                status="PENDING"
-            )
-            db.add(msg)
-            db.commit()
-            logger.info("Email queued for %s (subject: %s)", to_email, subject)
-        except Exception as e:
-            db.rollback()
-            logger.error("Failed to queue email for %s: %s", to_email, e)
-        finally:
-            db.close()
+        async with AsyncSessionLocal() as db:
+            try:
+                msg = EmailMessage(
+                    to_email=to_email,
+                    subject=subject,
+                    html_body=html_body,
+                    status="PENDING"
+                )
+                db.add(msg)
+                await db.commit()
+                logger.info("Email queued for %s (subject: %s)", to_email, subject)
+            except Exception as e:
+                await db.rollback()
+                logger.error("Failed to queue email for %s: %s", to_email, e)
 
     async def send_verification_email(self, email: str, token: str) -> None:
         """Queue an account verification email using HTML template."""
@@ -73,7 +72,7 @@ class EmailService:
             footer_text="This link expires in 24 hours. If you didn't create an account, you can safely ignore this.",
             fallback_url=link
         )
-        self._queue_email(email, "Verify your Bizify account", html_body)
+        await self._queue_email(email, "Verify your Bizify account", html_body)
 
     async def send_password_reset_email(self, email: str, token: str) -> None:
         """Queue a password-reset email using HTML template."""
@@ -88,10 +87,10 @@ class EmailService:
             footer_text="This link expires in 15 minutes. If you didn't request a reset, you can safely ignore this.",
             fallback_url=link
         )
-        self._queue_email(email, "Reset your Bizify password", html_body)
+        await self._queue_email(email, "Reset your Bizify password", html_body)
 
     @staticmethod
-    async def handle_auth_event(event_type: str, payload: Dict[str, Any]):  # type: ignore
+    async def handle_auth_event(event_type: str, payload: Dict[str, Any]):
         """Async handler for authentication events."""
         email = payload.get("email")
         token = payload.get("token")
@@ -104,7 +103,7 @@ class EmailService:
         elif event_type == "auth.password_reset_requested":
             await service.send_password_reset_email(email, token)
 
-def register_email_handlers():  # type: ignore
+def register_email_handlers():
     """Register EmailService handlers with the dispatcher."""
     dispatcher.subscribe("auth.user_registered", EmailService.handle_auth_event)
     dispatcher.subscribe("auth.password_reset_requested", EmailService.handle_auth_event)

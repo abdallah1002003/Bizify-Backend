@@ -2,17 +2,21 @@ from typing import List
 from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from app.core.pagination import LimitParam, SkipParam
-from sqlalchemy.orm import Session
-from app.db.database import get_db, SessionLocal
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.db.database import get_async_db, AsyncSessionLocal
 from app.schemas.ai.agent_run import AgentRunCreate, AgentRunUpdate, AgentRunResponse
 from app.core.dependencies import get_current_active_user
 from app.services.ai import ai_service as service
+from app.services.business.business_roadmap import BusinessRoadmapService, get_business_roadmap_service
 import app.models as models
 
 router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 
-def _ensure_agent_run_owner(db_obj: models.AgentRun, current_user: models.User) -> None:
+async def _ensure_agent_run_owner(db: AsyncSession, db_obj: models.AgentRun, current_user: models.User) -> None:
+    # In async, we might need to ensure relationships are loaded. 
+    # For now, we assume the initial query or eager loading handled it, 
+    # but more robust is to ensure it.
     stage = db_obj.stage
     business = stage.roadmap.business if stage and stage.roadmap else None
     if business is None:
@@ -22,42 +26,33 @@ def _ensure_agent_run_owner(db_obj: models.AgentRun, current_user: models.User) 
 
 
 @router.get("/", response_model=List[AgentRunResponse])
-def read_agent_runs(  # type: ignore
+async def read_agent_runs(
     skip: SkipParam = 0,
     limit: LimitParam = 20,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: models.User = Depends(get_current_active_user)
 ):
-    """List agent runs for current user's businesses with pagination.
-    
-    Query Parameters:
-        skip: Number of records to skip (default: 0)
-        limit: Number of records to return (default: 20, max: 100)
-        
-    Returns:
-        List of AgentRun records owned by user's businesses
-    """
-    return service.get_agent_runs(db, skip=skip, limit=limit, user_id=current_user.id)
+    """List agent runs for current user's businesses with pagination."""
+    return await service.get_agent_runs(db, skip=skip, limit=limit, user_id=current_user.id)
 
 @router.post("/", response_model=AgentRunResponse)
-def create_agent_run(  # type: ignore
+async def create_agent_run(
     item_in: AgentRunCreate, 
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
+    roadmap_service: BusinessRoadmapService = Depends(get_business_roadmap_service),
     current_user: models.User = Depends(get_current_active_user)
 ):
     """
-    **Notice:** This AI Route is currently using Mock Logic. Actual AI execution is pending integration.
-    
     Elite API: Initiates an AI agent run with usage enforcement.
     """
-    from app.models.business.business import RoadmapStage
-    stage = db.query(RoadmapStage).filter(RoadmapStage.id == item_in.stage_id).first()
+    stage = await roadmap_service.get_roadmap_stage(item_in.stage_id)
     if not stage:
         raise HTTPException(status_code=404, detail="Stage not found")
 
     business = stage.roadmap.business
     if business.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
+
     input_context = {
         "business_id": str(business.id),
         "idea_id": str(business.idea_id) if business.idea_id else None,
@@ -65,7 +60,7 @@ def create_agent_run(  # type: ignore
         "business_context": business.context_json
     }
 
-    return service.initiate_agent_run(
+    return await service.initiate_agent_run(
         db, 
         agent_id=item_in.agent_id, 
         user_id=current_user.id, 
@@ -76,72 +71,63 @@ def create_agent_run(  # type: ignore
     )
 
 @router.get("/{id}", response_model=AgentRunResponse)
-def read_agent_run(  # type: ignore
+async def read_agent_run(
     id: UUID,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: models.User = Depends(get_current_active_user),
 ):
-    db_obj = service.get_agent_run(db, id=id)
+    db_obj = await service.get_agent_run(db, id=id)
     if not db_obj:
         raise HTTPException(status_code=404, detail="AgentRun not found")
-    _ensure_agent_run_owner(db_obj, current_user)
+    await _ensure_agent_run_owner(db, db_obj, current_user)
     return db_obj
 
 @router.put("/{id}", response_model=AgentRunResponse)
-def update_agent_run(  # type: ignore
+async def update_agent_run(
     id: UUID,
     item_in: AgentRunUpdate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: models.User = Depends(get_current_active_user),
 ):
-    db_obj = service.get_agent_run(db, id=id)
+    db_obj = await service.get_agent_run(db, id=id)
     if not db_obj:
         raise HTTPException(status_code=404, detail="AgentRun not found")
-    _ensure_agent_run_owner(db_obj, current_user)
-    return service.update_agent_run(db, db_obj=db_obj, obj_in=item_in)
+    await _ensure_agent_run_owner(db, db_obj, current_user)
+    return await service.update_agent_run(db, db_obj=db_obj, obj_in=item_in)
 
 @router.delete("/{id}", response_model=AgentRunResponse)
-def delete_agent_run(  # type: ignore
+async def delete_agent_run(
     id: UUID,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: models.User = Depends(get_current_active_user),
 ):
-    db_obj = service.get_agent_run(db, id=id)
+    db_obj = await service.get_agent_run(db, id=id)
     if not db_obj:
         raise HTTPException(status_code=404, detail="AgentRun not found")
-    _ensure_agent_run_owner(db_obj, current_user)
-    return service.delete_agent_run(db, id=id)
+    await _ensure_agent_run_owner(db, db_obj, current_user)
+    return await service.delete_agent_run(db, id=id)
 
 @router.post(
     "/{id}/execute",
     status_code=202,
     response_model=AgentRunResponse,
 )
-def execute_agent_run(  # type: ignore
+async def execute_agent_run(
     id: UUID,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: models.User = Depends(get_current_active_user),
 ):
     """
     Queue an agent run for asynchronous execution.
 
     Returns **202 Accepted** immediately after the run is queued.
-    The actual AI inference happens in a background thread so the HTTP
-    worker is never blocked for the duration of the model call.
-
-    Poll ``GET /{id}`` to check the run's status (PENDING → RUNNING →
-    SUCCESS / FAILED).
     """
-    db_obj = service.get_agent_run(db, id=id)
+    db_obj = await service.get_agent_run(db, id=id)
     if not db_obj:
         raise HTTPException(status_code=404, detail="AgentRun not found")
-    _ensure_agent_run_owner(db_obj, current_user)
+    await _ensure_agent_run_owner(db, db_obj, current_user)
 
-    # Create a dedicated DB session that the background task owns.
-    # We MUST NOT pass the request-scoped `db` because it will be
-    # closed before the background task finishes.
-    bg_db = SessionLocal()
-
-    background_tasks.add_task(service.run_agent_in_background, bg_db, id)
+    # Use the async session maker for background tasks
+    background_tasks.add_task(service.run_agent_in_background, AsyncSessionLocal, id)
     return db_obj

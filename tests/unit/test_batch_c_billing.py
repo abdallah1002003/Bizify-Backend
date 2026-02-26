@@ -283,7 +283,7 @@ class TestAgentRunRemainingPaths:
         assert resp.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_execute_agent_run_via_service(self, db: Session, test_user):
+    async def test_execute_agent_run_via_service(self, db: Session, async_db, test_user):
         from app.services.ai import ai_service
         run = self._setup(db, test_user.id)
 
@@ -291,7 +291,7 @@ class TestAgentRunRemainingPaths:
             return {"summary": "ok", "score": 0.9}
 
         with patch.object(ai_service.provider_runtime, "run_agent_execution", mock_exec):
-            result = await ai_service.execute_agent_run_async(db, run.id)
+            result = await ai_service.execute_agent_run_async(async_db, run.id)
         assert result is not None
         from app.models.enums import AgentRunStatus
         assert result.status == AgentRunStatus.SUCCESS

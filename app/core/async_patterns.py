@@ -46,7 +46,8 @@ async def get_chat_session_async(db: AsyncSession, session_id: UUID) -> Optional
     with PerformanceTimer(logger, f"get_chat_session_async({session_id})", threshold_ms=100):
         stmt = select(ChatSession).where(ChatSession.id == session_id)
         result = await db.execute(stmt)
-        return result.scalars().first()  # type: ignore[no-any-return]
+        return result.scalars().first()
+
 
 
 # ============================================================================
@@ -98,7 +99,7 @@ async def get_chat_sessions_by_user_async(
         sessions = sessions_result.scalars().all()
         total = len(count_result.scalars().all())
         
-        return sessions, total  # type: ignore
+        return list(sessions), total
 
 
 # ============================================================================
@@ -136,7 +137,9 @@ async def create_chat_session_async(
             user_id=user_id,
             session_type=session_type,
             business_id=business_id,
+
             idea_id=idea_id,
+
             conversation_summary_json={},
         )
         
@@ -252,9 +255,9 @@ async def fetch_multiple_sessions_async(
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
         # Handle any exceptions
-        sessions = []  # type: ignore
+        sessions: List[Optional[ChatSession]] = []
         for i, result in enumerate(results):
-            if isinstance(result, Exception):
+            if isinstance(result, (Exception, BaseException)):
                 logger.error(
                     f"Error fetching session {session_ids[i]}: {result}"
                 )
@@ -262,7 +265,7 @@ async def fetch_multiple_sessions_async(
             else:
                 sessions.append(result)
         
-        return sessions  # type: ignore
+        return sessions
 
 
 # ============================================================================
@@ -374,7 +377,7 @@ async def transfer_session_ownership_async(
 # Example 8: Async Stream Large Results
 # ============================================================================
 
-async def stream_sessions_async(  # type: ignore
+async def stream_sessions_async(
     db: AsyncSession,
     user_id: UUID,
     batch_size: int = 100,

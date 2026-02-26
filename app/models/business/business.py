@@ -2,14 +2,23 @@
 from __future__ import annotations
 import uuid
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 from sqlalchemy import String, Boolean, DateTime, ForeignKey, Enum, JSON, Float, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.guid import GUID
 from app.db.database import Base
 from app.models.enums import BusinessStage, CollaboratorRole, InviteStatus, StageType, RoadmapStageStatus
-from app.core.crud_utils import _utc_now as utc_now  # type: ignore
+from app.core.crud_utils import _utc_now as utc_now
 from app.models.mixins import TimestampMixin, SoftDeleteMixin
+
+if TYPE_CHECKING:
+    from app.models.ideation.idea import Idea
+    from app.models.users.user import User
+    from app.models.partners.partner import PartnerRequest
+    from app.models.ai.agent import Embedding, AgentRun
+    from app.models.ideation.idea_access import IdeaAccess
+    from app.models.chat.chat_session import ChatSession
+    from app.models.core.share_link import ShareLink
 
 class Business(Base, TimestampMixin, SoftDeleteMixin):
     """Business entity created from an idea with collaborators and roadmap."""
@@ -27,10 +36,10 @@ class Business(Base, TimestampMixin, SoftDeleteMixin):
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False)
     archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    idea_backref: Mapped[Optional["Idea"]] = relationship(  # type: ignore
+    idea_backref: Mapped[Optional["Idea"]] = relationship(
         "Idea", foreign_keys="[Idea.business_id]", back_populates="business"
     )
-    owner: Mapped["User"] = relationship(  # type: ignore
+    owner: Mapped["User"] = relationship(
         "User", foreign_keys=[owner_id], back_populates="businesses"
     )
     collaborators: Mapped[List["BusinessCollaborator"]] = relationship(
@@ -42,20 +51,20 @@ class Business(Base, TimestampMixin, SoftDeleteMixin):
     roadmap: Mapped[Optional["BusinessRoadmap"]] = relationship(
         "BusinessRoadmap", back_populates="business", uselist=False, cascade="all, delete-orphan"
     )
-    partner_requests: Mapped[List["PartnerRequest"]] = relationship(  # type: ignore
+    partner_requests: Mapped[List["PartnerRequest"]] = relationship(
         "PartnerRequest", back_populates="business", cascade="all, delete-orphan"
     )
-    embeddings: Mapped[List["Embedding"]] = relationship(  # type: ignore
+    embeddings: Mapped[List["Embedding"]] = relationship(
         "Embedding", back_populates="business", cascade="all, delete-orphan"
     )
-    idea_accesses: Mapped[List["IdeaAccess"]] = relationship(  # type: ignore
+    idea_accesses: Mapped[List["IdeaAccess"]] = relationship(
         "IdeaAccess", back_populates="business", cascade="all, delete-orphan"
     )
-    chat_sessions: Mapped[List["ChatSession"]] = relationship(  # type: ignore
+    chat_sessions: Mapped[List["ChatSession"]] = relationship(
         "ChatSession", foreign_keys="ChatSession.business_id", back_populates="business",
         cascade="all, delete-orphan"
     )
-    share_links: Mapped[List["ShareLink"]] = relationship(  # type: ignore
+    share_links: Mapped[List["ShareLink"]] = relationship(
         "ShareLink", foreign_keys="ShareLink.business_id", back_populates="business",
         cascade="all, delete-orphan"
     )
@@ -75,7 +84,7 @@ class BusinessCollaborator(Base, TimestampMixin, SoftDeleteMixin):
     added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     business: Mapped["Business"] = relationship("Business", back_populates="collaborators")
-    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])  # type: ignore
+    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
 
 class BusinessInvite(Base, TimestampMixin, SoftDeleteMixin):
     """Invitation to join a business with token tracking."""
@@ -94,7 +103,7 @@ class BusinessInvite(Base, TimestampMixin, SoftDeleteMixin):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     business: Mapped["Business"] = relationship("Business", back_populates="invites")
-    inviter: Mapped[Optional["User"]] = relationship(  # type: ignore
+    inviter: Mapped[Optional["User"]] = relationship(
         "User", foreign_keys=[invited_by], back_populates="business_invites_sent"
     )
     ideas_invited_for: Mapped[List["BusinessInviteIdea"]] = relationship(
@@ -116,7 +125,7 @@ class BusinessInviteIdea(Base, TimestampMixin, SoftDeleteMixin):
     invite: Mapped["BusinessInvite"] = relationship(
         "BusinessInvite", back_populates="ideas_invited_for"
     )
-    idea: Mapped["Idea"] = relationship("Idea", back_populates="business_invites")  # type: ignore
+    idea: Mapped["Idea"] = relationship("Idea", back_populates="business_invites")
 
 
 class BusinessRoadmap(Base, TimestampMixin, SoftDeleteMixin):
@@ -152,6 +161,6 @@ class RoadmapStage(Base, TimestampMixin, SoftDeleteMixin):
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     roadmap: Mapped["BusinessRoadmap"] = relationship("BusinessRoadmap", back_populates="stages")
-    agent_runs: Mapped[List["AgentRun"]] = relationship(  # type: ignore
+    agent_runs: Mapped[List["AgentRun"]] = relationship(
         "AgentRun", back_populates="stage", cascade="all, delete-orphan"
     )

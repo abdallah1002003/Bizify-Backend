@@ -39,7 +39,8 @@ async def get_chat_session_async(
     """
     stmt = select(ChatSession).where(ChatSession.id == id)
     result = await db.execute(stmt)
-    return result.scalars().first()  # type: ignore[no-any-return]
+    return result.scalars().first()
+
 
 
 async def get_chat_sessions_by_user_async(
@@ -102,6 +103,7 @@ async def create_chat_session_async(
     Returns:
         Persisted ChatSession with generated ID
     """
+
     db_obj = ChatSession(
         user_id=user_id,
         session_type=session_type,

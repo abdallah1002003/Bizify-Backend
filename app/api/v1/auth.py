@@ -15,6 +15,7 @@ from app.services.auth.auth_service import AuthService, get_auth_service
 from app.schemas.users.user import UserCreate
 from app.core.token_blacklist import blacklist_token
 from config.settings import settings
+from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 
@@ -54,17 +55,15 @@ class BootstrapAdminResponse(BaseModel):
     access_token: str
 
 
-# ---------------------------------------------------------------------------
-# Auth endpoints
-# ---------------------------------------------------------------------------
+
 
 @router.post("/login", response_model=TokenResponse)
-def login_access_token(
+async def login_access_token(
     auth_service: AuthService = Depends(get_auth_service),
     form_data: OAuth2PasswordRequestForm = Depends(),
 ) -> Any:
     """Authenticate a user and return access + refresh tokens."""
-    user = auth_service.authenticate_user(form_data.username, form_data.password)
+    user = await auth_service.authenticate_user(form_data.username, form_data.password)
 
     if not user:
         masked_email = (
@@ -83,17 +82,17 @@ def login_access_token(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Inactive user")
 
     logger.info("Successful login for user: %s", user.id)
-    access_token, refresh_token = auth_service.create_tokens(user.id)
+    access_token, refresh_token = await auth_service.create_tokens(user.id)
 
     return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
 
 @router.post("/refresh", response_model=TokenResponse)
-def refresh_token(
+async def refresh_token(
     payload: RefreshTokenRequest,
     auth_service: AuthService = Depends(get_auth_service),
 ) -> Any:
-    access_token, refresh_token = auth_service.refresh_access_token(payload.refresh_token)
+    access_token, refresh_token = await auth_service.refresh_access_token(payload.refresh_token)
     return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
 
@@ -102,12 +101,14 @@ def refresh_token(
     response_model=BootstrapAdminResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def bootstrap_admin(
+async def bootstrap_admin(
     payload: BootstrapAdminRequest,
     auth_service: AuthService = Depends(get_auth_service),
     bootstrap_token: Optional[str] = Header(default=None, alias="X-Bootstrap-Token"),
 ) -> Any:
-    if not settings.ALLOW_ADMIN_BOOTSTRAP:
+    if not settings.ALLOW_ADMIN_BOOTSTRAP or settings.APP_ENV == "production":
+        if settings.APP_ENV == "production":
+            logger.warning("Attempted admin bootstrap in production environment")
         raise HTTPException(status_code=403, detail="Admin bootstrap is disabled")
 
     expected_token = settings.ADMIN_BOOTSTRAP_TOKEN.strip()
@@ -117,14 +118,17 @@ def bootstrap_admin(
     if bootstrap_token != expected_token:
         raise HTTPException(status_code=403, detail="Invalid bootstrap token")
 
-    existing_admin = auth_service.db.query(models.User).filter(models.User.role == UserRole.ADMIN).first()
+    stmt = select(models.User).where(models.User.role == UserRole.ADMIN)
+    result = await auth_service.db.execute(stmt)
+    existing_admin = result.scalar_one_or_none()
+    
     if existing_admin:
         raise HTTPException(status_code=409, detail="Admin account already exists")
 
-    if auth_service.users.get_user_by_email(payload.email):
+    if await auth_service.users.get_user_by_email(payload.email):
         raise HTTPException(status_code=409, detail="Email already registered")
 
-    admin_user = auth_service.users.create_user(
+    admin_user = await auth_service.users.create_user(
         obj_in={
             "name": payload.name,
             "email": payload.email,
@@ -134,7 +138,7 @@ def bootstrap_admin(
             "is_verified": True,
         },
     )
-    access_token, refresh_token = auth_service.create_tokens(admin_user.id)
+    access_token, refresh_token = await auth_service.create_tokens(admin_user.id)
 
     return {
         "id": admin_user.id,
@@ -147,14 +151,14 @@ def bootstrap_admin(
 
 
 @router.post("/logout")
-def logout(  # type: ignore
+async def logout(
     request: Request,
     payload: RefreshTokenRequest,
     auth_service: AuthService = Depends(get_auth_service),
 ):
     """Revoke refresh token and blacklist the current access token."""
     # 1. Revoke refresh token in DB
-    auth_service.revoke_refresh_token(payload.refresh_token)
+    await auth_service.revoke_refresh_token(payload.refresh_token)
 
     # 2. Blacklist the access token so it cannot be reused until expiry
     auth_header = request.headers.get("Authorization", "")
@@ -170,7 +174,7 @@ def logout(  # type: ignore
             exp = token_data.get("exp")
             if jti and exp:
                 remaining_ttl = int(exp - datetime.now(timezone.utc).timestamp())
-                blacklist_token(jti, remaining_ttl)
+                await blacklist_token(jti, remaining_ttl)
         except jwt.PyJWTError:
             pass  # Token already invalid — nothing to blacklist
 
@@ -178,20 +182,20 @@ def logout(  # type: ignore
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-async def register(  # type: ignore
+async def register(
     item_in: UserCreate,
     background_tasks: BackgroundTasks,
     auth_service: AuthService = Depends(get_auth_service),
 ):
     """Register a new user account and send verification email."""
-    existing = auth_service.users.get_user_by_email(item_in.email)
+    existing = await auth_service.users.get_user_by_email(item_in.email)
     if existing:
         raise HTTPException(status_code=409, detail="Email already registered")
 
     data = item_in.model_dump()
     data["is_active"] = True
     data["is_verified"] = False
-    user = auth_service.users.create_user(obj_in=data)
+    user = await auth_service.users.create_user(obj_in=data)
 
     # Create and persist verification token (emits event)
     await auth_service.create_verification_token(user.id, user.email)
@@ -200,18 +204,18 @@ async def register(  # type: ignore
 
 
 @router.get("/verify-email")
-def verify_email(  # type: ignore
+async def verify_email(
     token: str = Query(..., description="Email verification JWT"),
     auth_service: AuthService = Depends(get_auth_service),
 ):
     """Confirm a user's email address."""
-    user = auth_service.verify_email(token)
+    user = await auth_service.verify_email(token)
     logger.info("Email verified for user %s", user.id)
     return {"message": "Email verified successfully. You can now log in."}
 
 
 @router.post("/forgot-password")
-async def forgot_password(  # type: ignore
+async def forgot_password(
     payload: ForgotPasswordRequest,
     auth_service: AuthService = Depends(get_auth_service),
 ):
@@ -221,7 +225,7 @@ async def forgot_password(  # type: ignore
 
 
 @router.post("/reset-password")
-def reset_password(  # type: ignore
+async def reset_password(
     payload: ResetPasswordRequest,
     auth_service: AuthService = Depends(get_auth_service),
 ):
@@ -230,18 +234,28 @@ def reset_password(  # type: ignore
     if not token_payload:
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
 
-    email = token_payload.get("sub")
-    jti = token_payload.get("jti")
+    email_claim = token_payload.get("sub")
+    if not isinstance(email_claim, str) or not email_claim:
+        raise HTTPException(status_code=400, detail="Invalid reset token subject")
 
-    stored_token = (
-        auth_service.db.query(models.PasswordResetToken)
-        .filter(models.PasswordResetToken.jti == jti)
-        .first()
-    )
+    jti_claim = token_payload.get("jti")
+    jti = str(jti_claim) if jti_claim else None
+    if not jti:
+        raise HTTPException(status_code=400, detail="Invalid reset token identifier")
+
+    # Blacklist check (extra security layer)
+    from app.core.token_blacklist import is_token_blacklisted
+    if jti and await is_token_blacklisted(jti):
+        raise HTTPException(status_code=400, detail="Token has already been used")
+
+    stmt = select(models.PasswordResetToken).where(models.PasswordResetToken.jti == jti)
+    result = await auth_service.db.execute(stmt)
+    stored_token = result.scalar_one_or_none()
+    
     if not stored_token or stored_token.used:
         raise HTTPException(status_code=400, detail="Token has already been used or is invalid")
 
-    user = auth_service.users.get_user_by_email(email)  # type: ignore
+    user = await auth_service.users.get_user_by_email(email_claim)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -249,6 +263,13 @@ def reset_password(  # type: ignore
     user.password_hash = security.get_password_hash(payload.new_password)
     auth_service.db.add(user)
     auth_service.db.add(stored_token)
-    auth_service.db.commit()
+    await auth_service.db.commit()
+
+    # Blacklist used token
+    exp_claim = token_payload.get("exp")
+    if jti and isinstance(exp_claim, (int, float)):
+        remaining_ttl = int(exp_claim - datetime.now(timezone.utc).timestamp())
+        if remaining_ttl > 0:
+            await blacklist_token(jti, remaining_ttl)
 
     return {"message": "Password updated successfully"}

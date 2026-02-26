@@ -1,6 +1,7 @@
 from uuid import uuid4
-
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 import app.models as models
 from app.core.security import get_password_hash
@@ -12,7 +13,7 @@ from app.services.billing import subscription_service
 from app.services.billing import usage_service
 
 
-def _create_user(db, prefix: str) -> models.User:
+async def _create_user(async_db: AsyncSession, prefix: str) -> models.User:
     user = models.User(
         name=f"{prefix} User",
         email=f"{prefix}_{uuid4().hex[:8]}@example.com",
@@ -21,80 +22,84 @@ def _create_user(db, prefix: str) -> models.User:
         is_active=True,
         is_verified=True,
     )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+    async_db.add(user)
+    await async_db.commit()
+    await async_db.refresh(user)
     return user
 
 
-def test_plan_and_subscription_services_crud_and_limit_sync(db, test_user):
-    free_plan = plan_service.create_plan(
-        db,
+@pytest.mark.asyncio
+async def test_plan_and_subscription_services_crud_and_limit_sync(async_db: AsyncSession):
+    test_user = await _create_user(async_db, "billing")
+    free_plan = await plan_service.create_plan(
+        async_db,
         {"name": "FREE", "price": 0.0, "features_json": {"ai_runs": 10}, "is_active": True},
     )
-    pro_plan = plan_service.create_plan(
-        db,
+    pro_plan = await plan_service.create_plan(
+        async_db,
         {"name": "PRO", "price": 20.0, "features_json": {"ai_runs": 100}, "is_active": True},
     )
 
-    assert plan_service.get_plan(db, free_plan.id) is not None
-    assert len(plan_service.get_plans(db, skip=0, limit=10)) >= 2
+    assert await plan_service.get_plan(async_db, free_plan.id) is not None
+    plans_list = await plan_service.get_plans(async_db, skip=0, limit=10)
+    assert len(plans_list) >= 2
 
-    free_plan = plan_service.update_plan(db, free_plan, {"price": 1.0})
+    free_plan = await plan_service.update_plan(async_db, free_plan, {"price": 1.0})
     assert free_plan.price == 1.0
 
-    subscription = subscription_service.create_subscription(
-        db,
+    subscription = await subscription_service.create_subscription(
+        async_db,
         {"user_id": test_user.id, "plan_id": free_plan.id},
     )
     assert subscription.status == SubscriptionStatus.PENDING
     assert subscription.start_date is not None
-    assert subscription_service.get_active_subscription(db, test_user.id) is None
+    assert await subscription_service.get_active_subscription(async_db, test_user.id) is None
 
-    usage = (
-        db.query(models.Usage)
-        .filter(models.Usage.user_id == test_user.id, models.Usage.resource_type == "AI_REQUEST")
-        .first()
-    )
+    stmt = select(models.Usage).where(models.Usage.user_id == test_user.id, models.Usage.resource_type == "AI_REQUEST")
+    result = await async_db.execute(stmt)
+    usage = result.scalar_one_or_none()
     assert usage is not None
     assert usage.limit_value == 10
 
-    subscription = subscription_service.update_subscription(
-        db,
+    subscription = await subscription_service.update_subscription(
+        async_db,
         subscription,
         {"status": SubscriptionStatus.ACTIVE, "plan_id": pro_plan.id},
     )
     assert subscription.status == SubscriptionStatus.ACTIVE
-    assert subscription_service.get_subscription(db, subscription.id) is not None
-    assert subscription_service.get_active_subscription(db, test_user.id).id == subscription.id
-    assert len(subscription_service.get_subscriptions(db, user_id=test_user.id)) == 1
+    assert await subscription_service.get_subscription(async_db, subscription.id) is not None
+    active_sub = await subscription_service.get_active_subscription(async_db, test_user.id)
+    assert active_sub is not None
+    assert active_sub.id == subscription.id
+    
+    user_subs = await subscription_service.get_subscriptions(async_db, user_id=test_user.id)
+    assert len(user_subs) == 1
 
-    usage = (
-        db.query(models.Usage)
-        .filter(models.Usage.user_id == test_user.id, models.Usage.resource_type == "AI_REQUEST")
-        .first()
-    )
+    result = await async_db.execute(stmt)
+    usage = result.scalar_one_or_none()
     assert usage is not None
     assert usage.limit_value == 100
 
-    deleted_subscription = subscription_service.delete_subscription(db, subscription.id)
+    deleted_subscription = await subscription_service.delete_subscription(async_db, subscription.id)
     assert deleted_subscription is not None
-    assert subscription_service.delete_subscription(db, subscription.id) is None
+    assert await subscription_service.delete_subscription(async_db, subscription.id) is None
 
-    deleted_plan = plan_service.delete_plan(db, free_plan.id)
+    deleted_plan = await plan_service.delete_plan(async_db, free_plan.id)
     assert deleted_plan is not None
-    assert plan_service.delete_plan(db, free_plan.id) is None
+    assert await plan_service.delete_plan(async_db, free_plan.id) is None
 
 
-def test_payment_method_usage_and_payment_services_paths(db, test_user):
-    other_user = _create_user(db, "billing_other")
-    plan = plan_service.create_plan(
-        db,
+@pytest.mark.asyncio
+async def test_payment_method_usage_and_payment_services_paths(async_db: AsyncSession):
+    test_user = await _create_user(async_db, "billing_primary")
+    other_user = await _create_user(async_db, "billing_other")
+    plan = await plan_service.create_plan(
+        async_db,
         {"name": "PRO", "price": 20.0, "features_json": {"ai_runs": 100}, "is_active": True},
     )
 
-    payment_method = payment_method_service.create_payment_method(
-        db,
+    payment_method = await payment_method_service.create_payment_method(
+        async_db,
         {
             "user_id": test_user.id,
             "provider": "stripe",
@@ -103,8 +108,9 @@ def test_payment_method_usage_and_payment_services_paths(db, test_user):
             "is_default": True,
         },
     )
-    payment_method_service.create_payment_method(
-        db,
+    payment_method_id = payment_method.id  # Cache ID early to avoid lazy loading later
+    await payment_method_service.create_payment_method(
+        async_db,
         {
             "user_id": other_user.id,
             "provider": "stripe",
@@ -113,39 +119,42 @@ def test_payment_method_usage_and_payment_services_paths(db, test_user):
         },
     )
 
-    assert payment_method_service.get_payment_method(db, payment_method.id) is not None
-    assert len(payment_method_service.get_payment_methods(db, user_id=test_user.id)) == 1
+    assert await payment_method_service.get_payment_method(async_db, payment_method.id) is not None
+    user_pms = await payment_method_service.get_payment_methods(async_db, user_id=test_user.id)
+    assert len(user_pms) == 1
 
-    payment_method = payment_method_service.update_payment_method(
-        db,
+    payment_method = await payment_method_service.update_payment_method(
+        async_db,
         payment_method,
         {"last4": "0005"},
     )
     assert payment_method.last4 == "0005"
 
-    usage = usage_service.create_usage(
-        db,
+    usage = await usage_service.create_usage(
+        async_db,
         {"user_id": test_user.id, "resource_type": "AI_REQUEST", "used": 0, "limit_value": 2},
     )
-    usage = usage_service.record_usage(db, test_user.id, "AI_REQUEST", quantity=2)
+    usage = await usage_service.record_usage(async_db, test_user.id, "AI_REQUEST", quantity=2)
     assert usage.used == 2
-    assert usage_service.check_usage_limit(db, test_user.id, "AI_REQUEST") is False
+    assert await usage_service.check_usage_limit(async_db, test_user.id, "AI_REQUEST") is False
 
-    other_usage = usage_service.record_usage(db, other_user.id, "AI_REQUEST", quantity=3)
+    other_usage = await usage_service.record_usage(async_db, other_user.id, "AI_REQUEST", quantity=3)
     assert other_usage.used == 3
-    assert usage_service.check_usage_limit(db, other_user.id, "AI_REQUEST") is True
+    assert await usage_service.check_usage_limit(async_db, other_user.id, "AI_REQUEST") is True
 
-    usage = usage_service.update_usage(db, usage, {"limit_value": 5})
+    usage = await usage_service.update_usage(async_db, usage, {"limit_value": 5})
     assert usage.limit_value == 5
-    assert usage_service.get_usage(db, usage.id) is not None
-    assert len(usage_service.get_usages(db, user_id=test_user.id)) >= 1
+    assert await usage_service.get_usage(async_db, usage.id) is not None
+    
+    usages_list = await usage_service.get_usages(async_db, user_id=test_user.id)
+    assert len(usages_list) >= 1
 
-    subscription = subscription_service.create_subscription(
-        db,
+    subscription = await subscription_service.create_subscription(
+        async_db,
         {"user_id": test_user.id, "plan_id": plan.id, "status": SubscriptionStatus.PENDING},
     )
-    payment = payment_service.process_payment(
-        db,
+    payment = await payment_service.process_payment(
+        async_db,
         subscription_id=subscription.id,
         amount=20.0,
         method_id=payment_method.id,
@@ -153,54 +162,58 @@ def test_payment_method_usage_and_payment_services_paths(db, test_user):
     )
     assert payment.status == PaymentStatus.COMPLETED
 
-    db.refresh(subscription)
+    await async_db.refresh(subscription)
     assert subscription.status == SubscriptionStatus.ACTIVE
     assert subscription.end_date is not None
 
-    payment = payment_service.update_payment(db, payment, {"status": PaymentStatus.COMPLETED})
+    payment = await payment_service.update_payment(async_db, payment, {"status": PaymentStatus.COMPLETED})
     assert payment.status == PaymentStatus.COMPLETED
-    assert payment_service.get_payment(db, payment.id) is not None
-    assert len(payment_service.get_payments(db, user_id=test_user.id)) >= 1
+    assert await payment_service.get_payment(async_db, payment.id) is not None
+    payments_list = await payment_service.get_payments(async_db, user_id=test_user.id)
+    assert len(payments_list) >= 1
 
-    wrapper_sub = subscription_service.create_subscription(
-        db,
+    wrapper_sub = await subscription_service.create_subscription(
+        async_db,
         {"user_id": test_user.id, "plan_id": plan.id},
     )
-    wrapped_payment = payment_service.process_subscription_payment(
-        db,
+    wrapped_payment = await payment_service.process_subscription_payment(
+        async_db,
         subscription_id=wrapper_sub.id,
         amount=9.0,
         payment_method_id=payment_method.id,
     )
+    wrapped_payment_id = wrapped_payment.id  # Cache ID before any session operations
     assert wrapped_payment.status == PaymentStatus.COMPLETED
 
-    payment_service.handle_payment_reversal(db, payment.id)
-    db.refresh(payment)
-    db.refresh(subscription)
+    await payment_service.handle_payment_reversal(async_db, payment.id)
+    await async_db.refresh(payment)
+    await async_db.refresh(subscription)
     assert payment.status == PaymentStatus.REFUNDED
     assert subscription.status == SubscriptionStatus.CANCELED
 
-    usage_rows = db.query(models.Usage).filter(models.Usage.user_id == test_user.id).all()
+    stmt = select(models.Usage).where(models.Usage.user_id == test_user.id)
+    res = await async_db.execute(stmt)
+    usage_rows = res.scalars().all()
     assert usage_rows
     assert all(row.limit_value == 0 for row in usage_rows if row.limit_value is not None)
 
-    payment_service.handle_payment_reversal(db, uuid4())
+    await payment_service.handle_payment_reversal(async_db, uuid4())
 
     from app.core.exceptions import ResourceNotFoundError
     with pytest.raises(ResourceNotFoundError):
-        payment_service.process_payment(
-            db,
+        await payment_service.process_payment(
+            async_db,
             subscription_id=uuid4(),
             amount=1.0,
             method_id=payment_method.id,
         )
 
-    deleted_payment = payment_service.delete_payment(db, wrapped_payment.id)
+    deleted_payment = await payment_service.delete_payment(async_db, wrapped_payment_id)
     assert deleted_payment is not None
-    assert payment_service.delete_payment(db, wrapped_payment.id) is None
+    assert await payment_service.delete_payment(async_db, wrapped_payment_id) is None
 
-    deleted_pm = payment_method_service.delete_payment_method(db, payment_method.id)
+    deleted_pm = await payment_method_service.delete_payment_method(async_db, payment_method_id)
     assert deleted_pm is not None
-    assert payment_method_service.delete_payment_method(db, payment_method.id) is None
+    assert await payment_method_service.delete_payment_method(async_db, payment_method.id) is None
 
 

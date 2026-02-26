@@ -8,15 +8,15 @@ import asyncio
 # Ensure project root is in path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from app.core.structured_logging import setup_logging
+from app.core.structured_logging import configure_structured_logging
 from app.core.cache import get_cache_manager
 from app.core.events import dispatcher
 from app.core.event_handlers import register_all_handlers
-from app.db.database import SessionLocal
+from app.db.database import AsyncSessionLocal
 from app.services.core.cleanup_service import cleanup_all
 from app.services.core.email_worker import run_email_worker
 
-setup_logging("worker")
+configure_structured_logging("INFO")
 logger = logging.getLogger("worker")
 
 _CLEANUP_INTERVAL_SECONDS = 24 * 60 * 60  # 24 hours
@@ -25,14 +25,12 @@ async def _periodic_cleanup() -> None:
     """Background task: runs cleanup_all every 24 hours."""
     while True:
         await asyncio.sleep(_CLEANUP_INTERVAL_SECONDS)
-        db = SessionLocal()
-        try:
-            summary = cleanup_all(db)
-            logger.info("Periodic cleanup completed: %s", summary)
-        except Exception:
-            logger.exception("Periodic cleanup failed")
-        finally:
-            db.close()
+        async with AsyncSessionLocal() as db:
+            try:
+                summary = await cleanup_all(db)
+                logger.info("Periodic cleanup completed: %s", summary)
+            except Exception:
+                logger.exception("Periodic cleanup failed")
 
 async def process_queue():
     """Main background loop to process the event queue."""

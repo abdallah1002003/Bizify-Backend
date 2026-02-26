@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 from sqlalchemy import DateTime, Boolean, func, false
 from sqlalchemy.orm import Mapped, mapped_column
-from app.core.crud_utils import _utc_now as utc_now  # type: ignore
+from app.core.crud_utils import _utc_now as utc_now
 
 class TimestampMixin:
     """Timestamp mixin providing automated created_at and updated_at tracking."""

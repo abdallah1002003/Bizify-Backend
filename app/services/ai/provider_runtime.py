@@ -65,7 +65,7 @@ def _mock_agent_response(
     }
 
 
-async def _call_openai_embeddings(content: str) -> Optional[list[float]]:  # type: ignore
+async def _call_openai_embeddings(content: str) -> Optional[list[float]]:
     if not _is_openai_enabled():
         return None
 
@@ -103,6 +103,7 @@ async def _call_openai_embeddings(content: str) -> Optional[list[float]]:  # typ
             else:
                 logger.warning("OpenAI embedding call failed after %d retries; using deterministic fallback: %s", max_retries, exc)
                 return None
+    return None
 
 
 async def generate_embedding_vector(content: str, dimensions: int = DEFAULT_VECTOR_DIMENSION) -> list[float]:
@@ -112,7 +113,7 @@ async def generate_embedding_vector(content: str, dimensions: int = DEFAULT_VECT
     return _normalize_vector(_deterministic_vector(content, dimensions), dimensions)
 
 
-async def _call_openai_agent_response(  # type: ignore
+async def _call_openai_agent_response(
     input_data: Optional[Dict[str, Any]],
     *,
     agent_name: str,
@@ -181,6 +182,7 @@ async def _call_openai_agent_response(  # type: ignore
             else:
                 logger.warning("OpenAI agent call failed after %d retries; using mock fallback: %s", max_retries, exc)
                 return None
+    return None
 
 
 async def run_agent_execution(

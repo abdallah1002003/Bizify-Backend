@@ -7,6 +7,8 @@ def test_create_business(client: TestClient, auth_headers: dict, test_user: dict
         "stage": "early"
     }
     response = client.post("/api/v1/businesses/", json=payload, headers=auth_headers)
+    if response.status_code != 200:
+        print("ERROR RESPONSE:", response.json())
     assert response.status_code == 200
     data = response.json()
     assert data["owner_id"] == str(test_user.id)

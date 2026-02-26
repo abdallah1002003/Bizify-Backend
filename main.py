@@ -13,7 +13,7 @@ from app.middleware.rate_limiter import RateLimiterMiddleware
 from app.middleware.rate_limiter_redis import RedisRateLimiterMiddleware
 from config.settings import settings
 from app.api.v1.api import api_router as api_router_v1
-from app.db.database import SessionLocal
+from app.db.database import AsyncSessionLocal
 from app.services.core.cleanup_service import cleanup_all, cleanup_expired_tokens
 from app.core.structured_logging import configure_structured_logging, get_logger
 from app.core.event_handlers import register_all_handlers
@@ -48,7 +48,7 @@ if settings.SENTRY_DSN:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    if settings.VERIFY_DB_ON_STARTUP:
+    if settings.VERIFY_DB_ON_STARTUP and settings.APP_ENV != "test":
         verify_database_connection()
     if settings.AUTO_CREATE_TABLES and settings.APP_ENV != "production":
         Base.metadata.create_all(bind=engine)
@@ -58,13 +58,13 @@ async def lifespan(_: FastAPI):
 
     # One-shot cleanup on startup (skip in test to avoid in-memory DB issues)
     if settings.APP_ENV != "test":
-        db = SessionLocal()
-        try:
-            summary = cleanup_all(db)
-            if any(v > 0 for v in summary.values()):
-                logger.info("Startup cleanup: %s", summary)
-        finally:
-            db.close()
+        async with AsyncSessionLocal() as db:
+            try:
+                summary = await cleanup_all(db)
+                if any(v > 0 for v in summary.values()):
+                    logger.info("Startup cleanup: %s", summary)
+            except Exception as e:
+                logger.error("Startup cleanup failed: %s", e)
 
     yield
 
@@ -143,48 +143,38 @@ async def health_check(
 
     # ── Internal (authenticated) — full diagnostics ──────────────────────
     import stripe
-    from app.middleware.rate_limiter_redis import redis_client
-
+    from app.core.cache import get_cache_manager
+    cache = get_cache_manager()
+    redis_available = False
+    
     results: dict = {
         "status": overall_status,
         "database": db_status,
         "version": "1.0.0",
     }
-
-    # Redis check
+    
     if settings.REDIS_ENABLED:
         try:
-            if redis_client and redis_client.ping():
+            # Use the underlying redis client from the cache backend
+            if hasattr(cache.backend, "client") and cache.backend.client:
+                await cache.backend.client.ping()
+                redis_available = True
                 results["redis"] = "ok"
             else:
                 results["redis"] = "disconnected"
-                results["status"] = "degraded"
         except Exception as e:
-            logger.error("Health check - Redis failed: %s", e)
+            logger.error(f"Redis health check failed: {e}")
             results["redis"] = "error"
             results["status"] = "degraded"
 
-    # Stripe check — asyncio-safe timeout via asyncio.wait_for
+    # Stripe check — lightweight key verification instead of live network call
     if settings.STRIPE_ENABLED:
-        stripe_status = "ok"
-
-        def _call_stripe() -> None:
-            stripe.api_key = settings.STRIPE_SECRET_KEY
-            stripe.Balance.retrieve()
-
-        try:
-            # Run the synchronous Stripe call in a thread pool, with a 3-second timeout
-            await asyncio.wait_for(asyncio.to_thread(_call_stripe), timeout=3.0)
-        except asyncio.TimeoutError:
-            logger.warning("Health check - Stripe timed out (3 s)")
-            stripe_status = "timeout"
+        if settings.STRIPE_SECRET_KEY and settings.STRIPE_WEBHOOK_SECRET:
+            results["stripe"] = "configured"
+        else:
+            logger.warning("Health check - Stripe enabled but keys are missing")
+            results["stripe"] = "missing_keys"
             results["status"] = "degraded"
-        except Exception as exc:
-            logger.error("Health check - Stripe failed: %s", exc)
-            stripe_status = "error"
-            results["status"] = "degraded"
-
-        results["stripe"] = stripe_status
 
     return results
 
@@ -196,8 +186,17 @@ metrics_api_key_header = APIKeyHeader(name="X-Metrics-Key", auto_error=False)
 
 def verify_metrics_key(api_key: str = Depends(metrics_api_key_header)):
     """Dependency to verify the API key for Prometheus metrics."""
-    # We can retrieve this from settings, or use a hardcoded value for now if it's missing.
-    expected_key = getattr(settings, "METRICS_API_KEY", "dev-metrics-key")
+    expected_key = getattr(settings, "METRICS_API_KEY", "")
+    
+    # In non-development environments, we MUST have a key configured.
+    # If the key is empty, we deny access to be safe.
+    if settings.APP_ENV != "development" and not expected_key:
+        logger.error("METRICS_API_KEY is not configured in %s environment", settings.APP_ENV)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Security Error: Metrics access is disabled",
+        )
+
     if not api_key or api_key != expected_key:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

@@ -4,7 +4,7 @@ from sqlalchemy import String, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db.guid import GUID
 from app.db.database import Base
-from app.core.crud_utils import _utc_now as utc_now  # type: ignore
+from app.core.crud_utils import _utc_now as utc_now
 
 class ProcessedEvent(Base):
     """Tracks processed webhook events to ensure idempotency.

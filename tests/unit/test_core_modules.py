@@ -7,11 +7,14 @@ Tests for core modules:
   - app/repositories/base_repository.py (GenericRepository CRUD)
 """
 import time
+import pytest
 import uuid
 from datetime import timedelta
 from unittest.mock import MagicMock
 
 from fastapi import HTTPException, status
+
+from app.models import User
 
 from app.core.exceptions import (
     AccessDeniedError,
@@ -279,43 +282,49 @@ class TestTokenBlacklist:
         """Clear the in-memory store before each test."""
         token_blacklist._memory_store.clear()
 
-    def test_blacklist_and_check(self):
+    @pytest.mark.asyncio
+    async def test_blacklist_and_check(self):
         jti = str(uuid.uuid4())
-        token_blacklist.blacklist_token(jti, ttl_seconds=60)
-        assert token_blacklist.is_token_blacklisted(jti)
+        await token_blacklist.blacklist_token(jti, ttl_seconds=60)
+        assert await token_blacklist.is_token_blacklisted(jti)
 
-    def test_non_blacklisted_jti(self):
+    @pytest.mark.asyncio
+    async def test_non_blacklisted_jti(self):
         jti = str(uuid.uuid4())
-        assert not token_blacklist.is_token_blacklisted(jti)
+        assert not await token_blacklist.is_token_blacklisted(jti)
 
-    def test_already_expired_ttl_is_skipped(self):
+    @pytest.mark.asyncio
+    async def test_already_expired_ttl_is_skipped(self):
         jti = str(uuid.uuid4())
-        token_blacklist.blacklist_token(jti, ttl_seconds=0)
+        await token_blacklist.blacklist_token(jti, ttl_seconds=0)
         # ttl=0 means expired — should NOT be stored
-        assert not token_blacklist.is_token_blacklisted(jti)
+        assert not await token_blacklist.is_token_blacklisted(jti)
 
-    def test_negative_ttl_is_skipped(self):
+    @pytest.mark.asyncio
+    async def test_negative_ttl_is_skipped(self):
         jti = str(uuid.uuid4())
-        token_blacklist.blacklist_token(jti, ttl_seconds=-1)
-        assert not token_blacklist.is_token_blacklisted(jti)
+        await token_blacklist.blacklist_token(jti, ttl_seconds=-1)
+        assert not await token_blacklist.is_token_blacklisted(jti)
 
-    def test_lazy_cleanup_on_write(self):
+    @pytest.mark.asyncio
+    async def test_lazy_cleanup_on_write(self):
         # Insert an already-expired entry manually
         old_jti = str(uuid.uuid4())
         token_blacklist._memory_store[old_jti] = time.time() - 10  # expired 10s ago
         # Insert a new valid entry — this should trigger cleanup
         new_jti = str(uuid.uuid4())
-        token_blacklist.blacklist_token(new_jti, ttl_seconds=60)
+        await token_blacklist.blacklist_token(new_jti, ttl_seconds=60)
         # Expired entry should be gone
         assert old_jti not in token_blacklist._memory_store
         # New entry should be here
-        assert token_blacklist.is_token_blacklisted(new_jti)
+        assert await token_blacklist.is_token_blacklisted(new_jti)
 
-    def test_read_expired_entry_returns_false(self):
+    @pytest.mark.asyncio
+    async def test_read_expired_entry_returns_false(self):
         jti = str(uuid.uuid4())
         # Set expiry in the past
         token_blacklist._memory_store[jti] = time.time() - 1
-        assert not token_blacklist.is_token_blacklisted(jti)
+        assert not await token_blacklist.is_token_blacklisted(jti)
         # Should also have been cleaned up
         assert jti not in token_blacklist._memory_store
 
@@ -327,109 +336,121 @@ class TestTokenBlacklist:
 class TestGenericRepository:
     """Tests using a mock SQLAlchemy session — no database required."""
 
+    class MockFakeModel(User):
+        """Mock model for testing GenericRepository."""
+        pass
+
     def _make_repo(self):
         from app.repositories.base_repository import GenericRepository
+        from unittest.mock import AsyncMock, MagicMock
 
-        class FakeModel:
-            def __init__(self, **kwargs):
-                for k, v in kwargs.items():
-                    setattr(self, k, v)
+        mock_db = AsyncMock()
+        mock_db.add = MagicMock()
+        repo = GenericRepository(mock_db, User)
+        return repo, mock_db, User
 
-        mock_db = MagicMock()
-        repo = GenericRepository(mock_db, FakeModel)
-        return repo, mock_db, FakeModel
-
-    def test_get(self):
+    @pytest.mark.asyncio
+    async def test_get(self):
         repo, mock_db, FakeModel = self._make_repo()
         fake_obj = FakeModel(id=1, name="test")
         mock_db.get.return_value = fake_obj
-        result = repo.get(1)
+        result = await repo.get(1)
         mock_db.get.assert_called_once_with(FakeModel, 1)
         assert result == fake_obj
 
-    def test_get_not_found(self):
+    @pytest.mark.asyncio
+    async def test_get_not_found(self):
         repo, mock_db, FakeModel = self._make_repo()
         mock_db.get.return_value = None
-        result = repo.get(999)
+        result = await repo.get(999)
         assert result is None
 
-    def test_get_all(self):
+    @pytest.mark.asyncio
+    async def test_get_all(self):
         repo, mock_db, FakeModel = self._make_repo()
-        mock_db.query.return_value.offset.return_value.limit.return_value.all.return_value = [
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [
             FakeModel(id=1), FakeModel(id=2)
         ]
-        results = repo.get_all(skip=0, limit=10)
+        mock_db.execute.return_value = mock_result
+        results = await repo.get_all(skip=0, limit=10)
         assert len(results) == 2
 
-    def test_count(self):
+    @pytest.mark.asyncio
+    async def test_count(self):
         repo, mock_db, FakeModel = self._make_repo()
-        mock_db.query.return_value.count.return_value = 42
-        assert repo.count() == 42
+        mock_result = MagicMock()
+        mock_result.scalar.return_value = 42
+        mock_db.execute.return_value = mock_result
+        assert await repo.count() == 42
 
-    def test_create(self):
+    @pytest.mark.asyncio
+    async def test_create(self):
         repo, mock_db, FakeModel = self._make_repo()
-        mock_db.refresh = MagicMock()
-        result = repo.create({"name": "new_item", "value": 10})
+        result = await repo.create({"name": "new_item", "email": "test@test.com", "password_hash": "hash"})
         mock_db.add.assert_called_once()
         mock_db.commit.assert_called_once()
         mock_db.refresh.assert_called_once()
 
-    def test_update_with_dict(self):
+    @pytest.mark.asyncio
+    async def test_update_with_dict(self):
         repo, mock_db, FakeModel = self._make_repo()
-        obj = FakeModel(name="old", value=1)
-        mock_db.refresh = MagicMock()
-        repo.update(obj, {"name": "new"})
+        obj = FakeModel(name="old", email="test@test.com", password_hash="hash")
+        await repo.update(obj, {"name": "new"})
         assert obj.name == "new"
         mock_db.commit.assert_called_once()
 
-    def test_update_with_pydantic_model(self):
+    @pytest.mark.asyncio
+    async def test_update_with_pydantic_model(self):
         repo, mock_db, FakeModel = self._make_repo()
         obj = FakeModel(name="old")
-        mock_db.refresh = MagicMock()
 
         pydantic_update = MagicMock()
         pydantic_update.model_dump.return_value = {"name": "new_pydantic"}
 
-        repo.update(obj, pydantic_update)
+        await repo.update(obj, pydantic_update)
         assert obj.name == "new_pydantic"
 
-    def test_update_with_legacy_dict_method(self):
+    @pytest.mark.asyncio
+    async def test_update_with_legacy_dict_method(self):
         repo, mock_db, FakeModel = self._make_repo()
         obj = FakeModel(name="old")
-        mock_db.refresh = MagicMock()
 
         # Simulate an object with a .dict() method (Pydantic v1 style)
         legacy_pydantic = MagicMock()
         del legacy_pydantic.model_dump  # no model_dump attribute
         legacy_pydantic.dict.return_value = {"name": "from_dict_method"}
 
-        repo.update(obj, legacy_pydantic)
+        await repo.update(obj, legacy_pydantic)
         assert obj.name == "from_dict_method"
 
 
-    def test_update_skips_none_values(self):
+    @pytest.mark.asyncio
+    async def test_update_skips_none_values(self):
         repo, mock_db, FakeModel = self._make_repo()
         obj = FakeModel(name="keep")
-        mock_db.refresh = MagicMock()
-        repo.update(obj, {"name": None})
+        await repo.update(obj, {"name": None})
         # name should not be overwritten because value is None
         assert obj.name == "keep"
 
-    def test_delete_existing(self):
+    @pytest.mark.asyncio
+    async def test_delete_existing(self):
         repo, mock_db, FakeModel = self._make_repo()
         obj = FakeModel(id=1)
         mock_db.get.return_value = obj
-        result = repo.delete(1)
+        result = await repo.delete(1)
         mock_db.delete.assert_called_once_with(obj)
         mock_db.commit.assert_called_once()
         assert result == obj
 
-    def test_delete_not_found(self):
+    @pytest.mark.asyncio
+    async def test_delete_not_found(self):
         repo, mock_db, FakeModel = self._make_repo()
         mock_db.get.return_value = None
-        result = repo.delete(999)
+        result = await repo.delete(999)
         mock_db.delete.assert_not_called()
         assert result is None
+
 
 
 # ===========================================================================

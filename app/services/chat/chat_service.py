@@ -1,18 +1,3 @@
-"""
-Chat service aggregator and convenience functions.
-
-This module consolidates chat functionality by re-exporting operations from:
-    - chat_session_operations: ChatSession CRUD operations
-    - chat_message_operations: ChatMessage CRUD and history operations
-
-It provides convenient access to all chat functions and maintains
-backward compatibility with existing code.
-
-For detailed documentation, see:
-    - chat_session_operations.py for session management
-    - chat_message_operations.py for message management
-"""
-
 from __future__ import annotations
 
 from typing import Any, Dict
@@ -20,7 +5,7 @@ from typing import Any, Dict
 from app.core.structured_logging import get_logger
 from app.core.crud_utils import _utc_now
 
-# Import all operations for re-export
+# Import all operations from the newly async operations files
 from app.services.chat.chat_session_operations import (
     get_chat_session,
     get_chat_sessions,
@@ -28,14 +13,6 @@ from app.services.chat.chat_session_operations import (
     create_chat_session,
     update_chat_session,
     delete_chat_session,
-)
-
-from app.services.chat.chat_session_async import (
-    get_chat_session_async,
-    get_chat_sessions_by_user_async,
-    create_chat_session_async,
-    update_chat_session_async,
-    delete_chat_session_async,
 )
 
 from app.services.chat.chat_message_operations import (
@@ -47,17 +24,9 @@ from app.services.chat.chat_message_operations import (
     get_session_history,
 )
 
-from app.services.chat.chat_message_async import (
-    get_chat_message_async,
-    add_message_async,
-    get_session_history_async,
-    update_chat_message_async,
-    delete_chat_message_async,
-)
-
 logger = get_logger(__name__)
 
-# Re-export for backward compatibility
+# Re-export unified async interface
 __all__ = [
     # Session operations
     "get_chat_session",
@@ -66,11 +35,6 @@ __all__ = [
     "create_chat_session",
     "update_chat_session",
     "delete_chat_session",
-    "get_chat_session_async",
-    "get_chat_sessions_by_user_async",
-    "create_chat_session_async",
-    "update_chat_session_async",
-    "delete_chat_session_async",
     # Message operations
     "get_chat_message",
     "get_chat_messages",
@@ -78,18 +42,13 @@ __all__ = [
     "update_chat_message",
     "delete_chat_message",
     "get_session_history",
-    "get_chat_message_async",
-    "add_message_async",
-    "get_session_history_async",
-    "update_chat_message_async",
-    "delete_chat_message_async",
     # Status operations
     "get_detailed_status",
     "reset_internal_state",
 ]
 
 
-def get_detailed_status() -> Dict[str, Any]:
+async def get_detailed_status() -> Dict[str, Any]:
     """
     Get detailed status information for the chat service.
     
@@ -109,7 +68,7 @@ def get_detailed_status() -> Dict[str, Any]:
     }
 
 
-def reset_internal_state() -> None:
+async def reset_internal_state() -> None:
     """
     Reset internal state of the chat service.
     

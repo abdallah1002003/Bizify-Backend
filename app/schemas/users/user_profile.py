@@ -17,7 +17,8 @@ class UserProfileBase(SafeBaseModel):
     
     @field_validator('skills_json', 'interests_json', 'preferences_json', 'risk_profile_json', mode='before')
     @classmethod
-    def validate_json_fields(cls, v):  # type: ignore
+    def validate_json_fields(cls, v):
+
         """Validate JSON fields at input time."""
         if v is None:
             return {}
@@ -42,7 +43,8 @@ class UserProfileCreate(SafeBaseModel):
     
     @field_validator('skills_json', 'interests_json', 'preferences_json', 'risk_profile_json', mode='before')
     @classmethod
-    def validate_json_fields(cls, v):  # type: ignore
+    def validate_json_fields(cls, v):
+
         """Validate JSON fields at input time."""
         if v is None:
             return {}
@@ -68,7 +70,7 @@ class UserProfileUpdate(SafeBaseModel):
     
     @field_validator('skills_json', 'interests_json', 'preferences_json', 'risk_profile_json', mode='before')
     @classmethod
-    def validate_json_fields(cls, v):  # type: ignore
+    def validate_json_fields(cls, v):
         """Validate JSON fields at input time."""
         if v is None:
             return None

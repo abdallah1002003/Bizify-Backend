@@ -1,6 +1,3 @@
-"""
-Usage enforcement and tracking operations.
-"""
 from __future__ import annotations
 
 import logging
@@ -8,13 +5,14 @@ from typing import Any, List, Optional
 from uuid import UUID
 
 from fastapi import Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.models import Usage
-from app.db.database import get_db
+from app.db.database import get_async_db
 from app.services.base_service import BaseService
-from app.services.billing.crud_utils import get_by_id, list_records
 from app.core.crud_utils import _to_update_dict, _apply_updates
+from app.core.exceptions import ValidationError, InvalidStateError
 
 logger = logging.getLogger(__name__)
 
@@ -22,99 +20,177 @@ logger = logging.getLogger(__name__)
 class UsageService(BaseService):
     """Service for managing resource usage tracking and enforcement."""
 
-    def check_usage_limit(self, user_id: UUID, resource_type: str) -> bool:
-        """Return whether the user's usage remains below the configured limit."""
-        usage = (
-            self.db.query(Usage)
-            .filter(Usage.user_id == user_id, Usage.resource_type == resource_type)
-            .first()
+    @staticmethod
+    def _normalize_resource_type(resource_type: str) -> str:
+        normalized = resource_type.strip().upper()
+        if not normalized:
+            raise ValidationError(
+                message="resource_type cannot be empty",
+                field="resource_type",
+            )
+        return normalized
+
+    @staticmethod
+    def _validate_quantity(quantity: int) -> int:
+        if quantity < 0:
+            raise ValidationError(
+                message=f"quantity must be non-negative, got {quantity}",
+                field="quantity",
+            )
+        return quantity
+
+    async def _get_usage_by_resource(
+        self,
+        *,
+        user_id: UUID,
+        resource_type: str,
+        for_update: bool = False,
+    ) -> Optional[Usage]:
+        stmt = select(Usage).where(
+            Usage.user_id == user_id,
+            Usage.resource_type == resource_type,
         )
+        if for_update:
+            stmt = stmt.with_for_update()
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def check_usage_limit(self, user_id: UUID, resource_type: str) -> bool:
+        """Return whether the user's usage remains below the configured limit."""
+        normalized_resource = self._normalize_resource_type(resource_type)
+        usage = await self._get_usage_by_resource(
+            user_id=user_id,
+            resource_type=normalized_resource,
+            for_update=False,
+        )
+        
         if usage is None or usage.limit_value is None:
             return True
-        return usage.used < usage.limit_value  # type: ignore[no-any-return]
+        return usage.used < usage.limit_value
 
-    def record_usage(self, user_id: UUID, resource_type: str, quantity: int = 1) -> Usage:
+    async def record_usage(self, user_id: UUID, resource_type: str, quantity: int = 1) -> Usage:
         """Atomically increment usage for a resource, creating the row when needed."""
-        usage = (
-            self.db.query(Usage)
-            .filter(Usage.user_id == user_id, Usage.resource_type == resource_type)
-            .with_for_update()  # row-level lock — prevents concurrent phantom inserts
-            .first()
+        normalized_resource = self._normalize_resource_type(resource_type)
+        delta = self._validate_quantity(quantity)
+        usage = await self._get_usage_by_resource(
+            user_id=user_id,
+            resource_type=normalized_resource,
+            for_update=True,
         )
+        
         if usage is None:
-            usage = Usage(user_id=user_id, resource_type=resource_type, used=0)
+            usage = Usage(user_id=user_id, resource_type=normalized_resource, used=0)
             self.db.add(usage)
 
-        usage.used += quantity
-        self.db.commit()
-        self.db.refresh(usage)
-        return usage  # type: ignore[no-any-return]
+        if usage.limit_value is not None and usage.used + delta > usage.limit_value:
+            raise InvalidStateError(
+                message="Usage quota exceeded",
+                current_state=f"used={usage.used}",
+                required_state=f"<= limit_value={usage.limit_value}",
+                details={
+                    "user_id": str(user_id),
+                    "resource_type": normalized_resource,
+                    "quantity": delta,
+                },
+            )
 
-    def get_usage(self, id: UUID) -> Optional[Usage]:
+        usage.used += delta
+        await self.db.commit()
+        await self.db.refresh(usage)
+        return usage
+
+    async def get_usage(self, id: UUID) -> Optional[Usage]:
         """Return a single usage row by id."""
-        return get_by_id(self.db, Usage, id)
+        return await self.db.get(Usage, id)
 
-    def get_usages(
+    async def get_usages(
         self,
         skip: int = 0,
         limit: int = 100,
         user_id: Optional[UUID] = None,
     ) -> List[Usage]:
         """Return paginated usage rows, optionally filtered by user."""
-        return list_records(
-            self.db,
-            Usage,
-            skip=skip,
-            limit=limit,
-            filters={"user_id": user_id},
+        stmt = select(Usage)
+        if user_id is not None:
+            stmt = stmt.where(Usage.user_id == user_id)
+        stmt = (
+            stmt.order_by(Usage.updated_at.desc(), Usage.used.desc())
+            .offset(skip)
+            .limit(limit)
         )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
 
-    def create_usage(self, obj_in: Any) -> Usage:
+    async def create_usage(self, obj_in: Any) -> Usage:
         """Create or update a usage row for a given (user_id, resource_type) pair."""
         data = _to_update_dict(obj_in)
         user_id = data.get("user_id")
         resource_type = data.get("resource_type")
 
-        if user_id and resource_type:
-            existing = (
-                self.db.query(Usage)
-                .filter(Usage.user_id == user_id, Usage.resource_type == resource_type)
-                .with_for_update()  # prevent concurrent phantom inserts
-                .first()
+        if user_id is None or resource_type is None:
+            raise ValidationError(
+                message="user_id and resource_type are required",
+                details={"required_fields": ["user_id", "resource_type"]},
             )
-            if existing is not None:
-                # Merge supplied fields onto the existing row instead of inserting a duplicate
-                _apply_updates(existing, data)
-                self.db.commit()
-                self.db.refresh(existing)
-                return existing  # type: ignore[no-any-return]
+
+        data["resource_type"] = self._normalize_resource_type(str(resource_type))
+        if "used" in data and data["used"] is not None:
+            data["used"] = self._validate_quantity(int(data["used"]))
+        if "limit_value" in data and data["limit_value"] is not None and int(data["limit_value"]) < 0:
+            raise ValidationError(
+                message="limit_value must be non-negative",
+                field="limit_value",
+            )
+
+        existing = await self._get_usage_by_resource(
+            user_id=user_id,
+            resource_type=data["resource_type"],
+            for_update=True,
+        )
+        if existing is not None:
+            # Merge supplied fields onto the existing row instead of inserting a duplicate
+            _apply_updates(existing, data)
+            await self.db.commit()
+            await self.db.refresh(existing)
+            return existing
 
         db_obj = Usage(**data)
         self.db.add(db_obj)
-        self.db.commit()
-        self.db.refresh(db_obj)
+        await self.db.commit()
+        await self.db.refresh(db_obj)
         return db_obj
 
-    def update_usage(self, db_obj: Usage, obj_in: Any) -> Usage:
+    async def update_usage(self, db_obj: Usage, obj_in: Any) -> Usage:
         """Update mutable fields on a usage row."""
-        _apply_updates(db_obj, _to_update_dict(obj_in))
+        update_data = _to_update_dict(obj_in)
+        if "resource_type" in update_data and update_data["resource_type"] is not None:
+            update_data["resource_type"] = self._normalize_resource_type(str(update_data["resource_type"]))
+        if "used" in update_data and update_data["used"] is not None:
+            update_data["used"] = self._validate_quantity(int(update_data["used"]))
+        if "limit_value" in update_data and update_data["limit_value"] is not None and int(update_data["limit_value"]) < 0:
+            raise ValidationError(
+                message="limit_value must be non-negative",
+                field="limit_value",
+            )
+
+        _apply_updates(db_obj, update_data)
         self.db.add(db_obj)
-        self.db.commit()
-        self.db.refresh(db_obj)
+        await self.db.commit()
+        await self.db.refresh(db_obj)
         return db_obj
 
-    def delete_usage(self, id: UUID) -> Optional[Usage]:
+    async def delete_usage(self, id: UUID) -> Optional[Usage]:
         """Delete a usage row by id."""
-        db_obj = self.get_usage(id=id)
+        db_obj = await self.get_usage(id=id)
         if not db_obj:
             return None
 
-        self.db.delete(db_obj)
-        self.db.commit()
+        await self.db.delete(db_obj)
+        await self.db.commit()
         return db_obj
 
 
-def get_usage_service(db: Session = Depends(get_db)) -> UsageService:
+async def get_usage_service(db: AsyncSession = Depends(get_async_db)) -> UsageService:
     """Dependency provider for UsageService."""
     return UsageService(db)
 
@@ -123,29 +199,29 @@ def get_usage_service(db: Session = Depends(get_db)) -> UsageService:
 # Legacy Aliases
 # ----------------------------
 
-def check_usage_limit(db: Session, user_id: UUID, resource_type: str) -> bool:
-    return UsageService(db).check_usage_limit(user_id, resource_type)
+async def check_usage_limit(db: AsyncSession, user_id: UUID, resource_type: str) -> bool:
+    return await UsageService(db).check_usage_limit(user_id, resource_type)
 
 
-def record_usage(db: Session, user_id: UUID, resource_type: str, quantity: int = 1) -> Usage:
-    return UsageService(db).record_usage(user_id, resource_type, quantity)
+async def record_usage(db: AsyncSession, user_id: UUID, resource_type: str, quantity: int = 1) -> Usage:
+    return await UsageService(db).record_usage(user_id, resource_type, quantity)
 
 
-def get_usage(db: Session, id: UUID) -> Optional[Usage]:
-    return UsageService(db).get_usage(id)
+async def get_usage(db: AsyncSession, id: UUID) -> Optional[Usage]:
+    return await UsageService(db).get_usage(id)
 
 
-def get_usages(db: Session, skip: int = 0, limit: int = 100, user_id: Optional[UUID] = None) -> List[Usage]:
-    return UsageService(db).get_usages(skip, limit, user_id)
+async def get_usages(db: AsyncSession, skip: int = 0, limit: int = 100, user_id: Optional[UUID] = None) -> List[Usage]:
+    return await UsageService(db).get_usages(skip, limit, user_id)
 
 
-def create_usage(db: Session, obj_in: Any) -> Usage:
-    return UsageService(db).create_usage(obj_in)
+async def create_usage(db: AsyncSession, obj_in: Any) -> Usage:
+    return await UsageService(db).create_usage(obj_in)
 
 
-def update_usage(db: Session, db_obj: Usage, obj_in: Any) -> Usage:
-    return UsageService(db).update_usage(db_obj, obj_in)
+async def update_usage(db: AsyncSession, db_obj: Usage, obj_in: Any) -> Usage:
+    return await UsageService(db).update_usage(db_obj, obj_in)
 
 
-def delete_usage(db: Session, id: UUID) -> Optional[Usage]:
-    return UsageService(db).delete_usage(id)
+async def delete_usage(db: AsyncSession, id: UUID) -> Optional[Usage]:
+    return await UsageService(db).delete_usage(id)

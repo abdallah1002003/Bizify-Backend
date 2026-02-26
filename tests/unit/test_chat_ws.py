@@ -36,9 +36,8 @@ def create_test_chat_session(db: Session, user_id: uuid.UUID) -> ChatSession:
     db.refresh(chat_session)
     return chat_session
 
-def test_connection_manager():
-    import asyncio
-    
+@pytest.mark.asyncio
+async def test_connection_manager():
     # We can mock a websocket easily or just use None since the async code just creates lists
     class MockWebsocket:
         async def accept(self): pass
@@ -48,19 +47,18 @@ def test_connection_manager():
     ws2 = MockWebsocket()
     sid = uuid.uuid4()
     
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(manager.connect(ws1, sid))
+    await manager.connect(ws1, sid)
     assert len(manager.active_connections[sid]) == 1
     
-    loop.run_until_complete(manager.connect(ws2, sid))
+    await manager.connect(ws2, sid)
     assert len(manager.active_connections[sid]) == 2
     
-    loop.run_until_complete(manager.send_personal_message("hello", ws1))
-    assert ws1.data == "hello"
+    await manager.send_personal_message("hello", ws1)
+    assert getattr(ws1, 'data', None) == "hello"
     
-    loop.run_until_complete(manager.broadcast("broad", sid))
-    assert ws1.data == "broad"
-    assert ws2.data == "broad"
+    await manager.broadcast("broad", sid)
+    assert getattr(ws1, 'data', None) == "broad"
+    assert getattr(ws2, 'data', None) == "broad"
     
     manager.disconnect(ws1, sid)
     assert len(manager.active_connections[sid]) == 1

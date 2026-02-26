@@ -11,7 +11,7 @@ from app.core.cache import get_cache_manager
 router = APIRouter()
 
 @router.get("/", response_model=List[IdeaResponse])
-def read_ideas(  # type: ignore
+async def read_ideas(
     skip: SkipParam = 0,
     limit: LimitParam = 20,
     service: IdeaService = Depends(get_idea_service),
@@ -19,34 +19,34 @@ def read_ideas(  # type: ignore
 ):
     """List ideas visible to current user with pagination (cached)."""
     cache = get_cache_manager()
-    gen = cache.get_generation_key(f"ideas:{current_user.id}")
+    gen = await cache.get_generation_key(f"ideas:{current_user.id}")
     cache_key = f"api:ideas:{current_user.id}:v={gen}:skip={skip}:limit={limit}"
     
-    cached = cache.get(cache_key)
+    cached = await cache.get(cache_key)
     if cached is not None:
         return cached
 
-    result = service.get_ideas(skip=skip, limit=limit, user_id=current_user.id)
+    result = await service.get_ideas(skip=skip, limit=limit, user_id=current_user.id)
     
     # Store directly; FastAPI will validate it through the response_model
-    cache.set(cache_key, result, ttl_seconds=300)
+    await cache.set(cache_key, result, ttl_seconds=300)
     return result
 
 @router.post("/", response_model=IdeaResponse)
-def create_idea(  # type: ignore
+async def create_idea(
     item_in: IdeaCreate, 
     service: IdeaService = Depends(get_idea_service),
     current_user: models.User = Depends(get_current_active_user)
 ):
     """Elite API: Secure idea creation with auto-versioning."""
     item_in.owner_id = current_user.id or item_in.owner_id
-    result = service.create_idea(obj_in=item_in)
+    result = await service.create_idea(obj_in=item_in)
     
-    get_cache_manager().increment_generation_key(f"ideas:{current_user.id}")
+    await get_cache_manager().increment_generation_key(f"ideas:{current_user.id}")
     return result
 
 @router.get("/{id}", response_model=IdeaResponse)
-def read_idea(  # type: ignore
+async def read_idea(
     id: UUID, 
     service: IdeaService = Depends(get_idea_service),
     current_user: models.User = Depends(get_current_active_user)
@@ -54,49 +54,49 @@ def read_idea(  # type: ignore
     """Elite API: RBAC-verified retrieval."""
     cache = get_cache_manager()
     cache_key = f"api:idea:{id}:user:{current_user.id}"
-    cached = cache.get(cache_key)
+    cached = await cache.get(cache_key)
     if cached is not None:
         return cached
 
-    db_obj = service.get_idea(id=id, user_id=current_user.id)
+    db_obj = await service.get_idea(id=id, user_id=current_user.id)
     if not db_obj: 
         raise HTTPException(status_code=404, detail="Idea not found")
         
-    cache.set(cache_key, db_obj, ttl_seconds=300)
+    await cache.set(cache_key, db_obj, ttl_seconds=300)
     return db_obj
 
 @router.put("/{id}", response_model=IdeaResponse)
-def update_idea(  # type: ignore
+async def update_idea(
     id: UUID, 
     item_in: IdeaUpdate, 
     service: IdeaService = Depends(get_idea_service),
     current_user: models.User = Depends(get_current_active_user)
 ):
     """Elite API: Protected mutation with lineage tracking."""
-    db_obj = service.get_idea(id=id)
+    db_obj = await service.get_idea(id=id)
     if not db_obj:
-         raise HTTPException(status_code=404, detail="Idea not found")
+        raise HTTPException(status_code=404, detail="Idea not found")
          
-    result = service.update_idea(db_obj=db_obj, obj_in=item_in, performer_id=current_user.id)
+    result = await service.update_idea(db_obj=db_obj, obj_in=item_in, performer_id=current_user.id)
     
     cache = get_cache_manager()
-    cache.increment_generation_key(f"ideas:{current_user.id}")
-    cache.delete(f"api:idea:{id}:user:{current_user.id}")
+    await cache.increment_generation_key(f"ideas:{current_user.id}")
+    await cache.delete(f"api:idea:{id}:user:{current_user.id}")
     return result
 
 @router.delete("/{id}", response_model=IdeaResponse)
-def delete_idea(  # type: ignore
+async def delete_idea(
     id: UUID, 
     service: IdeaService = Depends(get_idea_service),
     current_user: models.User = Depends(get_current_active_user)
 ):
     """Elite API: Secure deletion with ownership verification."""
-    if not service.check_idea_access(id, current_user.id, "delete"):
+    if not await service.check_idea_access(id, current_user.id, "delete"):
         raise HTTPException(status_code=403, detail="Ownership required for deletion")
         
-    result = service.delete_idea(id=id)
+    result = await service.delete_idea(id=id)
     
     cache = get_cache_manager()
-    cache.increment_generation_key(f"ideas:{current_user.id}")
-    cache.delete(f"api:idea:{id}:user:{current_user.id}")
+    await cache.increment_generation_key(f"ideas:{current_user.id}")
+    await cache.delete(f"api:idea:{id}:user:{current_user.id}")
     return result

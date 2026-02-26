@@ -14,7 +14,7 @@ EventHandler = Callable[[str, Any], Coroutine[Any, Any, None]]
 
 class CustomJSONEncoder(json.JSONEncoder):
     """Custom JSON Encoder to handle UUIDs and Datetimes in event payloads."""
-    def default(self, obj):  # type: ignore
+    def default(self, obj):
         if isinstance(obj, UUID):
             return str(obj)
         if hasattr(obj, "isoformat"):
@@ -28,11 +28,11 @@ class EventDispatcher:
     with an automatic fallback to synchronous execution for tests.
     """
 
-    def __init__(self):  # type: ignore
+    def __init__(self):
         self._handlers: Dict[str, List[EventHandler]] = {}
         self.queue_key = "app:event_queue"
 
-    def subscribe(self, event_type: str, handler: EventHandler):  # type: ignore
+    def subscribe(self, event_type: str, handler: EventHandler):
         """Subscribe a handler to an event type. Prevents duplicate subscriptions."""
         if event_type not in self._handlers:
             self._handlers[event_type] = []
@@ -41,12 +41,12 @@ class EventDispatcher:
             self._handlers[event_type].append(handler)
             logger.debug(f"Subscribed handler {getattr(handler, '__name__', str(handler))} to event {event_type}")
 
-    def clear_all_handlers(self):  # type: ignore
+    def clear_all_handlers(self):
         """Clear all registered handlers. Useful for test cleanup."""
         self._handlers = {}
         logger.debug("Cleared all event handlers")
 
-    async def emit(self, event_type: str, payload: Any):  # type: ignore
+    async def emit(self, event_type: str, payload: Any):
         """Emit an event to the background queue, or straight to handlers if testing."""
         logger.info(f"Emitting event: {event_type}")
         
@@ -63,7 +63,7 @@ class EventDispatcher:
                     "payload": payload
                 }
                 encoded = json.dumps(event_data, cls=CustomJSONEncoder)
-                cache.backend.client.lpush(self.queue_key, encoded)
+                await cache.backend.client.lpush(self.queue_key, encoded)
                 return
             except Exception as e:
                 logger.error(f"Failed to push event {event_type} to Redis queue: {e}. Falling back to inline execution.")
@@ -71,7 +71,7 @@ class EventDispatcher:
         # Fallback to immediate execution if Redis is unavailable or we hit an error
         await self._run_handlers(event_type, payload)
 
-    async def _run_handlers(self, event_type: str, payload: Any):  # type: ignore
+    async def _run_handlers(self, event_type: str, payload: Any):
         """Run handlers immediately (used by test environment and worker)."""
         if event_type not in self._handlers:
             return

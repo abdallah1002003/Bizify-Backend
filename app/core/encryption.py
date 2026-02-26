@@ -64,7 +64,8 @@ def decrypt(blob: str) -> str:
     iv = raw[:_IV_LENGTH]
     ciphertext_with_tag = raw[_IV_LENGTH:]
     aesgcm = AESGCM(key)
-    return aesgcm.decrypt(iv, ciphertext_with_tag, associated_data=None).decode()  # type: ignore[no-any-return]
+    return aesgcm.decrypt(iv, ciphertext_with_tag, associated_data=None).decode()
+
 
 
 class EncryptedString(TypeDecorator):

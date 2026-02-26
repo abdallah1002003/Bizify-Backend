@@ -1,33 +1,31 @@
-# ruff: noqa: E402
-from __future__ import annotations
-
 import logging
 from typing import Any, Dict, List, Optional, Union, cast
 from uuid import UUID
 
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from fastapi import Depends
 
-from app.db.database import get_db
+from app.db.database import get_async_db
 
 from app.core.security import get_password_hash
-from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
+from app.core.crud_utils import _to_update_dict, _apply_updates
 from app.models import AdminActionLog, User, UserProfile
 from app.models.enums import UserRole
 from app.services.base_service import BaseService
-from app.repositories.user_repository import UserRepository
 
 logger = logging.getLogger(__name__)
 
 
 class UserService(BaseService):
-    """Service for managing user accounts, profiles, and admin logs."""
+    """Service for managing user accounts, profiles, and admin logs (Asynchronous)."""
+    db: AsyncSession
 
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         super().__init__(db)
-        self.user_repo = UserRepository(db, User)
 
-    def _record_admin_action(
+    async def _record_admin_action(
         self,
         admin_id: Optional[UUID],
         action_type: str,
@@ -47,29 +45,55 @@ class UserService(BaseService):
         )
         self.db.add(log)
         if auto_commit:
-            self.db.commit()
-            self.db.refresh(log)
+            await self.db.commit()
+            await self.db.refresh(log)
         else:
-            self.db.flush()
+            await self.db.flush()
         return log
 
     # ----------------------------
     # User CRUD
     # ----------------------------
 
-    def get_user(self, id: UUID) -> Optional[User]:
+    async def get_user(self, id: UUID) -> Optional[User]:
         """Retrieves a user by their unique UUID."""
-        return self.user_repo.get_with_profile(id)
+        stmt = (
+            select(User)
+            .options(selectinload(User.profile))
+            .where(User.id == id)
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
 
-    def get_user_by_email(self, email: str) -> Optional[User]:
+    async def get_user_by_email(self, email: str) -> Optional[User]:
         """Retrieves a user by their registered email address."""
-        return self.user_repo.get_by_email(email)
+        stmt = (
+            select(User)
+            .options(selectinload(User.profile))
+            .where(User.email == email)
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
 
-    def get_users(self, skip: int = 0, limit: int = 100) -> List[User]:
+    async def get_users(self, skip: int = 0, limit: int = 100) -> List[User]:
         """Retrieves a list of users with pagination."""
-        return self.user_repo.get_all_with_profiles(skip=skip, limit=limit)
+        stmt = (
+            select(User)
+            .options(selectinload(User.profile))
+            .offset(skip)
+            .limit(limit)
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
 
-    def create_user(self, obj_in: Union[Dict[str, Any], Any]) -> User:
+    async def count_users(self) -> int:
+        """Returns total count of users."""
+        from sqlalchemy import func
+        stmt = select(func.count()).select_from(User)
+        result = await self.db.execute(stmt)
+        return cast(int, result.scalar())
+
+    async def create_user(self, obj_in: Union[Dict[str, Any], Any]) -> User:
         """Creates a new user and an associated empty profile."""
         try:
             user_data = _to_update_dict(obj_in)
@@ -83,30 +107,32 @@ class UserService(BaseService):
 
             db_obj = User(**user_data)
             self.db.add(db_obj)
-            self.db.flush()
+            await self.db.flush()
 
             # Ensure profile exists for new users.
-            if not self.db.query(UserProfile).filter(UserProfile.user_id == db_obj.id).first():
+            stmt = select(UserProfile).where(UserProfile.user_id == db_obj.id)
+            result = await self.db.execute(stmt)
+            if not result.scalar_one_or_none():
                 profile = UserProfile(user_id=db_obj.id, bio="", preferences_json={})
                 self.db.add(profile)
 
-            self._record_admin_action(
+            await self._record_admin_action(
                 admin_id=cast(UUID, db_obj.id),
                 action_type="USER_CREATED",
                 target_id=cast(UUID, db_obj.id),
                 target_entity="user",
                 auto_commit=False,
             )
-            self.db.commit()
-            self.db.refresh(db_obj)
+            await self.db.commit()
+            await self.db.refresh(db_obj)
             logger.info(f"Successfully created user: {db_obj.email} (ID: {db_obj.id})")
             return db_obj
         except Exception as e:
-            self.db.rollback()
+            await self.db.rollback()
             logger.error(f"Transaction failed during create_user: {e}")
             raise
 
-    def update_user(self, db_obj: User, obj_in: Any) -> User:
+    async def update_user(self, db_obj: User, obj_in: Any) -> User:
         """Updates an existing user's information."""
         update_data = _to_update_dict(obj_in)
 
@@ -117,50 +143,57 @@ class UserService(BaseService):
 
         _apply_updates(db_obj, update_data)
         self.db.add(db_obj)
-        self.db.commit()
-        self.db.refresh(db_obj)
+        await self.db.commit()
+        await self.db.refresh(db_obj)
         return db_obj
 
-    def delete_user(self, id: UUID) -> Optional[User]:
+    async def delete_user(self, id: UUID) -> Optional[User]:
         """Deletes a user and records the administrative action."""
-        db_obj = self.get_user(id=id)
+        db_obj = await self.get_user(id=id)
         if not db_obj:
             return None
 
-        self._record_admin_action(admin_id=None, action_type="USER_DELETED", target_id=id, auto_commit=False)
-        self.db.delete(db_obj)
-        self.db.commit()
+        await self._record_admin_action(admin_id=None, action_type="USER_DELETED", target_id=id, auto_commit=False)
+        await self.db.delete(db_obj)
+        await self.db.commit()
         return db_obj
 
     # ----------------------------
     # UserProfile CRUD
     # ----------------------------
 
-    def get_user_profile(
+    async def get_user_profile(
         self,
         id: Optional[UUID] = None,
         user_id: Optional[UUID] = None,
     ) -> Optional[UserProfile]:
         """Retrieves a user profile by profile ID or user ID."""
         if id is not None:
-            return self.db.query(UserProfile).filter(UserProfile.id == id).first()  # type: ignore[no-any-return]
+            stmt = select(UserProfile).where(UserProfile.id == id)
+            result = await self.db.execute(stmt)
+            return result.scalar_one_or_none()
+
         if user_id is not None:
-            return self.db.query(UserProfile).filter(UserProfile.user_id == user_id).first()  # type: ignore[no-any-return]
+            stmt = select(UserProfile).where(UserProfile.user_id == user_id)
+            result = await self.db.execute(stmt)
+            return result.scalar_one_or_none()
         return None
 
-    def get_user_profiles(self, skip: int = 0, limit: int = 100) -> List[UserProfile]:
+    async def get_user_profiles(self, skip: int = 0, limit: int = 100) -> List[UserProfile]:
         """Retrieves multiple user profiles with pagination."""
-        return self.db.query(UserProfile).offset(skip).limit(limit).all()  # type: ignore[no-any-return]
+        stmt = select(UserProfile).offset(skip).limit(limit)
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
 
-    def create_user_profile(self, obj_in: Any) -> UserProfile:
+    async def create_user_profile(self, obj_in: Any) -> UserProfile:
         """Creates a new user profile manually."""
         db_obj = UserProfile(**_to_update_dict(obj_in))
         self.db.add(db_obj)
-        self.db.commit()
-        self.db.refresh(db_obj)
+        await self.db.commit()
+        await self.db.refresh(db_obj)
         return db_obj
 
-    def update_user_profile(
+    async def update_user_profile(
         self,
         db_obj: UserProfile,
         obj_in: Any,
@@ -171,11 +204,11 @@ class UserService(BaseService):
         _apply_updates(db_obj, update_data)
 
         self.db.add(db_obj)
-        self.db.commit()
-        self.db.refresh(db_obj)
+        await self.db.commit()
+        await self.db.refresh(db_obj)
 
         if performer_id is not None:
-            self._record_admin_action(
+            await self._record_admin_action(
                 admin_id=performer_id,
                 action_type="PROFILE_UPDATED",
                 target_id=cast(UUID, db_obj.user_id),
@@ -184,26 +217,26 @@ class UserService(BaseService):
 
         return db_obj
 
-    def update_user_profile_by_user_id(
+    async def update_user_profile_by_user_id(
         self,
         user_id: UUID,
         profile_data: Dict[str, Any],
         performer_id: Optional[UUID] = None,
     ) -> UserProfile:
         """Updates a user profile by resolving it via user_id."""
-        db_obj = self.get_user_profile(user_id=user_id)
+        db_obj = await self.get_user_profile(user_id=user_id)
         if db_obj is None:
             db_obj = UserProfile(user_id=user_id, bio="", preferences_json={})
             self.db.add(db_obj)
-            self.db.commit()
-            self.db.refresh(db_obj)
+            await self.db.commit()
+            await self.db.refresh(db_obj)
 
         _apply_updates(db_obj, profile_data)
         self.db.add(db_obj)
-        self.db.commit()
-        self.db.refresh(db_obj)
+        await self.db.commit()
+        await self.db.refresh(db_obj)
 
-        self._record_admin_action(
+        await self._record_admin_action(
             admin_id=performer_id,
             action_type="PROFILE_UPDATED",
             target_id=cast(UUID, user_id),
@@ -211,83 +244,65 @@ class UserService(BaseService):
         )
         return db_obj
 
-    def delete_user_profile(self, id: UUID) -> Optional[UserProfile]:
+    async def delete_user_profile(self, id: UUID) -> Optional[UserProfile]:
         """Deletes a user profile record."""
-        db_obj = self.get_user_profile(id=id)
+        db_obj = await self.get_user_profile(id=id)
         if not db_obj:
             return None
 
-        self.db.delete(db_obj)
-        self.db.commit()
+        await self.db.delete(db_obj)
+        await self.db.commit()
         return db_obj
 
     # ----------------------------
     # AdminActionLog CRUD
     # ----------------------------
 
-    def get_admin_action_log(self, id: UUID) -> Optional[AdminActionLog]:
+    async def get_admin_action_log(self, id: UUID) -> Optional[AdminActionLog]:
         """Retrieves a specific admin action log entry."""
-        return self.db.query(AdminActionLog).filter(AdminActionLog.id == id).first()  # type: ignore[no-any-return]
+        stmt = select(AdminActionLog).where(AdminActionLog.id == id)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
 
-    def get_admin_action_logs(self, skip: int = 0, limit: int = 100) -> List[AdminActionLog]:
+    async def get_admin_action_logs(self, skip: int = 0, limit: int = 100) -> List[AdminActionLog]:
         """Retrieves admin action logs with pagination, newest first."""
-        return (  # type: ignore[no-any-return]
-            self.db.query(AdminActionLog)
+        stmt = (
+            select(AdminActionLog)
             .order_by(AdminActionLog.created_at.desc())
             .offset(skip)
             .limit(limit)
-            .all()
         )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
 
-    def create_admin_action_log(self, obj_in: Any) -> AdminActionLog:
+    async def create_admin_action_log(self, obj_in: Any) -> AdminActionLog:
         """Creates a new admin action log entry."""
         data = _to_update_dict(obj_in)
         db_obj = AdminActionLog(**data)
         self.db.add(db_obj)
-        self.db.commit()
-        self.db.refresh(db_obj)
+        await self.db.commit()
+        await self.db.refresh(db_obj)
         return db_obj
 
-    def update_admin_action_log(self, db_obj: AdminActionLog, obj_in: Any) -> AdminActionLog:
+    async def update_admin_action_log(self, db_obj: AdminActionLog, obj_in: Any) -> AdminActionLog:
         """Updates an existing admin action log entry."""
         _apply_updates(db_obj, _to_update_dict(obj_in))
         self.db.add(db_obj)
-        self.db.commit()
-        self.db.refresh(db_obj)
+        await self.db.commit()
+        await self.db.refresh(db_obj)
         return db_obj
 
-    def delete_admin_action_log(self, id: UUID) -> Optional[AdminActionLog]:
+    async def delete_admin_action_log(self, id: UUID) -> Optional[AdminActionLog]:
         """Deletes an admin action log entry."""
-        db_obj = self.get_admin_action_log(id=id)
+        db_obj = await self.get_admin_action_log(id=id)
         if not db_obj:
             return None
 
-        self.db.delete(db_obj)
-        self.db.commit()
+        await self.db.delete(db_obj)
+        await self.db.commit()
         return db_obj
 
 
-# ----------------------------
-# Legacy/Utility functions (maintained for backward compatibility if needed)
-# ----------------------------
-
-def get_user_service(db: Session = Depends(get_db)) -> UserService:
+async def get_user_service(db: AsyncSession = Depends(get_async_db)) -> UserService:
     """Dependency provider for UserService."""
     return UserService(db)
-
-# Legacy aliases - eventually migrate away from these
-def get_user(db: Session, id: UUID) -> Optional[User]:
-    return UserService(db).get_user(id)
-
-def create_user(db: Session, obj_in: Any) -> User:
-    return UserService(db).create_user(obj_in)
-
-def update_user(db: Session, db_obj: User, obj_in: Any) -> User:
-    return UserService(db).update_user(db_obj, obj_in)
-
-def get_detailed_status() -> Dict[str, Any]:
-    return {
-        "module": "user_service",
-        "status": "operational",
-        "timestamp": _utc_now().isoformat(),
-    }

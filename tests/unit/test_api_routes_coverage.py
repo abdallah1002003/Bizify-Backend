@@ -378,36 +378,38 @@ class TestEncryption:
 class TestAgentServiceDirect:
     """Direct service-layer tests for AgentService (not via HTTP)."""
 
-    def test_create_get_update_delete(self, db: Session):
+    @pytest.mark.asyncio
+    async def test_create_get_update_delete(self, async_db):
         from app.services.ai.agent_service import AgentService
-        svc = AgentService(db)
+        svc = AgentService(async_db)
 
         # Create
-        agent = svc.create_agent(name="DirectBot", phase="analysis")
+        agent = await svc.create_agent(name="DirectBot", phase="analysis")
         assert agent.id is not None
         assert agent.name == "DirectBot"
 
         # Get
-        fetched = svc.get_agent(agent.id)
+        fetched = await svc.get_agent(agent.id)
         assert fetched is not None
         assert fetched.phase == "analysis"
 
         # Get all
-        all_agents = svc.get_agents(skip=0, limit=10)
+        all_agents = await svc.get_agents(skip=0, limit=10)
         assert any(a.id == agent.id for a in all_agents)
 
         # Update
-        updated = svc.update_agent(agent, {"name": "UpdatedBot"})
+        updated = await svc.update_agent(agent, {"name": "UpdatedBot"})
         assert updated.name == "UpdatedBot"
 
         # Delete
-        deleted = svc.delete_agent(agent.id)
+        deleted = await svc.delete_agent(agent.id)
         assert deleted is not None
-        assert svc.get_agent(agent.id) is None
+        assert await svc.get_agent(agent.id) is None
 
-    def test_delete_nonexistent(self, db: Session):
+    @pytest.mark.asyncio
+    async def test_delete_nonexistent(self, async_db):
         from app.services.ai.agent_service import AgentService
-        result = AgentService(db).delete_agent(uuid.uuid4())
+        result = await AgentService(async_db).delete_agent(uuid.uuid4())
         assert result is None
 
 
@@ -418,32 +420,36 @@ class TestAgentServiceDirect:
 class TestAuthServicePaths:
     """Tests for auth_service paths not covered by API tests."""
 
-    def test_authenticate_user_wrong_password(self, db: Session, test_user):
+    @pytest.mark.asyncio
+    async def test_authenticate_user_wrong_password(self, async_db, test_user):
         from app.services.auth.auth_service import AuthService
         from app.services.users.user_service import UserService
-        svc = AuthService(db, UserService(db))
-        result = svc.authenticate_user(test_user.email, "wrong_password")
+        svc = AuthService(async_db, UserService(async_db))
+        result = await svc.authenticate_user(test_user.email, "wrong_password")
         assert result is None
 
-    def test_authenticate_user_nonexistent_email(self, db: Session):
+    @pytest.mark.asyncio
+    async def test_authenticate_user_nonexistent_email(self, async_db):
         from app.services.auth.auth_service import AuthService
         from app.services.users.user_service import UserService
-        svc = AuthService(db, UserService(db))
-        result = svc.authenticate_user("nobody@example.com", "pass")
+        svc = AuthService(async_db, UserService(async_db))
+        result = await svc.authenticate_user("nobody@example.com", "pass")
         assert result is None
 
-    def test_revoke_invalid_refresh_token_silent_fail(self, db: Session, test_user):
+    @pytest.mark.asyncio
+    async def test_revoke_invalid_refresh_token_silent_fail(self, db: Session, test_user):
         from app.services.auth.auth_service import AuthService
         from app.services.users.user_service import UserService
         svc = AuthService(db, UserService(db))
         # Should not raise even with a garbage token
-        svc.revoke_refresh_token("not.a.valid.token")
+        await svc.revoke_refresh_token("not.a.valid.token")
 
-    def test_verify_email_invalid_token(self, db: Session, test_user):
+    @pytest.mark.asyncio
+    async def test_verify_email_invalid_token(self, db: Session, test_user):
         from fastapi import HTTPException
         from app.services.auth.auth_service import AuthService
         from app.services.users.user_service import UserService
         svc = AuthService(db, UserService(db))
         with pytest.raises(HTTPException) as exc_info:
-            svc.verify_email("garbage_token")
+            await svc.verify_email("garbage_token")
         assert exc_info.value.status_code == 400

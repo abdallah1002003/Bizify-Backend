@@ -1,6 +1,7 @@
 from prometheus_fastapi_instrumentator import Instrumentator, metrics
 from prometheus_client import Counter, Histogram, Gauge
 from fastapi import FastAPI
+from typing import Optional
 
 # Custom Metrics
 # 1. User registrations
@@ -38,7 +39,7 @@ ACTIVE_CHAT_SESSIONS = Gauge(
     "Number of currently active chat sessions"
 )
 
-def setup_prometheus(app: FastAPI) -> Instrumentator:
+def setup_prometheus(app: FastAPI) -> Optional[Instrumentator]:
     """
     Configure and initialize Prometheus instrumentation for the FastAPI app.
     """
@@ -51,7 +52,7 @@ def setup_prometheus(app: FastAPI) -> Instrumentator:
     
     if not enable_metrics:
         logger.info("Prometheus metrics disabled via ENABLE_METRICS env var")
-        return None  # type: ignore
+        return None
 
     instrumentator = Instrumentator(
         should_group_status_codes=True,

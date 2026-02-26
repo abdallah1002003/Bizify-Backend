@@ -2,12 +2,17 @@ from typing import Any, AsyncGenerator, Generator
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import declarative_base, sessionmaker, Session
+from sqlalchemy.orm import DeclarativeBase, sessionmaker, Session
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
 from config.settings import settings
 
 load_dotenv()
+
+class Base(DeclarativeBase):
+    """Base class for all SQLAlchemy models using Declarative Mapping."""
+    pass
+
 SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL
 
 ENGINE_KWARGS: dict[str, object] = {"pool_pre_ping": True}
@@ -40,8 +45,6 @@ if engine.url.get_backend_name() == "sqlite":
             cursor.close()
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-Base = declarative_base()
 
 
 # ---------------------------------------------------------------------------

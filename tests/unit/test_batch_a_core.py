@@ -21,68 +21,81 @@ class TestInMemoryCache:
         from app.core.cache import InMemoryCache
         return InMemoryCache()
 
-    def test_set_and_get(self):
+    @pytest.mark.asyncio
+    async def test_set_and_get(self):
         c = self._make()
-        assert c.set("k", "v") is True
-        assert c.get("k") == "v"
+        assert await c.set("k", "v") is True
+        assert await c.get("k") == "v"
 
-    def test_get_missing_key(self):
+    @pytest.mark.asyncio
+    async def test_get_missing_key(self):
         c = self._make()
-        assert c.get("missing") is None
+        assert await c.get("missing") is None
 
-    def test_ttl_expiry(self):
+    @pytest.mark.asyncio
+    async def test_ttl_expiry(self):
         c = self._make()
-        c.set("exp_key", "value", ttl_seconds=0)
+        await c.set("exp_key", "value", ttl_seconds=0)
         # TTL=0 expires immediately
-        time.sleep(0.01)
-        assert c.get("exp_key") is None
+        import asyncio
+        await asyncio.sleep(0.01)
+        assert await c.get("exp_key") is None
 
-    def test_exists_true_and_false(self):
+    @pytest.mark.asyncio
+    async def test_exists_true_and_false(self):
         c = self._make()
-        c.set("present", 42)
-        assert c.exists("present") is True
-        assert c.exists("absent") is False
+        await c.set("present", 42)
+        assert await c.exists("present") is True
+        assert await c.exists("absent") is False
 
-    def test_exists_expired(self):
+    @pytest.mark.asyncio
+    async def test_exists_expired(self):
         c = self._make()
-        c.set("exp", "val", ttl_seconds=0)
-        time.sleep(0.01)
-        assert c.exists("exp") is False
+        await c.set("exp", "val", ttl_seconds=0)
+        import asyncio
+        await asyncio.sleep(0.01)
+        assert await c.exists("exp") is False
 
-    def test_delete_existing(self):
+    @pytest.mark.asyncio
+    async def test_delete_existing(self):
         c = self._make()
-        c.set("del_me", 1)
-        assert c.delete("del_me") is True
-        assert c.get("del_me") is None
+        await c.set("del_me", 1)
+        assert await c.delete("del_me") is True
+        assert await c.get("del_me") is None
 
-    def test_delete_missing(self):
+    @pytest.mark.asyncio
+    async def test_delete_missing(self):
         c = self._make()
-        assert c.delete("ghost") is False
+        assert await c.delete("ghost") is False
 
-    def test_clear(self):
+    @pytest.mark.asyncio
+    async def test_clear(self):
         c = self._make()
-        c.set("a", 1)
-        c.set("b", 2)
-        result = c.clear()
+        await c.set("a", 1)
+        await c.set("b", 2)
+        result = await c.clear()
         assert result is True
-        assert c.get("a") is None
-        assert c.get("b") is None
+        assert await c.get("a") is None
+        assert await c.get("b") is None
 
-    def test_health_check_always_true(self):
-        assert self._make().health_check() is True
+    @pytest.mark.asyncio
+    async def test_health_check_always_true(self):
+        assert await self._make().health_check() is True
 
-    def test_get_stats(self):
+    @pytest.mark.asyncio
+    async def test_get_stats(self):
         c = self._make()
-        c.set("x", "y")
-        c.get("x")        # hit
-        c.get("missing")  # miss
+        await c.set("x", "y")
+        await c.get("x")        # hit
+        await c.get("missing")  # miss
         stats = c.get_stats()
         assert stats["hits"] == 1
         assert stats["misses"] == 1
         assert stats["size"] == 1
         assert 0 < stats["hit_rate"] <= 1
 
-    def test_stats_zero_division_safe(self):
+    @pytest.mark.asyncio
+    async def test_stats_zero_division_safe(self):
         c = self._make()
         stats = c.get_stats()
         assert stats["hit_rate"] == 0
@@ -98,61 +111,61 @@ class TestCacheManager:
         from app.core.cache import CacheManager
         return CacheManager(use_redis=False)
 
-    def test_basic_set_get(self):
+    @pytest.mark.asyncio
+    async def test_basic_set_get(self):
         m = self._make()
-        m.set("cm_key", {"data": 1})
-        assert m.get("cm_key") == {"data": 1}
+        await m.set("cm_key", {"data": 1})
+        assert await m.get("cm_key") == {"data": 1}
 
-    def test_delete(self):
+    @pytest.mark.asyncio
+    async def test_delete(self):
         m = self._make()
-        m.set("del", "val")
-        m.delete("del")
-        assert m.get("del") is None
+        await m.set("del", "val")
+        await m.delete("del")
+        assert await m.get("del") is None
 
-    def test_exists(self):
+    @pytest.mark.asyncio
+    async def test_exists(self):
         m = self._make()
-        m.set("exists_k", True)
-        assert m.exists("exists_k") is True
-        assert m.exists("nope") is False
+        await m.set("exists_k", True)
+        assert await m.exists("exists_k") is True
+        assert await m.exists("nope") is False
 
-    def test_clear(self):
+    @pytest.mark.asyncio
+    async def test_clear(self):
         m = self._make()
-        m.set("c1", 1)
-        m.clear()
-        assert m.get("c1") is None
+        await m.set("c1", 1)
+        await m.clear()
+        assert await m.get("c1") is None
 
-    def test_is_healthy(self):
+    @pytest.mark.asyncio
+    async def test_is_healthy(self):
         m = self._make()
-        assert m.is_healthy() is True
+        assert await m.is_healthy() is True
 
-    def test_get_generation_key_starts_at_zero(self):
+    @pytest.mark.asyncio
+    async def test_get_generation_key_starts_at_zero(self):
         m = self._make()
         ns = f"ns_{uuid.uuid4().hex}"
-        assert m.get_generation_key(ns) == 0
+        assert await m.get_generation_key(ns) == 0
 
-    def test_increment_generation_key(self):
+    @pytest.mark.asyncio
+    async def test_increment_generation_key(self):
         m = self._make()
         ns = f"ns_{uuid.uuid4().hex}"
-        m.get_generation_key(ns)  # initialize
-        new_gen = m.increment_generation_key(ns)
+        await m.get_generation_key(ns)  # initialize
+        new_gen = await m.increment_generation_key(ns)
         assert new_gen == 1
-        new_gen2 = m.increment_generation_key(ns)
+        new_gen2 = await m.increment_generation_key(ns)
         assert new_gen2 == 2
 
-    def test_caching_decorator_sync(self):
+    @pytest.mark.asyncio
+    async def test_caching_decorator_sync_not_supported(self):
         m = self._make()
-        call_count = [0]
-
-        @m.setup_caching_decorator(ttl_seconds=60)
-        def expensive(x):
-            call_count[0] += 1
-            return x * 2
-
-        r1 = expensive(5)
-        r2 = expensive(5)
-        assert r1 == 10
-        assert r2 == 10
-        assert call_count[0] == 1  # cached after first call
+        with pytest.raises(TypeError, match="setup_caching_decorator supports async callables only"):
+            @m.setup_caching_decorator(ttl_seconds=60)
+            def expensive(x):
+                return x * 2
 
     @pytest.mark.asyncio
     async def test_caching_decorator_async(self):
@@ -237,58 +250,65 @@ class TestMetricsHelpers:
 
 class TestTokenBlacklistRedisPaths:
 
-    def test_blacklist_via_redis_mock(self):
+    @pytest.mark.asyncio
+    async def test_blacklist_via_redis_mock(self):
         """Exercises the Redis live path (settings.APP_ENV != 'test')."""
         from app.core.token_blacklist import blacklist_token, is_token_blacklisted
+        from unittest.mock import AsyncMock
         jti = str(uuid.uuid4())
 
-        mock_redis = MagicMock()
+        mock_redis = AsyncMock()
         mock_redis.setex.return_value = True
         mock_redis.exists.return_value = 1
 
         with patch("app.core.token_blacklist.settings") as ms, \
-             patch("app.core.token_blacklist._get_redis_client", return_value=mock_redis):
+             patch("app.core.token_blacklist._get_async_redis_client", return_value=mock_redis):
             ms.APP_ENV = "production"
-            blacklist_token(jti, ttl_seconds=3600)
+            await blacklist_token(jti, ttl_seconds=3600)
             mock_redis.setex.assert_called_once()
 
-            result = is_token_blacklisted(jti)
+            result = await is_token_blacklisted(jti)
             assert result is True
 
-    def test_redis_write_failure_falls_back_to_memory(self):
+    @pytest.mark.asyncio
+    async def test_redis_write_failure_falls_back_to_memory(self):
         jti = f"fb_{uuid.uuid4()}"
-        mock_redis = MagicMock()
+        from unittest.mock import AsyncMock
+        mock_redis = AsyncMock()
         mock_redis.setex.side_effect = Exception("Redis down")
         mock_redis.exists.side_effect = Exception("Redis down")
 
         with patch("app.core.token_blacklist.settings") as ms, \
-             patch("app.core.token_blacklist._get_redis_client", return_value=mock_redis):
+             patch("app.core.token_blacklist._get_async_redis_client", return_value=mock_redis):
             ms.APP_ENV = "production"
             from app.core.token_blacklist import blacklist_token
             # Should not raise — falls back to memory
-            blacklist_token(jti, ttl_seconds=60)
+            await blacklist_token(jti, ttl_seconds=60)
 
-    def test_redis_read_failure_falls_back_to_memory(self):
+    @pytest.mark.asyncio
+    async def test_redis_read_failure_falls_back_to_memory(self):
         jti = f"rfb_{uuid.uuid4()}"
-        mock_redis = MagicMock()
+        from unittest.mock import AsyncMock
+        mock_redis = AsyncMock()
         mock_redis.exists.side_effect = Exception("Redis timeout")
 
         with patch("app.core.token_blacklist.settings") as ms, \
-             patch("app.core.token_blacklist._get_redis_client", return_value=mock_redis):
+             patch("app.core.token_blacklist._get_async_redis_client", return_value=mock_redis):
             ms.APP_ENV = "production"
             from app.core.token_blacklist import is_token_blacklisted
-            result = is_token_blacklisted(jti)
+            result = await is_token_blacklisted(jti)
             assert isinstance(result, bool)
 
-    def test_no_redis_client_returns_none(self):
+    @pytest.mark.asyncio
+    async def test_no_redis_client_returns_none(self):
         with patch("app.core.token_blacklist.settings") as ms, \
-             patch("app.core.token_blacklist._get_redis_client", return_value=None):
+             patch("app.core.token_blacklist._get_async_redis_client", return_value=None):
             ms.APP_ENV = "production"
             from app.core.token_blacklist import blacklist_token, is_token_blacklisted
             jti = f"nomem_{uuid.uuid4()}"
-            blacklist_token(jti, ttl_seconds=10)
+            await blacklist_token(jti, ttl_seconds=10)
             # Falls back to in-memory
-            assert is_token_blacklisted(jti) is True
+            assert await is_token_blacklisted(jti) is True
 
 
 # ─────────────────────────────────────────────────────────────────

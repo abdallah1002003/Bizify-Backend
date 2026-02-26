@@ -13,7 +13,7 @@ import logging
 import time
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 import threading
 
@@ -31,7 +31,7 @@ class LogContext:
     request_method: Optional[str] = None
     session_id: Optional[str] = None
     service_name: str = "bizify"
-    timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
 class StructuredFormatter(logging.Formatter):
@@ -40,7 +40,7 @@ class StructuredFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         """Format log record as JSON for structured logging."""
         log_data = {
-            "timestamp": datetime.utcfromtimestamp(record.created).isoformat(),
+            "timestamp": datetime.fromtimestamp(record.created, timezone.utc).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -86,7 +86,7 @@ def clear_log_context() -> None:
 
 
 @contextmanager
-def log_context(  # type: ignore
+def log_context(
     correlation_id: str,
     request_id: Optional[str] = None,
     user_id: Optional[str] = None,
@@ -147,10 +147,10 @@ class PerformanceTimer:
         self.operation_name = operation_name
         self.threshold_ms = threshold_ms
         self.log_level = log_level
-        self.start_time: Optional[float] = None
+        self.start_time: float = time.time()
         self.duration_ms: float = 0.0
 
-    def __enter__(self):  # type: ignore
+    def __enter__(self):
         """Start timing."""
         self.start_time = time.time()
         self.logger.log(
@@ -159,9 +159,9 @@ class PerformanceTimer:
         )
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):  # type: ignore
+    def __exit__(self, exc_type, exc_val, exc_tb):
         """Stop timing and log result."""
-        self.duration_ms = (time.time() - self.start_time) * 1000  # type: ignore
+        self.duration_ms = (time.time() - self.start_time) * 1000
         
         if exc_type is not None:
             self.logger.error(

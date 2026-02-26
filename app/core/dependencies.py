@@ -20,18 +20,23 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 import jwt
 from pydantic import ValidationError
-from sqlalchemy.orm import Session
 
-from app.db.database import get_db
 from config.settings import settings
 import app.models as models
 from app.models.enums import UserRole
 from app.core.token_blacklist import is_token_blacklisted
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+from app.db.database import get_async_db
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
-def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)) -> models.User:
+
+
+async def get_current_user(db: AsyncSession = Depends(get_async_db), token: str = Depends(oauth2_scheme)) -> models.User:
     try:
         payload = jwt.decode(
             token,
@@ -47,21 +52,23 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
             )
 
         # Reject revoked tokens (blacklisted via logout)
-        jti: str | None = payload.get("jti")
-        if jti and is_token_blacklisted(jti):
+        jti_raw = payload.get("jti")
+        jti: str | None = str(jti_raw) if jti_raw else None
+        if jti and await is_token_blacklisted(jti):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token has been revoked",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        user_id: str = payload.get("sub")  # type: ignore
-        if user_id is None:
+        sub = payload.get("sub")
+        if sub is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could not validate credentials",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+        user_id: str = str(sub)
     except (jwt.PyJWTError, ValidationError) as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -69,8 +76,15 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
             headers={"WWW-Authenticate": "Bearer"},
         ) from exc
 
-    from sqlalchemy.orm import selectinload
-    user_model = db.query(models.User).options(selectinload(models.User.profile)).filter(models.User.id == user_id).first()
+
+    stmt = (
+        select(models.User)
+        .options(selectinload(models.User.profile))
+        .where(models.User.id == user_id)
+    )
+    result = await db.execute(stmt)
+    user_model = result.scalar_one_or_none()
+    
     if not user_model:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -78,7 +92,8 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    return user_model  # type: ignore[no-any-return]
+    return user_model
+
 
 
 def get_current_active_user(current_user: models.User = Depends(get_current_user)) -> models.User:
@@ -128,7 +143,8 @@ require_admin: Callable = require_roles(UserRole.ADMIN)
 
 def is_admin_or_self(current_user: models.User, target_user_id: UUID) -> bool:
     """Return True if the user is an admin or is accessing their own resource."""
-    return current_user.role == UserRole.ADMIN or current_user.id == target_user_id  # type: ignore[no-any-return]
+    return current_user.role == UserRole.ADMIN or current_user.id == target_user_id
+
 
 
 def require_admin_or_self(current_user: models.User, target_user_id: UUID) -> None:

@@ -39,7 +39,8 @@ async def get_chat_message_async(
     """
     stmt = select(ChatMessage).where(ChatMessage.id == id)
     result = await db.execute(stmt)
-    return result.scalars().first()  # type: ignore[no-any-return]
+    return result.scalars().first()
+
 
 
 async def add_message_async(
@@ -59,6 +60,7 @@ async def add_message_async(
     Returns:
         Created ChatMessage object
     """
+
     db_obj = ChatMessage(session_id=session_id, role=role, content=content)
     db.add(db_obj)
     await db.commit()

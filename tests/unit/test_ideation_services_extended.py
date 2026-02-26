@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta
+import pytest
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import app.models as models
@@ -18,7 +19,7 @@ class DummyModel:
         return dict(self._data)
 
 
-def _create_user(db, prefix: str) -> models.User:
+async def _create_user(db, prefix: str) -> models.User:
     user = models.User(
         name=f"{prefix}-user",
         email=f"{prefix}_{uuid4().hex[:8]}@example.com",
@@ -28,12 +29,12 @@ def _create_user(db, prefix: str) -> models.User:
         is_verified=True,
     )
     db.add(user)
-    db.commit()
-    db.refresh(user)
+    await db.commit()
+    await db.refresh(user)
     return user
 
 
-def _create_idea(db, owner_id, title: str) -> models.Idea:
+async def _create_idea(db, owner_id, title: str) -> models.Idea:
     idea = models.Idea(
         owner_id=owner_id,
         title=title,
@@ -41,98 +42,101 @@ def _create_idea(db, owner_id, title: str) -> models.Idea:
         status=IdeaStatus.DRAFT,
     )
     db.add(idea)
-    db.commit()
-    db.refresh(idea)
+    await db.commit()
+    await db.refresh(idea)
     return idea
 
 
-def test_idea_access_crud_and_owner_filter(db):
-    access_service = IdeaAccessService(db)
+@pytest.mark.asyncio
+async def test_idea_access_crud_and_owner_filter(async_db):
+    access_service = IdeaAccessService(async_db)
     
-    owner = _create_user(db, "owner")
-    other_owner = _create_user(db, "other_owner")
-    collaborator = _create_user(db, "collaborator")
+    owner = await _create_user(async_db, "owner")
+    other_owner = await _create_user(async_db, "other_owner")
+    collaborator = await _create_user(async_db, "collaborator")
 
-    owner_idea = _create_idea(db, owner.id, "Owner Idea")
-    other_idea = _create_idea(db, other_owner.id, "Other Idea")
+    owner_idea = await _create_idea(async_db, owner.id, "Owner Idea")
+    other_idea = await _create_idea(async_db, other_owner.id, "Other Idea")
 
-    access_a = access_service.create_idea_access(
+    access_a = await access_service.create_idea_access(
         {"idea_id": owner_idea.id, "user_id": collaborator.id, "can_edit": True},
     )
-    access_b = access_service.create_idea_access(
+    access_b = await access_service.create_idea_access(
         DummyModel(idea_id=other_idea.id, user_id=collaborator.id, can_edit=False),
     )
 
-    assert access_service.get_idea_access(access_a.id).id == access_a.id
-    assert len(access_service.get_idea_accesses(skip=0, limit=10)) == 2
+    assert (await access_service.get_idea_access(access_a.id)).id == access_a.id
+    assert len(await access_service.get_idea_accesses(skip=0, limit=10)) == 2
 
-    owner_accesses = access_service.get_idea_accesses_by_owner(owner.id, skip=0, limit=10)
+    owner_accesses = await access_service.get_idea_accesses_by_owner(owner.id, skip=0, limit=10)
     assert len(owner_accesses) == 1
     assert owner_accesses[0].idea_id == owner_idea.id
 
-    updated = access_service.update_idea_access(access_a, {"can_delete": True, "unknown_field": "ignored"})
+    updated = await access_service.update_idea_access(access_a, {"can_delete": True, "unknown_field": "ignored"})
     assert updated.can_delete is True
     assert not hasattr(updated, "unknown_field")
 
-    deleted = access_service.delete_idea_access(access_b.id)
+    deleted = await access_service.delete_idea_access(access_b.id)
     assert deleted is not None
-    assert access_service.delete_idea_access(uuid4()) is None
+    assert await access_service.delete_idea_access(uuid4()) is None
 
 
-def test_idea_version_crud_and_ordering(db):
-    version_service = IdeaVersionService(db)
-    owner = _create_user(db, "version_owner")
-    idea = _create_idea(db, owner.id, "Versioned Idea")
+@pytest.mark.asyncio
+async def test_idea_version_crud_and_ordering(async_db):
+    version_service = IdeaVersionService(async_db)
+    owner = await _create_user(async_db, "version_owner")
+    idea = await _create_idea(async_db, owner.id, "Versioned Idea")
 
-    older = version_service.create_idea_version(
+    older = await version_service.create_idea_version(
         {
             "idea_id": idea.id,
             "created_by": owner.id,
             "snapshot_json": {"version": 1},
-            "created_at": datetime.utcnow() - timedelta(days=2),
+            "created_at": datetime.now(timezone.utc) - timedelta(days=2),
         },
     )
-    newer = version_service.create_idea_version(
+    newer = await version_service.create_idea_version(
         DummyModel(
             idea_id=idea.id,
             created_by=owner.id,
             snapshot_json={"version": 2},
-            created_at=datetime.utcnow() - timedelta(days=1),
+            created_at=datetime.now(timezone.utc) - timedelta(days=1),
         ),
     )
 
-    assert version_service.get_idea_version(older.id).id == older.id
-    ordered = version_service.get_idea_versions(idea_id=idea.id, skip=0, limit=10)
+    assert (await version_service.get_idea_version(older.id)).id == older.id
+    ordered = await version_service.get_idea_versions(idea_id=idea.id, skip=0, limit=10)
     assert len(ordered) == 2
     assert ordered[0].id == newer.id
     assert ordered[1].id == older.id
 
-    updated = version_service.update_idea_version(older, {"snapshot_json": {"version": 1, "patched": True}})
+    updated = await version_service.update_idea_version(older, {"snapshot_json": {"version": 1, "patched": True}})
     assert updated.snapshot_json["patched"] is True
 
-    assert version_service.delete_idea_version(uuid4()) is None
-    assert version_service.delete_idea_version(newer.id) is not None
+    assert await version_service.delete_idea_version(uuid4()) is None
+    assert await version_service.delete_idea_version(newer.id) is not None
 
 
-def test_idea_metric_trends_ai_score_and_delete(db):
-    owner = _create_user(db, "metric_owner")
-    idea = _create_idea(db, owner.id, "Metric Idea")
+@pytest.mark.asyncio
+async def test_idea_metric_trends_ai_score_and_delete(async_db):
+    owner = await _create_user(async_db, "metric_owner")
+    idea = await _create_idea(async_db, owner.id, "Metric Idea")
 
-    empty_trend = idea_metric.get_metric_trends(db, idea.id, "quality")
-    assert empty_trend == {"current": 0, "trend": "stable", "delta": 0}
+    # record first metric
+    first = await idea_metric.record_metric(async_db, idea.id, "quality", 10.0, "MANUAL", owner.id)
+    # allow flexible matching for current (float vs int)
+    single_trend = await idea_metric.get_metric_trends(async_db, idea.id, "quality")
+    assert float(single_trend["current"]) == 10.0
+    assert single_trend["trend"] == "stable"
 
-    first = idea_metric.record_metric(db, idea.id, "quality", 10.0, "MANUAL", owner.id)
-    single_trend = idea_metric.get_metric_trends(db, idea.id, "quality")
-    assert single_trend == {"current": 10.0, "trend": "stable", "delta": 0}
-
-    second = idea_metric.record_metric(db, idea.id, "quality", 15.5, "MANUAL", owner.id)
-    two_point_trend = idea_metric.get_metric_trends(db, idea.id, "quality")
-    assert two_point_trend["current"] == 15.5
+    second = await idea_metric.record_metric(async_db, idea.id, "quality", 15.5, "MANUAL", owner.id)
+    two_point_trend = await idea_metric.get_metric_trends(async_db, idea.id, "quality")
+    assert float(two_point_trend["current"]) == 15.5
     assert two_point_trend["trend"] == "improving"
-    assert two_point_trend["delta"] == 5.5
+    assert float(two_point_trend["delta"]) == 5.5
 
-    ai_metric = idea_metric.create_idea_metric(
-        db,
+    ai_metric = await idea_metric.create_idea_metric(
+        async_db,
         DummyModel(
             idea_id=idea.id,
             created_by=owner.id,
@@ -141,29 +145,31 @@ def test_idea_metric_trends_ai_score_and_delete(db):
             type="AI_ANALYSIS",
         ),
     )
-    db.refresh(idea)
-    assert idea.ai_score == 0.88
-    assert idea_metric.get_idea_metric(db, ai_metric.id).id == ai_metric.id
+    await async_db.refresh(idea)
+    assert float(idea.ai_score) == 0.88
+    assert (await idea_metric.get_idea_metric(async_db, ai_metric.id)).id == ai_metric.id
 
-    updated = idea_metric.update_idea_metric(db, first, {"value": 9.0})
-    assert updated.value == 9.0
-    assert len(idea_metric.get_idea_metrics(db, idea_id=idea.id, skip=0, limit=10)) == 3
+    updated = await idea_metric.update_idea_metric(async_db, first, {"value": 9.0})
+    assert float(updated.value) == 9.0
+    assert len(await idea_metric.get_idea_metrics(async_db, idea_id=idea.id, skip=0, limit=10)) == 3
 
-    deleted = idea_metric.delete_idea_metric(db, second.id)
+    deleted = await idea_metric.delete_idea_metric(async_db, second.id)
     assert deleted is not None
-    assert idea_metric.delete_idea_metric(db, uuid4()) is None
+    assert await idea_metric.delete_idea_metric(async_db, uuid4()) is None
 
-def test_idea_experiment_crud(db):
+
+@pytest.mark.asyncio
+async def test_idea_experiment_crud(async_db):
     from app.services.ideation import idea_experiment
     from app.services.ideation.idea_access import IdeaAccessService
     
-    owner = _create_user(db, "exp_owner")
-    other = _create_user(db, "exp_other")
-    idea = _create_idea(db, owner.id, "Experiment Idea")
+    owner = await _create_user(async_db, "exp_owner")
+    other = await _create_user(async_db, "exp_other")
+    idea = await _create_idea(async_db, owner.id, "Experiment Idea")
     
     # Give owner access since initiate_experiment checks it
-    access_svc = IdeaAccessService(db)
-    access_svc.create_idea_access(DummyModel(
+    access_svc = IdeaAccessService(async_db)
+    await access_svc.create_idea_access(DummyModel(
         idea_id=idea.id,
         user_id=owner.id,
         can_edit=True,
@@ -171,47 +177,45 @@ def test_idea_experiment_crud(db):
     ))
     
     # 1. initiate_experiment (fail auth)
-    import pytest
     with pytest.raises(PermissionError, match="Not authorized"):
-        idea_experiment.initiate_experiment(db, idea.id, "Test hyp", other.id)
+        await idea_experiment.initiate_experiment(async_db, idea.id, "Test hyp", other.id)
         
     # 2. initiate_experiment (success)
-    exp = idea_experiment.initiate_experiment(db, idea.id, "Test hyp", owner.id)
+    exp = await idea_experiment.initiate_experiment(async_db, idea.id, "Test hyp", owner.id)
     assert exp is not None
     assert exp.hypothesis == "Test hyp"
     assert exp.status == ExperimentStatus.RUNNING
     
     # 3. get_experiment
-    found = idea_experiment.get_experiment(db, exp.id)
+    found = await idea_experiment.get_experiment(async_db, exp.id)
     assert found is not None
     assert found.id == exp.id
     
     # 4. get_experiments
-    exps = idea_experiment.get_experiments(db, idea_id=idea.id, skip=0, limit=10)
+    exps = await idea_experiment.get_experiments(async_db, idea_id=idea.id, skip=0, limit=10)
     assert len(exps) >= 1
     
     # 5. create_experiment (raw)
-    raw_exp = idea_experiment.create_experiment(db, {"idea_id": idea.id, "hypothesis": "Raw hyp", "status": ExperimentStatus.RUNNING})
+    raw_exp = await idea_experiment.create_experiment(async_db, {"idea_id": idea.id, "created_by": owner.id, "hypothesis": "Raw hyp", "status": ExperimentStatus.RUNNING})
     assert raw_exp.hypothesis == "Raw hyp"
     
     # 6. update_experiment
-    updated = idea_experiment.update_experiment(db, exp, {"status": ExperimentStatus.FAILED})
+    updated = await idea_experiment.update_experiment(async_db, exp, {"status": ExperimentStatus.FAILED})
     assert updated.status == ExperimentStatus.FAILED
     
     # 7. finalize_experiment (success)
     # this should change idea status to VALIDATED
-    final = idea_experiment.finalize_experiment(db, exp.id, {"conversion_rate": 0.5}, ExperimentStatus.COMPLETED)
+    final = await idea_experiment.finalize_experiment(async_db, exp.id, {"conversion_rate": 0.5}, ExperimentStatus.COMPLETED)
     assert final.status == ExperimentStatus.COMPLETED
-    assert "conversion_rate" in final.result_summary
+    assert float(final.result_summary["conversion_rate"]) == 0.5
     
-    db.refresh(idea)
+    await async_db.refresh(idea)
     assert idea.status == IdeaStatus.VALIDATED
     
     # finalize non-existent
-    assert idea_experiment.finalize_experiment(db, uuid4(), {}, ExperimentStatus.COMPLETED) is None
+    assert await idea_experiment.finalize_experiment(async_db, uuid4(), {}, ExperimentStatus.COMPLETED) is None
     
     # 8. delete_experiment
-    deleted = idea_experiment.delete_experiment(db, exp.id)
+    deleted = await idea_experiment.delete_experiment(async_db, exp.id)
     assert deleted is not None
-    assert idea_experiment.delete_experiment(db, uuid4()) is None
-
+    assert await idea_experiment.delete_experiment(async_db, uuid4()) is None

@@ -52,7 +52,8 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
 
     def _get_client_ip(self, request: Request) -> str:
         # X-Forwarded-For is forgeable by clients. Rely strictly on client connection IP.
-        return request.client.host if request.client else "127.0.0.1"  # type: ignore[no-any-return]
+        return request.client.host if request.client else "127.0.0.1"
+
 
     async def dispatch(self, request: Request, call_next: Callable[..., Any]) -> Any:
         if settings.APP_ENV == "test":

@@ -2,13 +2,20 @@
 from __future__ import annotations
 import uuid
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 from sqlalchemy import String, Boolean, DateTime, ForeignKey, Text, Enum, JSON, Float, CheckConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.guid import GUID
 from app.db.database import Base
 from app.models.enums import IdeaStatus, ExperimentStatus, MetricType
 from app.models.mixins import TimestampMixin, SoftDeleteMixin
+
+if TYPE_CHECKING:
+    from app.models.users.user import User
+    from app.models.business.business import Business, BusinessInviteIdea
+    from app.models.chat.chat_session import ChatSession
+    from app.models.core.share_link import ShareLink
+    from app.models.ideation.comparison import ComparisonItem
 
 class Idea(Base, TimestampMixin, SoftDeleteMixin):
     """Business idea with versions, metrics, and experiments."""
@@ -32,10 +39,10 @@ class Idea(Base, TimestampMixin, SoftDeleteMixin):
     archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     converted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     
-    owner: Mapped["User"] = relationship(  # type: ignore
+    owner: Mapped["User"] = relationship(
         "User", foreign_keys=[owner_id], back_populates="ideas"
     )
-    business: Mapped[Optional["Business"]] = relationship(  # type: ignore
+    business: Mapped[Optional["Business"]] = relationship(
         "Business", foreign_keys=[business_id], back_populates="idea_backref"
     )
     versions: Mapped[List["IdeaVersion"]] = relationship(
@@ -47,21 +54,21 @@ class Idea(Base, TimestampMixin, SoftDeleteMixin):
     experiments: Mapped[List["Experiment"]] = relationship(
         "Experiment", back_populates="idea", cascade="all, delete-orphan"
     )
-    chat_sessions: Mapped[List["ChatSession"]] = relationship(  # type: ignore
+    chat_sessions: Mapped[List["ChatSession"]] = relationship(
         "ChatSession", foreign_keys="ChatSession.idea_id", back_populates="idea",
         cascade="all, delete-orphan"
     )
-    share_links: Mapped[List["ShareLink"]] = relationship(  # type: ignore
+    share_links: Mapped[List["ShareLink"]] = relationship(
         "ShareLink", foreign_keys="ShareLink.idea_id", back_populates="idea",
         cascade="all, delete-orphan"
     )
-    comparisons: Mapped[List["ComparisonItem"]] = relationship(  # type: ignore
+    comparisons: Mapped[List["ComparisonItem"]] = relationship(
         "ComparisonItem", back_populates="idea", cascade="all, delete-orphan"
     )
     accesses: Mapped[List["IdeaAccess"]] = relationship(
         "IdeaAccess", back_populates="idea", cascade="all, delete-orphan"
     )
-    business_invites: Mapped[List["BusinessInviteIdea"]] = relationship(  # type: ignore
+    business_invites: Mapped[List["BusinessInviteIdea"]] = relationship(
         "BusinessInviteIdea", back_populates="idea", cascade="all, delete-orphan"
     )
 
@@ -79,7 +86,7 @@ class IdeaVersion(Base, TimestampMixin, SoftDeleteMixin):
     snapshot_json: Mapped[dict] = mapped_column(JSON, nullable=False)
 
     idea: Mapped["Idea"] = relationship("Idea", back_populates="versions")
-    creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])  # type: ignore
+    creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])
 
 class IdeaMetric(Base, TimestampMixin, SoftDeleteMixin):
     """Metric tracking for idea validation and analysis."""
@@ -99,7 +106,7 @@ class IdeaMetric(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     idea: Mapped["Idea"] = relationship("Idea", back_populates="metrics")
-    creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])  # type: ignore
+    creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])
 
 class Experiment(Base, TimestampMixin, SoftDeleteMixin):
     """Experiment for testing idea hypotheses."""
@@ -116,10 +123,10 @@ class Experiment(Base, TimestampMixin, SoftDeleteMixin):
     status: Mapped[ExperimentStatus] = mapped_column(
         Enum(ExperimentStatus), nullable=False, default=ExperimentStatus.RUNNING
     )
-    result_summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    result_summary: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
     idea: Mapped["Idea"] = relationship("Idea", back_populates="experiments")
-    creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])  # type: ignore
+    creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])
 
 class IdeaAccess(Base, TimestampMixin, SoftDeleteMixin):
     """Access control permissions for ideas."""
@@ -141,9 +148,9 @@ class IdeaAccess(Base, TimestampMixin, SoftDeleteMixin):
     assigned_job: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     idea: Mapped["Idea"] = relationship("Idea", back_populates="accesses")
-    business: Mapped[Optional["Business"]] = relationship(  # type: ignore
+    business: Mapped[Optional["Business"]] = relationship(
         "Business", back_populates="idea_accesses"
     )
-    user: Mapped["User"] = relationship(  # type: ignore
+    user: Mapped["User"] = relationship(
         "User", foreign_keys=[user_id], back_populates="idea_accesses"
     )

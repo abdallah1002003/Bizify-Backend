@@ -73,7 +73,8 @@ class RedisRateLimiterMiddleware(BaseHTTPMiddleware):
 
     def _get_client_ip(self, request: Request) -> str:
         """Extract client IP from request."""
-        return request.client.host if request.client else "127.0.0.1"  # type: ignore[no-any-return]
+        return request.client.host if request.client else "127.0.0.1"
+
 
     async def _check_rate_limit_redis(self, client_ip: str, request_path: str) -> tuple[bool, int, int]:
         """Check rate limit using Redis."""
@@ -92,10 +93,12 @@ class RedisRateLimiterMiddleware(BaseHTTPMiddleware):
             pipe.expire(key, self.window_size + 1)
             
             results = await pipe.execute()
+            logger.info(f"DEBUG RESULTS: {results}")
             count = results[2]  # zcard result
             
             # Check if this path has a stricter limit
             limit = STRICT_RATE_LIMIT_PATHS.get(request_path, self.requests_per_minute)
+            logger.info(f"DEBUG: path={request_path} limit={limit} count={count}")
             
             remaining = max(0, limit - count)
             is_allowed = count <= limit

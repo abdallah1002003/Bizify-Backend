@@ -6,6 +6,7 @@ Tests for custom exception handling, error messages, and edge cases.
 import pytest
 from datetime import datetime, timezone
 from fastapi.testclient import TestClient
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 from uuid import uuid4
 
@@ -21,21 +22,23 @@ from app.services.billing import subscription_service
 class TestErrorHandling:
     """Test suite for error handling mechanisms."""
     
-    def test_validation_error_missing_fields(self, db: Session):
+    @pytest.mark.asyncio
+    async def test_validation_error_missing_fields(self, async_db: AsyncSession):
         """Test ValidationError when required fields are missing."""
         with pytest.raises(ValidationError) as exc_info:
             # Try to create subscription without required fields
-            subscription_service.create_subscription(db, obj_in={})
+            await subscription_service.create_subscription(async_db, obj_in={})
         
         exc = exc_info.value
         assert exc.code == "VALIDATION_ERROR"
         assert "missing_fields" in exc.details
         assert exc.status_code == 422
     
-    def test_resource_not_found_error(self, db: Session):
+    @pytest.mark.asyncio
+    async def test_resource_not_found_error(self, async_db: AsyncSession):
         """Test ResourceNotFoundError when resource doesn't exist."""
         with pytest.raises(ResourceNotFoundError) as exc_info:
-            subscription_service.create_subscription(db, obj_in={
+            await subscription_service.create_subscription(async_db, obj_in={
                 "user_id": uuid4(),
                 "plan_id": uuid4()  # Non-existent plan
             })

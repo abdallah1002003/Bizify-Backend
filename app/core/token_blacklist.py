@@ -1,28 +1,9 @@
-"""
-JTI (JWT ID) token blacklist for access-token revocation.
-
-Tokens are stored in Redis with a TTL matching the token's remaining lifetime.
-Falls back to a thread-safe in-memory set when Redis is unavailable or
-when running in the test environment.
-
-Usage::
-
-    from app.core.token_blacklist import blacklist_token, is_token_blacklisted
-
-    # On logout — blacklist the access token's JTI
-    blacklist_token(jti, ttl_seconds=remaining_lifetime_in_seconds)
-
-    # In get_current_user — reject blacklisted tokens
-    if is_token_blacklisted(jti):
-        raise HTTPException(status_code=401, detail="Token has been revoked")
-"""
-
 from __future__ import annotations
 
 import logging
 import threading
 import time
-from typing import Dict
+from typing import Dict, Any
 
 from config.settings import settings
 
@@ -63,26 +44,33 @@ def _memory_is_blacklisted(jti: str) -> bool:
 # Redis helpers
 # ---------------------------------------------------------------------------
 BLACKLIST_PREFIX = "jti_blacklist:"
+_redis_client: Any = None
 
 
-def _get_redis_client():  # type: ignore
-    """Return a synchronous Redis client or None if unavailable/disabled."""
+async def _get_async_redis_client():
+    """Return an async Redis client or None if unavailable/disabled."""
+    global _redis_client
     if not getattr(settings, "REDIS_ENABLED", False):
         return None
-    try:
-        import redis
+    
+    if _redis_client is not None:
+        return _redis_client
 
-        client = redis.Redis(
+    try:
+        import redis.asyncio as aioredis
+
+        _redis_client = aioredis.Redis(
             host=getattr(settings, "REDIS_HOST", "localhost"),
             port=getattr(settings, "REDIS_PORT", 6379),
             db=1,  # Use db=1 to isolate from rate-limiter keys in db=0
             decode_responses=True,
             socket_connect_timeout=1,
         )
-        client.ping()
-        return client
+        await _redis_client.ping()
+        return _redis_client
     except Exception as exc:
         logger.warning("JTI blacklist: Redis unavailable, using in-memory fallback: %s", exc)
+        _redis_client = None
         return None
 
 
@@ -90,7 +78,7 @@ def _get_redis_client():  # type: ignore
 # Public API
 # ---------------------------------------------------------------------------
 
-def blacklist_token(jti: str, ttl_seconds: int) -> None:
+async def blacklist_token(jti: str, ttl_seconds: int) -> None:
     """
     Blacklist a JWT by its JTI claim.
 
@@ -109,11 +97,11 @@ def blacklist_token(jti: str, ttl_seconds: int) -> None:
         _memory_blacklist(jti, ttl_seconds)
         return
 
-    client = _get_redis_client()
+    client = await _get_async_redis_client()
     if client:
         try:
             key = f"{BLACKLIST_PREFIX}{jti}"
-            client.setex(key, ttl_seconds, "1")
+            await client.setex(key, ttl_seconds, "1")
             logger.debug("JTI blacklisted in Redis: %s (TTL=%ds)", jti, ttl_seconds)
             return
         except Exception as exc:
@@ -122,7 +110,7 @@ def blacklist_token(jti: str, ttl_seconds: int) -> None:
     _memory_blacklist(jti, ttl_seconds)
 
 
-def is_token_blacklisted(jti: str) -> bool:
+async def is_token_blacklisted(jti: str) -> bool:
     """
     Return True if the token has been blacklisted (i.e. revoked).
 
@@ -135,11 +123,12 @@ def is_token_blacklisted(jti: str) -> bool:
     if settings.APP_ENV == "test":
         return _memory_is_blacklisted(jti)
 
-    client = _get_redis_client()
+    client = await _get_async_redis_client()
     if client:
         try:
             key = f"{BLACKLIST_PREFIX}{jti}"
-            return bool(client.exists(key))
+            exists = await client.exists(key)
+            return bool(exists)
         except Exception as exc:
             logger.warning("JTI blacklist: Redis read failed, falling back to memory: %s", exc)
 

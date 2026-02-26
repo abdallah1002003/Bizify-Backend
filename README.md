@@ -69,6 +69,21 @@ pytest -q
 
 Current status: all tests pass.
 
+## Async Redis Profiling
+
+Run async Redis load testing (mixed read/write workload):
+
+```bash
+make redis-profile
+```
+
+Tune load parameters via env vars:
+- `REDIS_LOAD_CONCURRENCY` (default `100`)
+- `REDIS_LOAD_OPERATIONS` (default `50000`)
+- `REDIS_LOAD_READ_RATIO` (default `0.8`)
+- `REDIS_LOAD_KEYSPACE` (default `10000`)
+- `REDIS_LOAD_VALUE_SIZE` (default `512`)
+
 ## Project Structure
 
 - `app/api/routes/`: API endpoints

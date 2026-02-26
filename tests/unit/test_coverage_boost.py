@@ -5,6 +5,7 @@ subscriptions, token blacklisting, and repository pattern).
 
 All tests use the shared conftest fixtures (client, auth_headers, test_user).
 """
+import pytest
 import uuid
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
@@ -20,25 +21,29 @@ from app.models.enums import ChatSessionType
 class TestTokenBlacklist:
     """Unit tests for the JTI blacklist module."""
 
-    def test_blacklist_and_check(self):
+    @pytest.mark.asyncio
+    async def test_blacklist_and_check(self):
         from app.core.token_blacklist import blacklist_token, is_token_blacklisted
         jti = str(uuid.uuid4())
-        assert not is_token_blacklisted(jti)
-        blacklist_token(jti, ttl_seconds=60)
-        assert is_token_blacklisted(jti)
+        assert not await is_token_blacklisted(jti)
+        await blacklist_token(jti, ttl_seconds=60)
+        assert await is_token_blacklisted(jti)
 
-    def test_expired_token_not_blacklisted(self):
+    @pytest.mark.asyncio
+    async def test_expired_token_not_blacklisted(self):
         from app.core.token_blacklist import blacklist_token, is_token_blacklisted
         jti = str(uuid.uuid4())
         # TTL=0 means already expired — should not be stored
-        blacklist_token(jti, ttl_seconds=0)
-        assert not is_token_blacklisted(jti)
+        await blacklist_token(jti, ttl_seconds=0)
+        assert not await is_token_blacklisted(jti)
 
-    def test_unknown_jti_not_blacklisted(self):
+    @pytest.mark.asyncio
+    async def test_unknown_jti_not_blacklisted(self):
         from app.core.token_blacklist import is_token_blacklisted
-        assert not is_token_blacklisted(str(uuid.uuid4()))
+        assert not await is_token_blacklisted(str(uuid.uuid4()))
 
-    def test_revoked_token_rejected_by_api(
+    @pytest.mark.asyncio
+    async def test_revoked_token_rejected_by_api(
         self, client: TestClient, test_user, auth_headers: dict
     ):
         """After blacklisting the JTI, the same access token must return 401."""
@@ -54,7 +59,7 @@ class TestTokenBlacklist:
         jti = payload["jti"]
         exp = payload["exp"]
         remaining = int(exp - datetime.now(timezone.utc).timestamp())
-        blacklist_token(jti, remaining)
+        await blacklist_token(jti, remaining)
 
         resp = client.get("/api/v1/users/me", headers=auth_headers)
         assert resp.status_code == 401
@@ -323,61 +328,68 @@ class TestSubscriptionRoutes:
 
 class TestGenericRepository:
 
-    def test_create_and_get(self, db: Session, test_user: models.User):
+    @pytest.mark.asyncio
+    async def test_create_and_get(self, async_db, test_user: models.User):
         from app.repositories.base_repository import GenericRepository
-        repo = GenericRepository(db, models.Notification)
-        obj = repo.create(
+        repo = GenericRepository(async_db, models.Notification)
+        obj = await repo.create(
             {"user_id": test_user.id, "title": "Test", "message": "Msg", "is_read": False}
         )
         assert obj.id is not None
-        fetched = repo.get(obj.id)
+        fetched = await repo.get(obj.id)
         assert fetched is not None
         assert fetched.title == "Test"
 
-    def test_get_all(self, db: Session, test_user: models.User):
+    @pytest.mark.asyncio
+    async def test_get_all(self, async_db, test_user: models.User):
         from app.repositories.base_repository import GenericRepository
-        repo = GenericRepository(db, models.Notification)
-        repo.create({"user_id": test_user.id, "title": "A", "message": "M", "is_read": False})
-        repo.create({"user_id": test_user.id, "title": "B", "message": "M", "is_read": False})
-        results = repo.get_all(skip=0, limit=10)
+        repo = GenericRepository(async_db, models.Notification)
+        await repo.create({"user_id": test_user.id, "title": "A", "message": "M", "is_read": False})
+        await repo.create({"user_id": test_user.id, "title": "B", "message": "M", "is_read": False})
+        results = await repo.get_all(skip=0, limit=10)
         assert len(results) >= 2
 
-    def test_update_with_dict(self, db: Session, test_user: models.User):
+    @pytest.mark.asyncio
+    async def test_update_with_dict(self, async_db, test_user: models.User):
         from app.repositories.base_repository import GenericRepository
-        repo = GenericRepository(db, models.Notification)
-        obj = repo.create(
+        repo = GenericRepository(async_db, models.Notification)
+        obj = await repo.create(
             {"user_id": test_user.id, "title": "Before", "message": "M", "is_read": False}
         )
-        updated = repo.update(obj, {"title": "After"})
+        updated = await repo.update(obj, {"title": "After"})
         assert updated.title == "After"
 
-    def test_delete(self, db: Session, test_user: models.User):
+    @pytest.mark.asyncio
+    async def test_delete(self, async_db, test_user: models.User):
         from app.repositories.base_repository import GenericRepository
-        repo = GenericRepository(db, models.Notification)
-        obj = repo.create(
+        repo = GenericRepository(async_db, models.Notification)
+        obj = await repo.create(
             {"user_id": test_user.id, "title": "ToDelete", "message": "M", "is_read": False}
         )
-        deleted = repo.delete(obj.id)
+        deleted = await repo.delete(obj.id)
         assert deleted is not None
-        assert repo.get(obj.id) is None
+        assert await repo.get(obj.id) is None
 
-    def test_delete_nonexistent(self, db: Session):
+    @pytest.mark.asyncio
+    async def test_delete_nonexistent(self, async_db):
         from app.repositories.base_repository import GenericRepository
-        repo = GenericRepository(db, models.Notification)
-        result = repo.delete(uuid.uuid4())
+        repo = GenericRepository(async_db, models.Notification)
+        result = await repo.delete(uuid.uuid4())
         assert result is None
 
-    def test_count(self, db: Session, test_user: models.User):
+    @pytest.mark.asyncio
+    async def test_count(self, async_db, test_user: models.User):
         from app.repositories.base_repository import GenericRepository
-        repo = GenericRepository(db, models.Notification)
-        before = repo.count()
-        repo.create(
+        repo = GenericRepository(async_db, models.Notification)
+        before = await repo.count()
+        await repo.create(
             {"user_id": test_user.id, "title": "Count Me", "message": "M", "is_read": False}
         )
-        assert repo.count() == before + 1
+        assert await repo.count() == before + 1
 
-    def test_get_nonexistent(self, db: Session):
+    @pytest.mark.asyncio
+    async def test_get_nonexistent(self, async_db):
         from app.repositories.base_repository import GenericRepository
-        repo = GenericRepository(db, models.Notification)
-        result = repo.get(uuid.uuid4())
+        repo = GenericRepository(async_db, models.Notification)
+        result = await repo.get(uuid.uuid4())
         assert result is None

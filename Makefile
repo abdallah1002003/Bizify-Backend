@@ -1,4 +1,4 @@
-.PHONY: help dev-up dev-down dev-logs install migrate test test-cov lint clean
+.PHONY: help dev-up dev-down dev-logs install migrate test test-cov lint clean redis-profile
 
 # ---------------------------------------------------------------------------
 # Help
@@ -14,6 +14,7 @@ help:
 	@echo "  make migrate       Run Alembic migrations (upgrade head)"
 	@echo "  make test          Run unit test suite"
 	@echo "  make test-cov      Run tests with coverage report"
+	@echo "  make redis-profile Run async Redis load profile"
 	@echo "  make lint          Run ruff linter"
 	@echo "  make clean         Remove .pyc files and __pycache__ dirs"
 	@echo ""
@@ -62,6 +63,19 @@ test:
 
 test-cov:
 	$(PYTEST) tests/unit/ -v --cov=app --cov-report=term-missing
+
+redis-profile:
+	$(PYTHON) scripts/redis_async_load_test.py \
+		--host $${REDIS_HOST:-localhost} \
+		--port $${REDIS_PORT:-6379} \
+		--db $${REDIS_DB:-0} \
+		--concurrency $${REDIS_LOAD_CONCURRENCY:-100} \
+		--operations $${REDIS_LOAD_OPERATIONS:-50000} \
+		--read-ratio $${REDIS_LOAD_READ_RATIO:-0.8} \
+		--keyspace $${REDIS_LOAD_KEYSPACE:-10000} \
+		--value-size $${REDIS_LOAD_VALUE_SIZE:-512} \
+		--ttl-seconds $${REDIS_LOAD_TTL_SECONDS:-300} \
+		--warmup-operations $${REDIS_LOAD_WARMUP_OPERATIONS:-5000}
 
 # ---------------------------------------------------------------------------
 # Linting

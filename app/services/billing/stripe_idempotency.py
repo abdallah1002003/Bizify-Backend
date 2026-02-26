@@ -115,7 +115,7 @@ class StripeIdempotencyClient:
 
     Example:
         >>> client = StripeIdempotencyClient()
-        >>> intent = client.create_payment_intent(
+        >>> intent = await client.create_payment_intent(
         ...     user_id=user_id,
         ...     amount_cents=2999,
         ...     currency="usd",
@@ -123,7 +123,7 @@ class StripeIdempotencyClient:
         ... )
     """
 
-    def create_payment_intent(
+    async def create_payment_intent(
         self,
         user_id: UUID,
         amount_cents: int,
@@ -167,7 +167,7 @@ class StripeIdempotencyClient:
             idempotency_key=idem_key,
         )
 
-    def create_refund(
+    async def create_refund(
         self,
         payment_intent_id: str,
         amount_cents: Optional[int] = None,

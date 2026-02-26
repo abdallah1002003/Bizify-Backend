@@ -3,8 +3,9 @@ import logging
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 from fastapi import Depends
-from sqlalchemy.orm import Session
-from app.db.database import get_db
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from app.db.database import get_async_db
 from app.models import AgentRun, ValidationLog, Business, BusinessRoadmap, RoadmapStage
 from app.models.enums import AgentRunStatus
 from app.services.base_service import BaseService
@@ -18,31 +19,42 @@ logger = logging.getLogger(__name__)
 
 class AgentRunService(BaseService):
     """Service for managing AI Agent executions (Runs)."""
+    db: AsyncSession
 
-    def __init__(self, db: Session, billing_service: IBillingService):
+    def __init__(self, db: AsyncSession, billing_service: IBillingService):
         super().__init__(db)
         self.billing = billing_service
 
-    def get_agent_run(self, id: UUID) -> Optional[AgentRun]:
-        return self.db.query(AgentRun).filter(AgentRun.id == id).first()  # type: ignore[no-any-return]
+    async def get_agent_run(self, id: UUID) -> Optional[AgentRun]:
+        """Retrieve a single agent run by ID."""
+        from sqlalchemy.orm import selectinload
+        stmt = select(AgentRun).where(AgentRun.id == id).options(
+            selectinload(AgentRun.stage),
+            selectinload(AgentRun.agent)
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
 
-    def get_agent_runs(
+    async def get_agent_runs(
         self,
         skip: int = 0,
         limit: int = 100,
         user_id: Optional[UUID] = None,
     ) -> List[AgentRun]:
-        query = self.db.query(AgentRun)
+        """Retrieve paginated agent runs with optional user filtering."""
+        stmt = select(AgentRun)
         if user_id is not None:
-            query = (
-                query.join(RoadmapStage, AgentRun.stage_id == RoadmapStage.id)
+            stmt = (
+                stmt.join(RoadmapStage, AgentRun.stage_id == RoadmapStage.id)
                 .join(BusinessRoadmap, RoadmapStage.roadmap_id == BusinessRoadmap.id)
                 .join(Business, BusinessRoadmap.business_id == Business.id)
-                .filter(Business.owner_id == user_id)
+                .where(Business.owner_id == user_id)
             )
-        return query.offset(skip).limit(limit).all()  # type: ignore[no-any-return]
+        stmt = stmt.offset(skip).limit(limit)
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
 
-    def initiate_agent_run(
+    async def initiate_agent_run(
         self,
         agent_id: UUID,
         user_id: Optional[UUID],
@@ -51,9 +63,10 @@ class AgentRunService(BaseService):
     ) -> AgentRun:
         """Create and queue an agent run for execution with quota check via Billing interface."""
         if user_id is not None:
-            if not self.billing.check_usage_limit(user_id, "AI_REQUEST"):
+            # check_usage_limit and record_usage are async
+            if not await self.billing.check_usage_limit(user_id, "AI_REQUEST"):
                 raise PermissionError("Insufficient AI quota")
-            self.billing.record_usage(user_id, "AI_REQUEST")
+            await self.billing.record_usage(user_id, "AI_REQUEST")
 
         db_obj = AgentRun(
             stage_id=stage_id,
@@ -62,21 +75,24 @@ class AgentRunService(BaseService):
             input_data=input_data,
         )
         self.db.add(db_obj)
-        self.db.commit()
-        self.db.refresh(db_obj)
+        await self.db.commit()
+        await self.db.refresh(db_obj)
         
-        # Emit event - skipped in sync context due to sqlite threading errors during tests
-        # The proper way in production is sending this to a message queue like Redis/RabbitMQ.
         return db_obj
 
     async def execute_agent_run_async(self, run_id: UUID) -> Optional[AgentRun]:
         """Execute an agent run using the configured AI provider."""
-        db_obj = self.get_agent_run(id=run_id)
+        # Use await get_agent_run
+        db_obj = await self.get_agent_run(id=run_id)
         if db_obj is None:
             return None
 
+        # Correctly await relationship if needed, but here we assume eager or already loaded if possible.
+        # However, with AsyncSession, we often need to ensure it.
+        # For simplicity, we assume the fields we need are simple or we reload them.
+        
         _apply_updates(db_obj, {"status": AgentRunStatus.RUNNING})
-        self.db.commit()
+        await self.db.commit()
 
         stage = db_obj.stage
         stage_type = None
@@ -89,7 +105,7 @@ class AgentRunService(BaseService):
 
         try:
             output_data = await provider_runtime.run_agent_execution(
-                db_obj.input_data,  # type: ignore
+                db_obj.input_data,
                 agent_name=db_obj.agent.name if db_obj.agent else "agent",
                 stage_type=stage_type,
             )
@@ -103,11 +119,11 @@ class AgentRunService(BaseService):
                     "status": AgentRunStatus.SUCCESS,
                 },
             )
-            self.db.commit()
-            self.db.refresh(db_obj)
+            await self.db.commit()
+            await self.db.refresh(db_obj)
 
-            self.record_validation_log(
-                agent_run_id=db_obj.id,  # type: ignore
+            await self.record_validation_log(
+                agent_run_id=db_obj.id,
                 result="SUCCESS",
                 details=str(output_data.get("summary", "Execution completed")),
             )
@@ -123,11 +139,11 @@ class AgentRunService(BaseService):
                     "confidence_score": 0.0,
                 },
             )
-            self.db.commit()
-            self.db.refresh(db_obj)
+            await self.db.commit()
+            await self.db.refresh(db_obj)
 
-            self.record_validation_log(
-                agent_run_id=db_obj.id,  # type: ignore
+            await self.record_validation_log(
+                agent_run_id=db_obj.id,
                 result="FAILED",
                 details=str(exc),
             )
@@ -135,10 +151,14 @@ class AgentRunService(BaseService):
             
         return db_obj
 
-    def get_validation_log(self, id: UUID) -> Optional[ValidationLog]:
-        return self.db.query(ValidationLog).filter(ValidationLog.id == id).first()  # type: ignore[no-any-return]
+    async def get_validation_log(self, id: UUID) -> Optional[ValidationLog]:
+        """Retrieve a validation log by ID."""
+        stmt = select(ValidationLog).where(ValidationLog.id == id)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
 
-    def record_validation_log(self, agent_run_id: UUID, result: str, details: str) -> ValidationLog:
+    async def record_validation_log(self, agent_run_id: UUID, result: str, details: str) -> ValidationLog:
+        """Create and store a validation log for an agent run."""
         confidence = 0.9 if result.upper() == "SUCCESS" else 0.4
         threshold_passed = confidence >= 0.8
 
@@ -149,12 +169,13 @@ class AgentRunService(BaseService):
             threshold_passed=threshold_passed,
         )
         self.db.add(db_obj)
-        self.db.commit()
-        self.db.refresh(db_obj)
+        await self.db.commit()
+        await self.db.refresh(db_obj)
         return db_obj
 
-def get_agent_run_service(
-    db: Session = Depends(get_db),
+async def get_agent_run_service(
+    db: AsyncSession = Depends(get_async_db),
     billing_service: IBillingService = Depends(get_usage_service)
 ) -> AgentRunService:
+    """Dependency provider for AgentRunService."""
     return AgentRunService(db, billing_service)

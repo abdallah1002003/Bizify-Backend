@@ -81,16 +81,20 @@ class LogMiddleware(BaseHTTPMiddleware):
                 with PerformanceTimer(logger, f"{request.method} {path}", threshold_ms=500) as timer:
                     response = await call_next(request)
 
-                logger.info(
-                    "Request completed successfully",
-                    extra={
-                        "status_code": response.status_code,
-                        "duration_ms": timer.duration_ms,
-                        "path": path,
-                        "method": request.method,
-                        "request_id": request_id,
-                    }
-                )
+                status_code = response.status_code
+                extra_data = {
+                    "status_code": status_code,
+                    "duration_ms": timer.duration_ms,
+                    "path": path,
+                    "method": request.method,
+                    "request_id": request_id,
+                }
+                if status_code >= 500:
+                    logger.error("Request completed with server error", extra=extra_data)
+                elif status_code >= 400:
+                    logger.warning("Request completed with client error", extra=extra_data)
+                else:
+                    logger.info("Request completed successfully", extra=extra_data)
 
                 # Echo both headers so clients can trace their request IDs
                 response.headers["X-Request-ID"] = request_id

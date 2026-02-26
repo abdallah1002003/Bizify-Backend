@@ -1,11 +1,6 @@
-"""
-Unit tests for cleanup_service.py.
-
-Covers all three cleanup functions and the cleanup_all aggregate.
-"""
-
+import pytest
 from datetime import datetime, timedelta, timezone
-
+from sqlalchemy import select
 
 import app.models as models
 from app.core.security import get_password_hash
@@ -33,7 +28,7 @@ def _future(minutes=30):
     return _utc_now() + timedelta(minutes=minutes)
 
 
-def _make_user(db):
+async def _make_user(db):
     user = models.User(
         email=f"cleanup_{_utc_now().timestamp()}@example.com",
         name="Cleanup User",
@@ -43,8 +38,8 @@ def _make_user(db):
         is_verified=True,
     )
     db.add(user)
-    db.commit()
-    db.refresh(user)
+    await db.commit()
+    await db.refresh(user)
     return user
 
 
@@ -53,20 +48,28 @@ def _make_user(db):
 # ---------------------------------------------------------------------------
 
 class TestCleanupRefreshTokens:
-    def test_deletes_expired_tokens(self, db):
-        user = _make_user(db)
+    @pytest.mark.asyncio
+    async def test_deletes_expired_tokens(self, async_db):
+        user = await _make_user(async_db)
         expired = models.RefreshToken(user_id=user.id, jti="expired-jti", expires_at=_past())
         active = models.RefreshToken(user_id=user.id, jti="active-jti", expires_at=_future())
-        db.add_all([expired, active])
-        db.commit()
+        async_db.add_all([expired, active])
+        await async_db.commit()
 
-        deleted = cleanup_expired_refresh_tokens(db)
+        deleted = await cleanup_expired_refresh_tokens(async_db)
         assert deleted == 1
-        assert db.query(models.RefreshToken).filter_by(jti="expired-jti").first() is None
-        assert db.query(models.RefreshToken).filter_by(jti="active-jti").first() is not None
+        
+        stmt_expired = select(models.RefreshToken).filter_by(jti="expired-jti")
+        result_expired = await async_db.execute(stmt_expired)
+        assert result_expired.scalar_one_or_none() is None
+        
+        stmt_active = select(models.RefreshToken).filter_by(jti="active-jti")
+        result_active = await async_db.execute(stmt_active)
+        assert result_active.scalar_one_or_none() is not None
 
-    def test_returns_zero_when_nothing_to_clean(self, db):
-        assert cleanup_expired_refresh_tokens(db) == 0
+    @pytest.mark.asyncio
+    async def test_returns_zero_when_nothing_to_clean(self, async_db):
+        assert await cleanup_expired_refresh_tokens(async_db) == 0
 
 
 # ---------------------------------------------------------------------------
@@ -74,24 +77,29 @@ class TestCleanupRefreshTokens:
 # ---------------------------------------------------------------------------
 
 class TestCleanupPasswordResetTokens:
-    def test_deletes_expired_tokens(self, db):
-        user = _make_user(db)
+    @pytest.mark.asyncio
+    async def test_deletes_expired_tokens(self, async_db):
+        user = await _make_user(async_db)
         expired = models.PasswordResetToken(user_id=user.id, jti="pr-expired", expires_at=_past())
         fresh = models.PasswordResetToken(user_id=user.id, jti="pr-fresh", expires_at=_future())
-        db.add_all([expired, fresh])
-        db.commit()
+        async_db.add_all([expired, fresh])
+        await async_db.commit()
 
-        deleted = cleanup_expired_password_reset_tokens(db)
+        deleted = await cleanup_expired_password_reset_tokens(async_db)
         assert deleted == 1
-        assert db.query(models.PasswordResetToken).filter_by(jti="pr-expired").first() is None
+        
+        stmt = select(models.PasswordResetToken).filter_by(jti="pr-expired")
+        result = await async_db.execute(stmt)
+        assert result.scalar_one_or_none() is None
 
-    def test_deletes_used_tokens(self, db):
-        user = _make_user(db)
+    @pytest.mark.asyncio
+    async def test_deletes_used_tokens(self, async_db):
+        user = await _make_user(async_db)
         used = models.PasswordResetToken(user_id=user.id, jti="pr-used", expires_at=_future(), used=True)
-        db.add(used)
-        db.commit()
+        async_db.add(used)
+        await async_db.commit()
 
-        deleted = cleanup_expired_password_reset_tokens(db)
+        deleted = await cleanup_expired_password_reset_tokens(async_db)
         assert deleted == 1
 
 
@@ -100,24 +108,29 @@ class TestCleanupPasswordResetTokens:
 # ---------------------------------------------------------------------------
 
 class TestCleanupVerificationTokens:
-    def test_deletes_expired_tokens(self, db):
-        user = _make_user(db)
+    @pytest.mark.asyncio
+    async def test_deletes_expired_tokens(self, async_db):
+        user = await _make_user(async_db)
         expired = models.EmailVerificationToken(user_id=user.id, jti="ev-expired", expires_at=_past())
         fresh = models.EmailVerificationToken(user_id=user.id, jti="ev-fresh", expires_at=_future())
-        db.add_all([expired, fresh])
-        db.commit()
+        async_db.add_all([expired, fresh])
+        await async_db.commit()
 
-        deleted = cleanup_expired_verification_tokens(db)
+        deleted = await cleanup_expired_verification_tokens(async_db)
         assert deleted == 1
-        assert db.query(models.EmailVerificationToken).filter_by(jti="ev-expired").first() is None
+        
+        stmt = select(models.EmailVerificationToken).filter_by(jti="ev-expired")
+        result = await async_db.execute(stmt)
+        assert result.scalar_one_or_none() is None
 
-    def test_deletes_used_tokens(self, db):
-        user = _make_user(db)
+    @pytest.mark.asyncio
+    async def test_deletes_used_tokens(self, async_db):
+        user = await _make_user(async_db)
         used = models.EmailVerificationToken(user_id=user.id, jti="ev-used", expires_at=_future(), used=True)
-        db.add(used)
-        db.commit()
+        async_db.add(used)
+        await async_db.commit()
 
-        deleted = cleanup_expired_verification_tokens(db)
+        deleted = await cleanup_expired_verification_tokens(async_db)
         assert deleted == 1
 
 
@@ -126,21 +139,23 @@ class TestCleanupVerificationTokens:
 # ---------------------------------------------------------------------------
 
 class TestCleanupAll:
-    def test_returns_summary_dict(self, db):
-        result = cleanup_all(db)
+    @pytest.mark.asyncio
+    async def test_returns_summary_dict(self, async_db):
+        result = await cleanup_all(async_db)
         assert set(result.keys()) == {"refresh_tokens", "password_reset_tokens", "verification_tokens"}
         assert all(isinstance(v, int) for v in result.values())
 
-    def test_cleans_all_types(self, db):
-        user = _make_user(db)
-        db.add_all([
+    @pytest.mark.asyncio
+    async def test_cleans_all_types(self, async_db):
+        user = await _make_user(async_db)
+        async_db.add_all([
             models.RefreshToken(user_id=user.id, jti="all-rt", expires_at=_past()),
             models.PasswordResetToken(user_id=user.id, jti="all-pr", expires_at=_past()),
             models.EmailVerificationToken(user_id=user.id, jti="all-ev", expires_at=_past()),
         ])
-        db.commit()
+        await async_db.commit()
 
-        summary = cleanup_all(db)
+        summary = await cleanup_all(async_db)
         assert summary["refresh_tokens"] >= 1
         assert summary["password_reset_tokens"] >= 1
         assert summary["verification_tokens"] >= 1

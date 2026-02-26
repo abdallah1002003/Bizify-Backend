@@ -6,7 +6,7 @@ from app.services.core.email_service import register_email_handlers
 
 logger = logging.getLogger(__name__)
 
-def register_all_handlers():  # type: ignore
+def register_all_handlers():
     """Register all service event handlers."""
     logger.info("Registering internal event handlers...")
     

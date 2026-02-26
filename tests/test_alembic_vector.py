@@ -1,13 +1,24 @@
-from sqlalchemy import create_engine
 import os
-from dotenv import load_dotenv
 
-load_dotenv()
-db_url = os.getenv("DATABASE_URL")
-if not db_url:
-    print("NO DB URL")
-    exit(1)
-    
-engine = create_engine(db_url)
-with engine.connect() as conn:
-    print("Connected")
+from dotenv import load_dotenv
+import pytest
+from sqlalchemy import create_engine, text
+from sqlalchemy.exc import SQLAlchemyError
+
+
+@pytest.mark.integration
+def test_connection() -> None:
+    """Validate database connectivity when a reachable DATABASE_URL is provided."""
+    load_dotenv()
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        pytest.skip("DATABASE_URL is not set")
+
+    engine = create_engine(db_url)
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+    except SQLAlchemyError as exc:
+        pytest.skip(f"Database is not reachable for this environment: {exc}")
+    finally:
+        engine.dispose()

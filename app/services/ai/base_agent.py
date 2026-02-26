@@ -2,7 +2,7 @@ import abc
 import logging
 from typing import Any, Callable, Dict, Optional
 from uuid import UUID
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class BaseAgent(abc.ABC):
         logger.info("Agent %s (%s) initialized.", self.name, self.agent_id)
 
     @abc.abstractmethod
-    async def run(self, db: Session, target_id: UUID, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def run(self, db: AsyncSession, target_id: UUID, context: Dict[str, Any]) -> Dict[str, Any]:
         """
         Main execution loop for the agent.
         Must be implemented by agent subclasses.

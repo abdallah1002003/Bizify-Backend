@@ -33,6 +33,7 @@ class TestChatSessionAsync:
 
     async def test_create_chat_session_async(self):
         db = AsyncMock()
+        db.add = MagicMock()
         user_id = uuid.uuid4()
         
         # We need to simulate the flush/refresh setting the ID
@@ -86,6 +87,7 @@ class TestChatMessageAsync:
 
     async def test_add_message_async(self):
         db = AsyncMock()
+        db.add = MagicMock()
         session_id = uuid.uuid4()
         
         result = await add_message_async(
