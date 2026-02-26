@@ -1,5 +1,7 @@
 import pytest
 from uuid import uuid4
+from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError
 from app.services.auth.auth_service import AuthService
 import app.models as models
 from app.core import security
@@ -29,7 +31,7 @@ async def test_auth_service_duplicate_registration(auth_service, async_db):
     email = f"dup-{uuid4()}@example.com"
     await auth_service.users.create_user({"email": email, "password": "password", "name": "User 1"})
     
-    with pytest.raises(Exception):
+    with pytest.raises(IntegrityError):
         await auth_service.users.create_user({"email": email, "password": "password", "name": "User 2"})
 
 @pytest.mark.asyncio
@@ -47,7 +49,7 @@ async def test_auth_service_verify_email(auth_service, async_db):
 
 @pytest.mark.asyncio
 async def test_auth_service_invalid_verify_token(auth_service):
-    with pytest.raises(Exception):
+    with pytest.raises(HTTPException):
         await auth_service.verify_email("invalid-token")
 
 @pytest.mark.asyncio

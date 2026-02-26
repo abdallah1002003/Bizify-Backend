@@ -69,7 +69,11 @@ class TestVerificationEmailFlow:
 
         # 2. Mint and persist the verification token
         token = create_email_verification_token(user.email)
-        token_data = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        token_data = jwt.decode(
+            token,
+            settings.jwt_verify_key,
+            algorithms=[settings.jwt_algorithm],
+        )
         db_token = models.EmailVerificationToken(
             user_id=user.id,
             jti=token_data["jti"],
@@ -112,7 +116,11 @@ class TestVerificationEmailFlow:
         db.refresh(user)
 
         token = create_email_verification_token(user.email)
-        token_data = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        token_data = jwt.decode(
+            token,
+            settings.jwt_verify_key,
+            algorithms=[settings.jwt_algorithm],
+        )
         db_token = models.EmailVerificationToken(
             user_id=user.id,
             jti=token_data["jti"],
@@ -182,7 +190,11 @@ class TestPasswordResetEmailFlow:
         import app.models as models
         
         token = create_password_reset_token(test_user.email)
-        token_data = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        token_data = jwt.decode(
+            token,
+            settings.jwt_verify_key,
+            algorithms=[settings.jwt_algorithm],
+        )
         db_token = models.PasswordResetToken(
             user_id=test_user.id,
             jti=token_data["jti"],

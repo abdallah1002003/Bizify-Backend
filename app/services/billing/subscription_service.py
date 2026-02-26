@@ -162,7 +162,7 @@ class SubscriptionService(BaseService):
                 entity_type="Subscription",
                 original_error=str(e),
                 details={"subscription_id": str(subscription.id)}
-            )
+            ) from e
 
     async def get_subscription(self, id: UUID) -> Optional[Subscription]:
         """Retrieve a single subscription by its unique ID."""
@@ -243,7 +243,7 @@ class SubscriptionService(BaseService):
                 entity_type="Subscription",
                 original_error=str(e),
                 details={"input_data": str(data) if 'data' in locals() else None}
-            )
+            ) from e
 
     async def update_subscription(self, db_obj: Subscription, obj_in: Any) -> Subscription:
         """Update a subscription record and re-sync plan usage limits."""

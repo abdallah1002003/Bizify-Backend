@@ -85,9 +85,7 @@ jobs:
     
     - name: Run Type Checking (Mypy Gate)
       run: |
-        python -m mypy app/ --config-file config/pyproject.toml \
-          --explicit-package-bases \
-          --follow-imports=skip
+        python -m mypy app/ --config-file mypy.ini
     
     - name: Run Unit Tests
       run: |

@@ -92,7 +92,9 @@ jobs:
     name: Deploy to Staging
     runs-on: ubuntu-latest
     needs: build-and-push
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_env == 'staging')
     environment:
       name: staging
       url: https://staging.bizify.app
@@ -101,17 +103,42 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Validate Staging SSH secrets
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_USER: ${{ secrets.STAGING_USER }}
+          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+        run: |
+          set -eu
+          test -n "$STAGING_HOST" || { echo "Missing secret: STAGING_HOST"; exit 1; }
+          test -n "$STAGING_USER" || { echo "Missing secret: STAGING_USER"; exit 1; }
+          test -n "$STAGING_SSH_KEY" || { echo "Missing secret: STAGING_SSH_KEY"; exit 1; }
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: "${{ secrets.STAGING_HOST }}"
           username: "${{ secrets.STAGING_USER }}"
           key: "${{ secrets.STAGING_SSH_KEY }}"
+          timeout: 60s
+          command_timeout: 30m
+          script_stop: true
+          debug: true
           script: |
+            set -eu
             cd /opt/bizify
-            docker compose pull
-            docker compose up -d --no-build
-            docker compose exec -T api alembic upgrade head
+            if docker compose version >/dev/null 2>&1; then
+              COMPOSE_CMD="docker compose"
+            elif command -v docker-compose >/dev/null 2>&1; then
+              COMPOSE_CMD="docker-compose"
+            else
+              echo "Neither 'docker compose' nor 'docker-compose' is available on the server"
+              exit 1
+            fi
+            echo "Using compose command: $COMPOSE_CMD"
+            $COMPOSE_CMD pull
+            $COMPOSE_CMD up -d --no-build
+            $COMPOSE_CMD exec -T api alembic upgrade head
             docker image prune -f
 
       - name: Run Smoke Tests
@@ -127,7 +154,9 @@ jobs:
     name: Deploy to Production
     runs-on: ubuntu-latest
     needs: build-and-push
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    if: |
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_env == 'production')
     environment:
       name: production
       url: https://bizify.app
@@ -136,17 +165,42 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Validate Production SSH secrets
+        env:
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_USER: ${{ secrets.PROD_USER }}
+          PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+        run: |
+          set -eu
+          test -n "$PROD_HOST" || { echo "Missing secret: PROD_HOST"; exit 1; }
+          test -n "$PROD_USER" || { echo "Missing secret: PROD_USER"; exit 1; }
+          test -n "$PROD_SSH_KEY" || { echo "Missing secret: PROD_SSH_KEY"; exit 1; }
+
       - name: Deploy via SSH (production)
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: "${{ secrets.PROD_HOST }}"
           username: "${{ secrets.PROD_USER }}"
           key: "${{ secrets.PROD_SSH_KEY }}"
+          timeout: 60s
+          command_timeout: 30m
+          script_stop: true
+          debug: true
           script: |
+            set -eu
             cd /opt/bizify
-            docker compose pull
-            docker compose up -d --no-build
-            docker compose exec -T api alembic upgrade head
+            if docker compose version >/dev/null 2>&1; then
+              COMPOSE_CMD="docker compose"
+            elif command -v docker-compose >/dev/null 2>&1; then
+              COMPOSE_CMD="docker-compose"
+            else
+              echo "Neither 'docker compose' nor 'docker-compose' is available on the server"
+              exit 1
+            fi
+            echo "Using compose command: $COMPOSE_CMD"
+            $COMPOSE_CMD pull
+            $COMPOSE_CMD up -d --no-build
+            $COMPOSE_CMD exec -T api alembic upgrade head
             docker image prune -f
 
       - name: Run Smoke Tests (Production)

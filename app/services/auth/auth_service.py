@@ -31,7 +31,11 @@ class AuthService(BaseService):
     async def _persist_refresh_token(self, user_id: UUID, refresh_token: str) -> None:
         """Persists a refresh token in the database."""
         try:
-            token_data = jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            token_data = jwt.decode(
+                refresh_token,
+                settings.jwt_verify_key,
+                algorithms=[settings.jwt_algorithm],
+            )
             db_token = models.RefreshToken(
                 user_id=user_id,
                 jti=token_data["jti"],
@@ -41,7 +45,7 @@ class AuthService(BaseService):
             await self.db.commit()
         except jwt.PyJWTError as e:
             logger.error(f"Failed to persist refresh token: {e}")
-            raise HTTPException(status_code=401, detail="Invalid refresh token")
+            raise HTTPException(status_code=401, detail="Invalid refresh token") from e
 
     async def authenticate_user(self, email: str, password: str) -> Optional[models.User]:
         """Authenticates a user by email and password."""
@@ -63,7 +67,9 @@ class AuthService(BaseService):
         """Refreshes an access token using a valid refresh token."""
         try:
             token_data = jwt.decode(
-                refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+                refresh_token,
+                settings.jwt_verify_key,
+                algorithms=[settings.jwt_algorithm],
             )
             if token_data.get("type") != "refresh":
                 raise HTTPException(status_code=401, detail="Invalid token type")
@@ -71,8 +77,8 @@ class AuthService(BaseService):
             if not user_id_str:
                 raise HTTPException(status_code=401, detail="Invalid token payload")
             user_id = UUID(user_id_str)
-        except (jwt.PyJWTError, ValueError):
-            raise HTTPException(status_code=401, detail="Could not validate refresh token")
+        except (jwt.PyJWTError, ValueError) as e:
+            raise HTTPException(status_code=401, detail="Could not validate refresh token") from e
 
         user = await self.users.get_user(id=user_id)
         if not user or not user.is_active:
@@ -98,7 +104,9 @@ class AuthService(BaseService):
         """Revokes a refresh token."""
         try:
             token_data = jwt.decode(
-                refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+                refresh_token,
+                settings.jwt_verify_key,
+                algorithms=[settings.jwt_algorithm],
             )
             jti = token_data.get("jti")
             stmt = select(models.RefreshToken).where(models.RefreshToken.jti == jti)
@@ -113,7 +121,11 @@ class AuthService(BaseService):
     async def create_verification_token(self, user_id: UUID, email: str) -> str:
         """Creates and persists an email verification token."""
         token = security.create_email_verification_token(email)
-        token_data = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        token_data = jwt.decode(
+            token,
+            settings.jwt_verify_key,
+            algorithms=[settings.jwt_algorithm],
+        )
         db_token = models.EmailVerificationToken(
             user_id=user_id,
             jti=token_data["jti"],
@@ -179,7 +191,11 @@ class AuthService(BaseService):
             return
 
         token = security.create_password_reset_token(user.email)
-        token_data = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        token_data = jwt.decode(
+            token,
+            settings.jwt_verify_key,
+            algorithms=[settings.jwt_algorithm],
+        )
         
         db_token = models.PasswordResetToken(
             user_id=user.id,
