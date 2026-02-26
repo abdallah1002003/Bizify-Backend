@@ -3,7 +3,8 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from typing import List, Optional, TYPE_CHECKING
-from sqlalchemy import String, Boolean, DateTime, ForeignKey, Enum, JSON, Float, Integer, Index
+from decimal import Decimal
+from sqlalchemy import String, Boolean, DateTime, ForeignKey, Enum, JSON, Numeric, Integer, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.guid import GUID
 from app.core.encryption import EncryptedString
@@ -23,7 +24,7 @@ class Plan(Base, TimestampMixin, SoftDeleteMixin):
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
     description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    price: Mapped[float] = mapped_column(Float, nullable=False)
+    price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     features_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     stripe_price_id: Mapped[Optional[str]] = mapped_column(String, unique=True, nullable=True, index=True)
@@ -98,7 +99,7 @@ class Payment(Base, TimestampMixin, SoftDeleteMixin):
     payment_method_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         GUID, ForeignKey("payment_methods.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    amount: Mapped[float] = mapped_column(Float, nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String, nullable=False, default=settings.DEFAULT_CURRENCY)
     status: Mapped[PaymentStatus] = mapped_column(
         Enum(PaymentStatus), default=PaymentStatus.PENDING, nullable=False

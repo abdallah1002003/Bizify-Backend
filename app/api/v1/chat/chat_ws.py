@@ -52,11 +52,15 @@ async def get_user_from_token(token: str, user_service: UserService) -> Optional
             token,
             settings.jwt_verify_key,
             algorithms=[settings.jwt_algorithm],
+            options={"verify_exp": True}
         )
         user_id_raw = payload.get("sub")
         if user_id_raw is None:
             return None
         return await user_service.get_user(UUID(str(user_id_raw)))
+    except jwt.ExpiredSignatureError:
+        logger.warning("WS Token expired")
+        return None
     except Exception as e:
         logger.error(f"FAILED TOKEN DECODE: {type(e).__name__} - {str(e)}")
         return None
@@ -84,9 +88,35 @@ async def websocket_endpoint(
         return
 
     await manager.connect(websocket, session_id)
+    last_auth_check = 0.0
+    auth_check_interval = 60.0 # Re-verify token every 60 seconds
+
     try:
         while True:
-            data = await websocket.receive_text()
+            # Periodic token validity check
+            import time
+            current_time = time.time()
+            if current_time - last_auth_check > auth_check_interval:
+                # Re-decode to check expiration without DB hit (cost-effective)
+                try:
+                    jwt.decode(
+                        token,
+                        settings.jwt_verify_key,
+                        algorithms=[settings.jwt_algorithm],
+                        options={"verify_exp": True}
+                    )
+                    last_auth_check = current_time
+                except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+                    logger.warning(f"WS session {session_id} token expired during active connection")
+                    await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+                    break
+
+            # Use a timeout on receive to allow periodic auth checks
+            try:
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
+            except asyncio.TimeoutError:
+                continue
+
             try:
                 message_data = json.loads(data)
                 content = message_data.get("content")
@@ -104,7 +134,7 @@ async def websocket_endpoint(
                 content=content
             )
 
-            # 2. Mock AI Response
+            # 2. Mock AI Response (or real if implemented)
             ai_response_content = f"Echo from AI: {content}"
             
             await chat_service.add_message(
@@ -123,4 +153,7 @@ async def websocket_endpoint(
             await manager.broadcast(json.dumps(response_payload), session_id)
 
     except WebSocketDisconnect:
+        manager.disconnect(websocket, session_id)
+    except Exception as e:
+        logger.error(f"WS error: {e}")
         manager.disconnect(websocket, session_id)

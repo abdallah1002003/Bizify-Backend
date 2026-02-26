@@ -1,11 +1,12 @@
 from datetime import datetime
+from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Optional, Any, Dict
 from uuid import UUID
 
 class PlanBase(BaseModel):
     name: str
-    price: float
+    price: Decimal
     features_json: Optional[dict] = None
     is_active: Optional[bool] = None
     stripe_price_id: Optional[str] = None
@@ -13,7 +14,7 @@ class PlanBase(BaseModel):
 
 class PlanCreate(BaseModel):
     name: str = Field(..., max_length=255)
-    price: float
+    price: Decimal
     features_json: Optional[dict] = None
     is_active: Optional[bool] = None
     stripe_price_id: Optional[str] = None
@@ -36,7 +37,7 @@ class PlanCreate(BaseModel):
 
 class PlanUpdate(BaseModel):
     name: Optional[str] = None
-    price: Optional[float] = None
+    price: Optional[Decimal] = None
     features_json: Optional[dict] = None
     is_active: Optional[bool] = None
     stripe_price_id: Optional[str] = None

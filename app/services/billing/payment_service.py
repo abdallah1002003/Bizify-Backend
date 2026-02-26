@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 import logging
+from decimal import Decimal
 from typing import Any, List, Optional
 from uuid import UUID
 
@@ -121,7 +122,14 @@ async def create_payment(db: AsyncSession, obj_in: Any) -> Payment:
     """
     try:
         data = _to_update_dict(obj_in)
-        amount = float(data.get("amount", 0))
+        if "amount" in data and data["amount"] is not None:
+            try:
+                amount = Decimal(str(data["amount"]))
+            except Exception:
+                raise ValidationError(message="Invalid amount format", field="amount")
+        else:
+            amount = Decimal("0")
+            
         if amount <= 0:
             raise ValidationError(
                 message=f"Payment amount must be positive, got {amount}",
@@ -188,7 +196,10 @@ async def update_payment(db: AsyncSession, db_obj: Payment, obj_in: Any) -> Paym
     update_data = _to_update_dict(obj_in)
 
     if "amount" in update_data and update_data["amount"] is not None:
-        amount = float(update_data["amount"])
+        try:
+            amount = Decimal(str(update_data["amount"]))
+        except Exception:
+            raise ValidationError(message="Invalid amount format", field="amount")
         if amount <= 0:
             raise ValidationError(
                 message=f"Payment amount must be positive, got {amount}",
@@ -243,7 +254,7 @@ async def delete_payment(db: AsyncSession, id: UUID) -> Optional[Payment]:
 async def process_payment(
     db: AsyncSession,
     subscription_id: UUID,
-    amount: float,
+    amount: Decimal,
     method_id: UUID,
     currency: str = "usd",
 ) -> Payment:
@@ -344,7 +355,7 @@ async def process_payment(
         )
 
 
-async def process_subscription_payment(db: AsyncSession, subscription_id: UUID, amount: float, payment_method_id: UUID):
+async def process_subscription_payment(db: AsyncSession, subscription_id: UUID, amount: Decimal, payment_method_id: UUID):
     """Backward-compatible wrapper around `process_payment`."""
     return await process_payment(
         db,

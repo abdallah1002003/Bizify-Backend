@@ -8,6 +8,7 @@ import pytest_asyncio
 from uuid import uuid4
 from datetime import datetime, timezone
 
+from decimal import Decimal
 from app.models import User, Plan, Subscription
 from app.models.enums import UserRole, SubscriptionStatus, PaymentStatus
 from app.services.billing.payment_method import (
@@ -48,7 +49,7 @@ async def test_plan(async_db):
     plan = Plan(
         id=uuid4(),
         name="Pro Plan",
-        price=29.99,
+        price=Decimal("29.99"),
         features_json={"ai_runs": 100},
         is_active=True,
     )
@@ -167,7 +168,7 @@ class TestPaymentCRUD:
         payment = await create_payment(async_db, payment_data)
         
         assert payment is not None
-        assert payment.amount == 29.99
+        assert payment.amount == Decimal("29.99")
         assert payment.user_id == test_user.id
         assert payment.subscription_id == test_subscription.id
         assert payment.status == PaymentStatus.PENDING
@@ -178,7 +179,7 @@ class TestPaymentCRUD:
         payment_data = {
             "user_id": test_user.id,
             "subscription_id": test_subscription.id,
-            "amount": 49.99,
+            "amount": Decimal("49.99"),
             "currency": "USD",
         }
         created = await create_payment(async_db, payment_data)
@@ -187,7 +188,7 @@ class TestPaymentCRUD:
         
         assert retrieved is not None
         assert retrieved.id == created.id
-        assert retrieved.amount == 49.99
+        assert retrieved.amount == Decimal("49.99")
 
     @pytest.mark.asyncio
     async def test_list_payments_for_user(self, async_db, test_subscription, test_user):
@@ -197,7 +198,7 @@ class TestPaymentCRUD:
             payment_data = {
                 "user_id": test_user.id,
                 "subscription_id": test_subscription.id,
-                "amount": 29.99 + i,
+                "amount": Decimal("29.99") + Decimal(str(i)),
                 "currency": "USD",
             }
             await create_payment(async_db, payment_data)
@@ -213,7 +214,7 @@ class TestPaymentCRUD:
         payment_data = {
             "user_id": test_user.id,
             "subscription_id": test_subscription.id,
-            "amount": 29.99,
+            "amount": Decimal("29.99"),
         }
         
         payment = await create_payment(async_db, payment_data)
@@ -226,7 +227,7 @@ class TestPaymentCRUD:
         payment_data = {
             "user_id": test_user.id,
             "subscription_id": test_subscription.id,
-            "amount": 29.99,
+            "amount": Decimal("29.99"),
             "currency": "USD",
         }
         
@@ -240,7 +241,7 @@ class TestPaymentCRUD:
         payment_data = {
             "user_id": test_user.id,
             "subscription_id": test_subscription.id,
-            "amount": 29.99,
+            "amount": Decimal("29.99"),
             "currency": "USD",
         }
         
@@ -256,7 +257,7 @@ class TestPaymentCRUD:
             payment_data = {
                 "user_id": test_user.id,
                 "subscription_id": test_subscription.id,
-                "amount": 29.99,
+                "amount": Decimal("29.99"),
                 "currency": "USD",
             }
             await create_payment(async_db, payment_data)

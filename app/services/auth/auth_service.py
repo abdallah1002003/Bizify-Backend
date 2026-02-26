@@ -15,6 +15,7 @@ from app.services.base_service import BaseService
 from app.services.interfaces import IUserService
 from app.services.users.user_service import UserService, get_user_service
 from app.core.events import dispatcher
+from app.core.metrics import active_sessions
 from config.settings import settings
 
 logger = logging.getLogger(__name__)
@@ -61,6 +62,7 @@ class AuthService(BaseService):
         )
         refresh_token = security.create_refresh_token(user_id)
         await self._persist_refresh_token(user_id, refresh_token)
+        active_sessions.inc() # Metrics: Track active session
         return access_token, refresh_token
 
     async def refresh_access_token(self, refresh_token: str) -> Tuple[str, str]:
@@ -115,6 +117,7 @@ class AuthService(BaseService):
             if stored:
                 stored.revoked = True
                 await self.db.commit()
+                active_sessions.dec() # Metrics: Decrease active session count
         except jwt.PyJWTError:
             pass  # Silent fail for invalid tokens
 

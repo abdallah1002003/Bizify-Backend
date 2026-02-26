@@ -13,6 +13,7 @@ from app.models.enums import SubscriptionStatus
 from app.db.database import get_async_db
 from app.services.base_service import BaseService
 from app.services.billing import plan_service
+from app.core.metrics import subscriptions_active
 from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
 from app.core.exceptions import (
     ResourceNotFoundError,
@@ -60,6 +61,7 @@ class SubscriptionService(BaseService):
             row.status = SubscriptionStatus.CANCELED
             row.end_date = _utc_now()
             self.db.add(row)
+            subscriptions_active.dec() # Metrics: Dec actively subscriptions count
 
     @classmethod
     def _coerce_status(cls, raw: Any) -> SubscriptionStatus:
@@ -228,6 +230,10 @@ class SubscriptionService(BaseService):
             await self._sync_plan_limits(db_obj, auto_commit=False)
             await self.db.commit()
             await self.db.refresh(db_obj)
+            
+            if db_obj.status == SubscriptionStatus.ACTIVE:
+                subscriptions_active.inc() # Metrics: Inc actively subscriptions count
+                
             logger.info(f"Created subscription {db_obj.id} for user {db_obj.user_id} with plan {db_obj.plan_id}")
             return db_obj
         except (ValidationError, ResourceNotFoundError) as e:
@@ -260,6 +266,9 @@ class SubscriptionService(BaseService):
                         user_id=db_obj.user_id,
                         keep_subscription_id=db_obj.id,
                     )
+                    subscriptions_active.inc()
+                elif db_obj.status == SubscriptionStatus.ACTIVE and new_status != SubscriptionStatus.ACTIVE:
+                    subscriptions_active.dec() # Status leaving ACTIVE state
 
             _apply_updates(db_obj, update_data)
             self.db.add(db_obj)

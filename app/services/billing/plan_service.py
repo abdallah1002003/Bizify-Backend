@@ -4,6 +4,7 @@ Billing Plan CRUD operations.
 from __future__ import annotations
 
 import logging
+from decimal import Decimal
 from typing import Any, List, Optional
 from uuid import UUID
 
@@ -72,7 +73,13 @@ class PlanService(BaseService):
             data["name"] = normalized_name
 
         if "price" in data and data["price"] is not None:
-            price = float(data["price"])
+            try:
+                price = Decimal(str(data["price"]))
+            except Exception:
+                raise ValidationError(
+                    message="Invalid price format",
+                    field="price",
+                )
             if price < 0:
                 raise ValidationError(
                     message="Plan price must be non-negative",

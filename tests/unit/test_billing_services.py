@@ -1,5 +1,6 @@
 import pytest
 import pytest_asyncio
+from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.billing.billing import Plan, Subscription, PaymentMethod
 from app.models.enums import SubscriptionStatus, PaymentStatus
@@ -9,7 +10,7 @@ from app.services.billing.payment_service import process_subscription_payment
 
 @pytest_asyncio.fixture
 async def async_test_plan(async_db: AsyncSession):
-    plan = Plan(name="Pro Plan", price=20.0, features_json={"ai_runs": 100})
+    plan = Plan(name="Pro Plan", price=Decimal("20.0"), features_json={"ai_runs": 100})
     async_db.add(plan)
     await async_db.commit()
     await async_db.refresh(plan)
@@ -69,7 +70,7 @@ async def test_subscription_activation_via_payment(async_db: AsyncSession, async
     payment = await process_subscription_payment(
         async_db, 
         subscription_id=sub.id, 
-        amount=20.0, 
+        amount=Decimal("20.0"), 
         payment_method_id=test_payment_method.id
     )
     
