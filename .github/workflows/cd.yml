@@ -105,8 +105,8 @@ jobs:
 
       - name: Validate Staging SSH secrets
         env:
-          STAGING_HOST: ${{ secrets.STAGING_HOST }}
-          STAGING_USER: ${{ secrets.STAGING_USER }}
+          STAGING_HOST: ${{ secrets.STAGING_HOST || vars.STAGING_HOST }}
+          STAGING_USER: ${{ secrets.STAGING_USER || vars.STAGING_USER }}
           STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
         run: |
           set -eu
@@ -117,9 +117,10 @@ jobs:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: "${{ secrets.STAGING_HOST }}"
-          username: "${{ secrets.STAGING_USER }}"
+          host: "${{ secrets.STAGING_HOST || vars.STAGING_HOST }}"
+          username: "${{ secrets.STAGING_USER || vars.STAGING_USER }}"
           key: "${{ secrets.STAGING_SSH_KEY }}"
+          passphrase: "${{ secrets.STAGING_SSH_PASSPHRASE }}"
           timeout: 60s
           command_timeout: 30m
           script_stop: true
@@ -167,8 +168,8 @@ jobs:
 
       - name: Validate Production SSH secrets
         env:
-          PROD_HOST: ${{ secrets.PROD_HOST }}
-          PROD_USER: ${{ secrets.PROD_USER }}
+          PROD_HOST: ${{ secrets.PROD_HOST || vars.PROD_HOST }}
+          PROD_USER: ${{ secrets.PROD_USER || vars.PROD_USER }}
           PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
         run: |
           set -eu
@@ -179,9 +180,10 @@ jobs:
       - name: Deploy via SSH (production)
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: "${{ secrets.PROD_HOST }}"
-          username: "${{ secrets.PROD_USER }}"
+          host: "${{ secrets.PROD_HOST || vars.PROD_HOST }}"
+          username: "${{ secrets.PROD_USER || vars.PROD_USER }}"
           key: "${{ secrets.PROD_SSH_KEY }}"
+          passphrase: "${{ secrets.PROD_SSH_PASSPHRASE }}"
           timeout: 60s
           command_timeout: 30m
           script_stop: true
