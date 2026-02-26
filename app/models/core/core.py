@@ -16,7 +16,9 @@ class File(Base):
     __tablename__ = "files"
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
-    owner_id: Mapped[uuid.UUID] = mapped_column(GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    owner_id: Mapped[uuid.UUID] = mapped_column(
+        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     file_path: Mapped[str] = mapped_column(String, nullable=False)
     file_type: Mapped[str] = mapped_column(String, nullable=False)
     size: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -28,7 +30,9 @@ class Notification(Base):
     __tablename__ = "notifications"
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     title: Mapped[str] = mapped_column(String, nullable=False)
     message: Mapped[str] = mapped_column(Text, nullable=False)
     is_read: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -40,9 +44,15 @@ class ShareLink(Base):
     __tablename__ = "share_links"
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
-    idea_id: Mapped[Optional[uuid.UUID]] = mapped_column(GUID, ForeignKey("ideas.id", ondelete="CASCADE"), nullable=True)
-    business_id: Mapped[Optional[uuid.UUID]] = mapped_column(GUID, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=True)
-    created_by: Mapped[uuid.UUID] = mapped_column(GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    idea_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        GUID, ForeignKey("ideas.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    business_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        GUID, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    created_by: Mapped[uuid.UUID] = mapped_column(
+        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     token: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
     is_public: Mapped[bool] = mapped_column(Boolean, default=False)
     expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

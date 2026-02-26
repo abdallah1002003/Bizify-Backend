@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from typing import List, Optional, TYPE_CHECKING
-from sqlalchemy import String, Boolean, DateTime, ForeignKey, Enum, JSON, Float, Integer
+from sqlalchemy import String, Boolean, DateTime, ForeignKey, Enum, JSON, Float, Integer, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.guid import GUID
 from app.core.encryption import EncryptedString
@@ -39,10 +39,10 @@ class Subscription(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
-        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     plan_id: Mapped[uuid.UUID] = mapped_column(
-        GUID, ForeignKey("plans.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("plans.id", ondelete="CASCADE"), nullable=False, index=True
     )
     status: Mapped[SubscriptionStatus] = mapped_column(
         Enum(SubscriptionStatus), default=SubscriptionStatus.ACTIVE
@@ -67,7 +67,7 @@ class PaymentMethod(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
-        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     provider: Mapped[str] = mapped_column(String, nullable=False)
     token_ref: Mapped[str] = mapped_column(EncryptedString, nullable=False)
@@ -84,16 +84,19 @@ class PaymentMethod(Base, TimestampMixin, SoftDeleteMixin):
 class Payment(Base, TimestampMixin, SoftDeleteMixin):
     """Payment transaction record with status tracking."""
     __tablename__ = "payments"
+    __table_args__ = (
+        Index("ix_payments_user_id_created_at", "user_id", "created_at"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
-        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     subscription_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        GUID, ForeignKey("subscriptions.id", ondelete="SET NULL"), nullable=True
+        GUID, ForeignKey("subscriptions.id", ondelete="SET NULL"), nullable=True, index=True
     )
     payment_method_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        GUID, ForeignKey("payment_methods.id", ondelete="SET NULL"), nullable=True
+        GUID, ForeignKey("payment_methods.id", ondelete="SET NULL"), nullable=True, index=True
     )
     amount: Mapped[float] = mapped_column(Float, nullable=False)
     currency: Mapped[str] = mapped_column(String, nullable=False, default=settings.DEFAULT_CURRENCY)
@@ -114,12 +117,15 @@ class Payment(Base, TimestampMixin, SoftDeleteMixin):
 class Usage(Base, TimestampMixin, SoftDeleteMixin):
     """Resource usage tracking per user and resource type."""
     __tablename__ = "usages"
+    __table_args__ = (
+        Index("ix_usages_user_id_resource_type", "user_id", "resource_type"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
-        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    resource_type: Mapped[str] = mapped_column(String, nullable=False)
+    resource_type: Mapped[str] = mapped_column(String, nullable=False, index=True)
     used: Mapped[int] = mapped_column(Integer, default=0)
     limit_value: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 

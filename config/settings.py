@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     AI_REQUEST_TIMEOUT_SECONDS: int = 30
 
+    # AI resilience (circuit breaker)
+    AI_CIRCUIT_BREAKER_FAILURE_THRESHOLD: int = 5
+    AI_CIRCUIT_BREAKER_RECOVERY_TIMEOUT_SECONDS: int = 30
+    AI_CIRCUIT_BREAKER_HALF_OPEN_SUCCESS_THRESHOLD: int = 1
+
     # Email / SMTP
     MAIL_ENABLED: bool = True
     MAIL_USERNAME: str = ""
@@ -132,6 +137,27 @@ class Settings(BaseSettings):
     def validate_ai_timeout(cls, value: int) -> int:
         if value <= 0:
             raise ValueError("AI_REQUEST_TIMEOUT_SECONDS must be greater than 0")
+        return value
+
+    @field_validator("AI_CIRCUIT_BREAKER_FAILURE_THRESHOLD")
+    @classmethod
+    def validate_ai_cb_failure_threshold(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError("AI_CIRCUIT_BREAKER_FAILURE_THRESHOLD must be greater than 0")
+        return value
+
+    @field_validator("AI_CIRCUIT_BREAKER_RECOVERY_TIMEOUT_SECONDS")
+    @classmethod
+    def validate_ai_cb_recovery_timeout(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError("AI_CIRCUIT_BREAKER_RECOVERY_TIMEOUT_SECONDS must be greater than 0")
+        return value
+
+    @field_validator("AI_CIRCUIT_BREAKER_HALF_OPEN_SUCCESS_THRESHOLD")
+    @classmethod
+    def validate_ai_cb_half_open_success_threshold(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError("AI_CIRCUIT_BREAKER_HALF_OPEN_SUCCESS_THRESHOLD must be greater than 0")
         return value
 
     @property

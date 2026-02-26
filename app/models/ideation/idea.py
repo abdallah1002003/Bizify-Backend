@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from typing import List, Optional, TYPE_CHECKING
-from sqlalchemy import String, Boolean, DateTime, ForeignKey, Text, Enum, JSON, Float, CheckConstraint
+from sqlalchemy import String, Boolean, DateTime, ForeignKey, Text, Enum, JSON, Float, CheckConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.guid import GUID
 from app.db.database import Base
@@ -22,14 +22,15 @@ class Idea(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "ideas"
     __table_args__ = (
         CheckConstraint('ai_score >= 0 AND ai_score <= 1', name='check_ai_score_range'),
+        Index("ix_ideas_owner_id_created_at", "owner_id", "created_at"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     owner_id: Mapped[uuid.UUID] = mapped_column(
-        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     business_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        GUID, ForeignKey("businesses.id", ondelete="SET NULL"), nullable=True
+        GUID, ForeignKey("businesses.id", ondelete="SET NULL"), nullable=True, index=True
     )
     title: Mapped[str] = mapped_column(String, nullable=False, index=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -78,10 +79,10 @@ class IdeaVersion(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     idea_id: Mapped[uuid.UUID] = mapped_column(
-        GUID, ForeignKey("ideas.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("ideas.id", ondelete="CASCADE"), nullable=False, index=True
     )
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
-        GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+        GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
     snapshot_json: Mapped[dict] = mapped_column(JSON, nullable=False)
 
@@ -94,10 +95,10 @@ class IdeaMetric(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     idea_id: Mapped[uuid.UUID] = mapped_column(
-        GUID, ForeignKey("ideas.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("ideas.id", ondelete="CASCADE"), nullable=False, index=True
     )
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
-        GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+        GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
     name: Mapped[str] = mapped_column(String, nullable=False)
     value: Mapped[float] = mapped_column(Float, nullable=False)
@@ -114,10 +115,10 @@ class Experiment(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     idea_id: Mapped[uuid.UUID] = mapped_column(
-        GUID, ForeignKey("ideas.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("ideas.id", ondelete="CASCADE"), nullable=False, index=True
     )
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
-        GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+        GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
     hypothesis: Mapped[str] = mapped_column(String, nullable=False)
     status: Mapped[ExperimentStatus] = mapped_column(
@@ -131,16 +132,19 @@ class Experiment(Base, TimestampMixin, SoftDeleteMixin):
 class IdeaAccess(Base, TimestampMixin, SoftDeleteMixin):
     """Access control permissions for ideas."""
     __tablename__ = "idea_accesses"
+    __table_args__ = (
+        Index("ix_idea_accesses_idea_id_user_id", "idea_id", "user_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     idea_id: Mapped[uuid.UUID] = mapped_column(
-        GUID, ForeignKey("ideas.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("ideas.id", ondelete="CASCADE"), nullable=False, index=True
     )
     business_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        GUID, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=True
+        GUID, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=True, index=True
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
-        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     can_edit: Mapped[bool] = mapped_column(Boolean, default=False)
     can_delete: Mapped[bool] = mapped_column(Boolean, default=False)

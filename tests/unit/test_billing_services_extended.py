@@ -217,3 +217,104 @@ async def test_payment_method_usage_and_payment_services_paths(async_db: AsyncSe
     assert await payment_method_service.delete_payment_method(async_db, payment_method.id) is None
 
 
+@pytest.mark.asyncio
+async def test_payment_method_requires_valid_provider_and_user(async_db: AsyncSession):
+    """Ensure payment methods enforce provider and user_id validation."""
+    from app.core.exceptions import ValidationError
+
+    user = await _create_user(async_db, "billing_validation")
+
+    # Missing user_id
+    with pytest.raises(ValidationError):
+        await payment_method_service.create_payment_method(
+            async_db,
+            {
+                "provider": "stripe",
+                "token_ref": "tok_missing_user",
+                "last4": "0000",
+            },
+        )
+
+    # Empty/whitespace provider
+    with pytest.raises(ValidationError):
+        await payment_method_service.create_payment_method(
+            async_db,
+            {
+                "user_id": user.id,
+                "provider": "   ",
+                "token_ref": "tok_bad_provider",
+                "last4": "0001",
+            },
+        )
+
+
+@pytest.mark.asyncio
+async def test_plan_service_billing_cycle_and_price_validation(async_db: AsyncSession):
+    """Validate plan payload normalization and safety for commercial rules."""
+    from app.core.exceptions import ValidationError
+
+    # Valid aliases normalize correctly
+    monthly = await plan_service.create_plan(
+        async_db,
+        {"name": "Monthly Plan", "price": 10, "billing_cycle": "monthly"},
+    )
+    assert monthly.billing_cycle == "month"
+
+    yearly = await plan_service.create_plan(
+        async_db,
+        {"name": "Yearly Plan", "price": 100, "billing_cycle": "annual"},
+    )
+    assert yearly.billing_cycle == "year"
+
+    # Negative price is rejected
+    with pytest.raises(ValidationError):
+        await plan_service.create_plan(
+            async_db,
+            {"name": "Bad Plan", "price": -1},
+        )
+
+    # Unsupported billing_cycle is rejected
+    with pytest.raises(ValidationError):
+        await plan_service.create_plan(
+            async_db,
+            {"name": "Weird Plan", "price": 5, "billing_cycle": "weekly"},
+        )
+
+
+@pytest.mark.asyncio
+async def test_usage_service_quota_and_negative_values(async_db: AsyncSession):
+    """Ensure usage service protects against quota overrun and invalid quantities."""
+    from app.core.exceptions import ValidationError, InvalidStateError
+
+    user = await _create_user(async_db, "usage_limits")
+
+    # Create a usage row with a finite limit
+    usage = await usage_service.create_usage(
+        async_db,
+        {"user_id": user.id, "resource_type": "AI_REQUEST", "used": 0, "limit_value": 3},
+    )
+    assert usage.limit_value == 3
+
+    # Recording within quota succeeds
+    usage = await usage_service.record_usage(async_db, user.id, "AI_REQUEST", quantity=2)
+    assert usage.used == 2
+
+    # Exceeding quota raises InvalidStateError
+    with pytest.raises(InvalidStateError):
+        await usage_service.record_usage(async_db, user.id, "AI_REQUEST", quantity=2)
+
+    # Negative "used" or "limit_value" is rejected on create/update
+    with pytest.raises(ValidationError):
+        await usage_service.create_usage(
+            async_db,
+            {"user_id": user.id, "resource_type": "AI_REQUEST", "used": -1},
+        )
+
+    with pytest.raises(ValidationError):
+        await usage_service.update_usage(
+            async_db,
+            usage,
+            {"limit_value": -5},
+        )
+
+

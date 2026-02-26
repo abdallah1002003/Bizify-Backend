@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import json
 import logging
@@ -9,11 +8,22 @@ from typing import Any, Dict, Optional
 import httpx
 
 from config.settings import settings
+from app.core.circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitBreakerOpenError
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_VECTOR_DIMENSION = 1536
 DEFAULT_SCORE = 0.92
+
+
+_openai_circuit = CircuitBreaker[dict](
+    name="openai",
+    config=CircuitBreakerConfig(
+        failure_threshold=settings.AI_CIRCUIT_BREAKER_FAILURE_THRESHOLD,
+        recovery_timeout_seconds=float(settings.AI_CIRCUIT_BREAKER_RECOVERY_TIMEOUT_SECONDS),
+        half_open_success_threshold=settings.AI_CIRCUIT_BREAKER_HALF_OPEN_SUCCESS_THRESHOLD,
+    ),
+)
 
 
 def _is_openai_enabled() -> bool:
@@ -78,11 +88,8 @@ async def _call_openai_embeddings(content: str) -> Optional[list[float]]:
         "Content-Type": "application/json",
     }
     url = f"{settings.OPENAI_BASE_URL.rstrip('/')}/embeddings"
-    max_retries = 3
-    base_delay = 1.0
-
-    for attempt in range(max_retries):
-        try:
+    try:
+        async def _do_request() -> list[float]:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     url,
@@ -95,15 +102,17 @@ async def _call_openai_embeddings(content: str) -> Optional[list[float]]:
             raw_vector = data["data"][0]["embedding"]
             vector = [float(x) for x in raw_vector]
             return _normalize_vector(vector, DEFAULT_VECTOR_DIMENSION)
-        except Exception as exc:  # pragma: no cover
-            if attempt < max_retries - 1:
-                delay = base_delay * (2 ** attempt)
-                logger.warning("OpenAI embedding call failed (attempt %d/%d): %s. Retrying in %ss...", attempt + 1, max_retries, exc, delay)
-                await asyncio.sleep(delay)
-            else:
-                logger.warning("OpenAI embedding call failed after %d retries; using deterministic fallback: %s", max_retries, exc)
-                return None
-    return None
+
+        return await _openai_circuit.call(
+            _do_request,
+            open_error_message="OpenAI embeddings circuit is open; using deterministic fallback.",
+        )
+    except CircuitBreakerOpenError as exc:  # pragma: no cover - fast-fail path
+        logger.warning("%s", exc)
+        return None
+    except Exception as exc:  # pragma: no cover - provider failure path
+        logger.warning("OpenAI embedding call failed; using deterministic fallback: %s", exc)
+        return None
 
 
 async def generate_embedding_vector(content: str, dimensions: int = DEFAULT_VECTOR_DIMENSION) -> list[float]:
@@ -147,11 +156,8 @@ async def _call_openai_agent_response(
         "Content-Type": "application/json",
     }
     url = f"{settings.OPENAI_BASE_URL.rstrip('/')}/chat/completions"
-    max_retries = 3
-    base_delay = 1.0
-
-    for attempt in range(max_retries):
-        try:
+    try:
+        async def _do_request() -> Dict[str, Any]:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     url,
@@ -174,15 +180,17 @@ async def _call_openai_agent_response(
             output.setdefault("mode", "openai")
             output["score"] = _normalize_score(output.get("score"))
             return output
-        except Exception as exc:  # pragma: no cover
-            if attempt < max_retries - 1:
-                delay = base_delay * (2 ** attempt)
-                logger.warning("OpenAI agent call failed (attempt %d/%d): %s. Retrying in %ss...", attempt + 1, max_retries, exc, delay)
-                await asyncio.sleep(delay)
-            else:
-                logger.warning("OpenAI agent call failed after %d retries; using mock fallback: %s", max_retries, exc)
-                return None
-    return None
+
+        return await _openai_circuit.call(
+            _do_request,
+            open_error_message="OpenAI agent circuit is open; using mock fallback.",
+        )
+    except CircuitBreakerOpenError as exc:  # pragma: no cover
+        logger.warning("%s", exc)
+        return None
+    except Exception as exc:  # pragma: no cover
+        logger.warning("OpenAI agent call failed; using mock fallback: %s", exc)
+        return None
 
 
 async def run_agent_execution(

@@ -29,7 +29,7 @@ class Business(Base, TimestampMixin, SoftDeleteMixin):
         GUID, ForeignKey("ideas.id", ondelete="SET NULL"), nullable=True, unique=True
     )
     owner_id: Mapped[uuid.UUID] = mapped_column(
-        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     stage: Mapped[BusinessStage] = mapped_column(Enum(BusinessStage), default=BusinessStage.EARLY)
     context_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
@@ -75,10 +75,10 @@ class BusinessCollaborator(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     business_id: Mapped[uuid.UUID] = mapped_column(
-        GUID, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False, index=True
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
-        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     role: Mapped[CollaboratorRole] = mapped_column(Enum(CollaboratorRole), nullable=False)
     added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
@@ -92,13 +92,13 @@ class BusinessInvite(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     business_id: Mapped[uuid.UUID] = mapped_column(
-        GUID, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False, index=True
     )
     email: Mapped[str] = mapped_column(String, nullable=False)
     token: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
     status: Mapped[InviteStatus] = mapped_column(Enum(InviteStatus), default=InviteStatus.PENDING)
     invited_by: Mapped[Optional[uuid.UUID]] = mapped_column(
-        GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+        GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
@@ -116,10 +116,10 @@ class BusinessInviteIdea(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     invite_id: Mapped[uuid.UUID] = mapped_column(
-        GUID, ForeignKey("business_invites.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("business_invites.id", ondelete="CASCADE"), nullable=False, index=True
     )
     idea_id: Mapped[uuid.UUID] = mapped_column(
-        GUID, ForeignKey("ideas.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("ideas.id", ondelete="CASCADE"), nullable=False, index=True
     )
 
     invite: Mapped["BusinessInvite"] = relationship(
@@ -134,7 +134,7 @@ class BusinessRoadmap(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     business_id: Mapped[uuid.UUID] = mapped_column(
-        GUID, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False, unique=True
+        GUID, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
     )
     completion_percentage: Mapped[float] = mapped_column(Float, default=0.0)
 
@@ -150,7 +150,7 @@ class RoadmapStage(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     roadmap_id: Mapped[uuid.UUID] = mapped_column(
-        GUID, ForeignKey("business_roadmaps.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("business_roadmaps.id", ondelete="CASCADE"), nullable=False, index=True
     )
     order_index: Mapped[int] = mapped_column(Integer, nullable=False)
     stage_type: Mapped[StageType] = mapped_column(Enum(StageType), nullable=False)

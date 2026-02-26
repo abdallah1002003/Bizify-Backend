@@ -18,13 +18,13 @@ class ChatSession(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
-        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     business_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        GUID, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=True
+        GUID, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=True, index=True
     )
     idea_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        GUID, ForeignKey("ideas.id", ondelete="CASCADE"), nullable=True
+        GUID, ForeignKey("ideas.id", ondelete="CASCADE"), nullable=True, index=True
     )
     session_type: Mapped[ChatSessionType] = mapped_column(Enum(ChatSessionType), nullable=False)
     conversation_summary_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
@@ -49,7 +49,7 @@ class ChatMessage(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     session_id: Mapped[uuid.UUID] = mapped_column(
-        GUID, ForeignKey("chat_sessions.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("chat_sessions.id", ondelete="CASCADE"), nullable=False, index=True
     )
     role: Mapped[ChatRole] = mapped_column(Enum(ChatRole), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
