@@ -16,8 +16,18 @@ DEFAULT_VECTOR_DIMENSION = 1536
 DEFAULT_SCORE = 0.92
 
 
-_openai_circuit = CircuitBreaker[dict](
-    name="openai",
+_openai_embeddings_circuit = CircuitBreaker[list[float]](
+    name="openai_embeddings",
+    config=CircuitBreakerConfig(
+        failure_threshold=settings.AI_CIRCUIT_BREAKER_FAILURE_THRESHOLD,
+        recovery_timeout_seconds=float(settings.AI_CIRCUIT_BREAKER_RECOVERY_TIMEOUT_SECONDS),
+        half_open_success_threshold=settings.AI_CIRCUIT_BREAKER_HALF_OPEN_SUCCESS_THRESHOLD,
+    ),
+)
+
+
+_openai_agent_circuit = CircuitBreaker[Dict[str, Any]](
+    name="openai_agent",
     config=CircuitBreakerConfig(
         failure_threshold=settings.AI_CIRCUIT_BREAKER_FAILURE_THRESHOLD,
         recovery_timeout_seconds=float(settings.AI_CIRCUIT_BREAKER_RECOVERY_TIMEOUT_SECONDS),
@@ -103,7 +113,7 @@ async def _call_openai_embeddings(content: str) -> Optional[list[float]]:
             vector = [float(x) for x in raw_vector]
             return _normalize_vector(vector, DEFAULT_VECTOR_DIMENSION)
 
-        return await _openai_circuit.call(
+        return await _openai_embeddings_circuit.call(
             _do_request,
             open_error_message="OpenAI embeddings circuit is open; using deterministic fallback.",
         )
@@ -181,7 +191,7 @@ async def _call_openai_agent_response(
             output["score"] = _normalize_score(output.get("score"))
             return output
 
-        return await _openai_circuit.call(
+        return await _openai_agent_circuit.call(
             _do_request,
             open_error_message="OpenAI agent circuit is open; using mock fallback.",
         )
