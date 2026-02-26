@@ -75,11 +75,11 @@ class PlanService(BaseService):
         if "price" in data and data["price"] is not None:
             try:
                 price = Decimal(str(data["price"]))
-            except Exception:
+            except Exception as e:
                 raise ValidationError(
                     message="Invalid price format",
                     field="price",
-                )
+                ) from e
             if price < 0:
                 raise ValidationError(
                     message="Plan price must be non-negative",
