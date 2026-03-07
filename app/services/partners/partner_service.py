@@ -1,18 +1,9 @@
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/main
 from __future__ import annotations
 
 import logging
 from typing import Any, Dict
 
 from app.core.crud_utils import _utc_now
-<<<<<<< HEAD
-logger = logging.getLogger(__name__)
-
-__all__ = [
-=======
 from app.services.partners.partner_profile import (
     get_partner_profile,
     get_partner_profiles,
@@ -51,7 +42,6 @@ __all__ = [
     "delete_partner_request",
     "transition_request_status",
     "accept_partner_request",
->>>>>>> origin/main
     "get_detailed_status",
     "reset_internal_state",
 ]

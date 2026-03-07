@@ -141,41 +141,6 @@ class AccessDeniedError(AppException):
         )
 
 
-<<<<<<< HEAD
-class AuthenticationError(AppException):
-    """Raised when authentication fails (invalid token/credentials/session)."""
-
-    def __init__(
-        self,
-        message: str = "Authentication failed",
-        details: Optional[Dict[str, Any]] = None,
-    ) -> None:
-        super().__init__(
-            message=message,
-            code="UNAUTHORIZED",
-            details=details or {},
-            status_code=status.HTTP_401_UNAUTHORIZED,
-        )
-
-
-class BadRequestError(AppException):
-    """Raised when a request payload/token is syntactically valid but semantically invalid."""
-
-    def __init__(
-        self,
-        message: str,
-        details: Optional[Dict[str, Any]] = None,
-    ) -> None:
-        super().__init__(
-            message=message,
-            code="BAD_REQUEST",
-            details=details or {},
-            status_code=status.HTTP_400_BAD_REQUEST,
-        )
-
-
-=======
->>>>>>> origin/main
 class ConflictError(AppException):
     """Raised when operation conflicts with existing data.
     

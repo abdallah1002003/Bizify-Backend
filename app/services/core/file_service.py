@@ -7,36 +7,19 @@ import logging
 from typing import Any, List, Optional
 from uuid import UUID
 
-<<<<<<< HEAD
-=======
 from fastapi import Depends
 from sqlalchemy import select
->>>>>>> origin/main
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import File
 from app.services.base_service import BaseService
-<<<<<<< HEAD
-from app.core.crud_utils import _to_update_dict
-from app.repositories.core_repository import FileRepository
-=======
 from app.db.database import get_async_db
 from app.core.crud_utils import _to_update_dict, _apply_updates
->>>>>>> origin/main
 
 logger = logging.getLogger(__name__)
 
 class FileService(BaseService):
     """Service for managing File records."""
-<<<<<<< HEAD
-    def __init__(self, db: AsyncSession) -> None:
-        super().__init__(db)
-        self.repo = FileRepository(db)
-
-    async def get_file(self, id: UUID) -> Optional[File]:
-        """Retrieve a file by ID."""
-        return await self.repo.get(id)
-=======
     db: AsyncSession
 
     async def get_file(self, id: UUID) -> Optional[File]:
@@ -44,7 +27,6 @@ class FileService(BaseService):
         stmt = select(File).where(File.id == id)
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
->>>>>>> origin/main
 
     async def get_files(
         self,
@@ -53,19 +35,6 @@ class FileService(BaseService):
         owner_id: Optional[UUID] = None,
     ) -> List[File]:
         """Retrieve multiple files with optional owner filtering."""
-<<<<<<< HEAD
-        if owner_id is not None:
-            return await self.repo.get_for_owner(owner_id, skip=skip, limit=limit)
-        return await self.repo.get_all(skip=skip, limit=limit)
-
-    async def create_file(self, obj_in: Any) -> File:
-        """Create a new file record."""
-        return await self.repo.create(_to_update_dict(obj_in))
-
-    async def update_file(self, db_obj: File, obj_in: Any) -> File:
-        """Update an existing file record."""
-        return await self.repo.update(db_obj, _to_update_dict(obj_in))
-=======
         stmt = select(File).offset(skip).limit(limit)
         if owner_id is not None:
             stmt = stmt.where(File.owner_id == owner_id)
@@ -87,20 +56,10 @@ class FileService(BaseService):
         await self.db.commit()
         await self.db.refresh(db_obj)
         return db_obj
->>>>>>> origin/main
 
     async def delete_file(self, id: UUID) -> Optional[File]:
         """Delete a file record."""
         db_obj = await self.get_file(id=id)
-<<<<<<< HEAD
-        if db_obj:
-            return await self.repo.delete(db_obj)
-        return None
-
-async def get_file_service(db: AsyncSession) -> FileService:
-    """Dependency provider for FileService."""
-    return FileService(db)
-=======
         if not db_obj:
             return None
 
@@ -143,4 +102,3 @@ async def delete_file(db: AsyncSession, id: UUID) -> Optional[File]:
 
 # Backward compatibility alias
 create_file_record = create_file
->>>>>>> origin/main

@@ -2,48 +2,14 @@ from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.pagination import LimitParam, SkipParam
-<<<<<<< HEAD
-from app.api.v1.service_dependencies import get_partner_profile_service
-from app.schemas.partners.partner_profile import PartnerProfileCreate, PartnerProfileUpdate, PartnerProfileResponse
-from app.services.partners.partner_profile import PartnerProfileService
-=======
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_async_db
 from app.schemas.partners.partner_profile import PartnerProfileCreate, PartnerProfileUpdate, PartnerProfileResponse
 from app.services.partners import partner_service as service
->>>>>>> origin/main
 
 router = APIRouter()
 
 @router.get("/", response_model=List[PartnerProfileResponse])
-<<<<<<< HEAD
-async def read_partner_profiles(
-    skip: SkipParam = 0,
-    limit: LimitParam = 100,
-    service: PartnerProfileService = Depends(get_partner_profile_service),
-):
-    return await service.get_partner_profiles(skip=skip, limit=limit)
-
-@router.post("/", response_model=PartnerProfileResponse)
-async def create_partner_profile(
-    item_in: PartnerProfileCreate,
-    service: PartnerProfileService = Depends(get_partner_profile_service),
-):
-    """Elite API: Registers a verified partner profile."""
-    return await service.create_partner_profile(
-        user_id=item_in.user_id,
-        partner_type=item_in.partner_type,
-        bio=item_in.description or "",
-        details=item_in.services_json or {},
-    )
-
-@router.get("/{id}", response_model=PartnerProfileResponse)
-async def read_partner_profile(
-    id: UUID,
-    service: PartnerProfileService = Depends(get_partner_profile_service),
-):
-    db_obj = await service.get_partner_profile(id=id)
-=======
 async def read_partner_profiles(skip: SkipParam = 0, limit: LimitParam = 100, db: AsyncSession = Depends(get_async_db)):
     return await service.get_partner_profiles(db, skip=skip, limit=limit)
 
@@ -61,33 +27,11 @@ async def create_partner_profile(item_in: PartnerProfileCreate, db: AsyncSession
 @router.get("/{id}", response_model=PartnerProfileResponse)
 async def read_partner_profile(id: UUID, db: AsyncSession = Depends(get_async_db)):
     db_obj = await service.get_partner_profile(db, id=id)
->>>>>>> origin/main
     if not db_obj:
         raise HTTPException(status_code=404, detail="PartnerProfile not found")
     return db_obj
 
 @router.put("/{id}", response_model=PartnerProfileResponse)
-<<<<<<< HEAD
-async def update_partner_profile(
-    id: UUID,
-    item_in: PartnerProfileUpdate,
-    service: PartnerProfileService = Depends(get_partner_profile_service),
-):
-    db_obj = await service.get_partner_profile(id=id)
-    if not db_obj:
-        raise HTTPException(status_code=404, detail="PartnerProfile not found")
-    return await service.update_partner_profile(db_obj=db_obj, obj_in=item_in)
-
-@router.delete("/{id}", response_model=PartnerProfileResponse)
-async def delete_partner_profile(
-    id: UUID,
-    service: PartnerProfileService = Depends(get_partner_profile_service),
-):
-    db_obj = await service.get_partner_profile(id=id)
-    if not db_obj:
-        raise HTTPException(status_code=404, detail="PartnerProfile not found")
-    return await service.delete_partner_profile(id=id)
-=======
 async def update_partner_profile(id: UUID, item_in: PartnerProfileUpdate, db: AsyncSession = Depends(get_async_db)):
     db_obj = await service.get_partner_profile(db, id=id)
     if not db_obj:
@@ -100,4 +44,3 @@ async def delete_partner_profile(id: UUID, db: AsyncSession = Depends(get_async_
     if not db_obj:
         raise HTTPException(status_code=404, detail="PartnerProfile not found")
     return await service.delete_partner_profile(db, id=id)
->>>>>>> origin/main

@@ -2,17 +2,6 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 from uuid import UUID
-<<<<<<< HEAD
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.models import AgentRun, ValidationLog
-from app.models.enums import AgentRunStatus
-from app.services.base_service import BaseService
-from app.services.interfaces import IBillingService
-from app.services.billing.usage_service import UsageService
-from app.services.ai import provider_runtime
-from app.core.events import dispatcher
-from app.repositories.ai_repository import AgentRunRepository, ValidationLogRepository
-=======
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -25,23 +14,11 @@ from app.services.billing.usage_service import get_usage_service
 from app.core.crud_utils import _apply_updates
 from app.services.ai import provider_runtime
 from app.core.events import dispatcher
->>>>>>> origin/main
 
 logger = logging.getLogger(__name__)
 
 class AgentRunService(BaseService):
     """Service for managing AI Agent executions (Runs)."""
-<<<<<<< HEAD
-    def __init__(self, db: AsyncSession, billing_service: IBillingService):
-        super().__init__(db)
-        self.billing = billing_service
-        self.repo = AgentRunRepository(db)
-        self.validation_repo = ValidationLogRepository(db)
-
-    async def get_agent_run(self, id: UUID) -> Optional[AgentRun]:
-        """Retrieve a single agent run by ID."""
-        return await self.repo.get_with_stage_and_agent(id)
-=======
     db: AsyncSession
 
     def __init__(self, db: AsyncSession, billing_service: IBillingService):
@@ -57,7 +34,6 @@ class AgentRunService(BaseService):
         )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
->>>>>>> origin/main
 
     async def get_agent_runs(
         self,
@@ -66,11 +42,6 @@ class AgentRunService(BaseService):
         user_id: Optional[UUID] = None,
     ) -> List[AgentRun]:
         """Retrieve paginated agent runs with optional user filtering."""
-<<<<<<< HEAD
-        if user_id is not None:
-            return await self.repo.get_all_for_user(user_id=user_id, skip=skip, limit=limit)
-        return await self.repo.get_all(skip=skip, limit=limit)
-=======
         stmt = select(AgentRun)
         if user_id is not None:
             stmt = (
@@ -82,7 +53,6 @@ class AgentRunService(BaseService):
         stmt = stmt.offset(skip).limit(limit)
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
->>>>>>> origin/main
 
     async def initiate_agent_run(
         self,
@@ -98,14 +68,6 @@ class AgentRunService(BaseService):
                 raise PermissionError("Insufficient AI quota")
             await self.billing.record_usage(user_id, "AI_REQUEST")
 
-<<<<<<< HEAD
-        db_obj = await self.repo.create({
-            "stage_id": stage_id,
-            "agent_id": agent_id,
-            "status": AgentRunStatus.PENDING,
-            "input_data": input_data,
-        })
-=======
         db_obj = AgentRun(
             stage_id=stage_id,
             agent_id=agent_id,
@@ -116,7 +78,6 @@ class AgentRunService(BaseService):
         await self.db.commit()
         await self.db.refresh(db_obj)
         
->>>>>>> origin/main
         return db_obj
 
     async def execute_agent_run_async(self, run_id: UUID) -> Optional[AgentRun]:
@@ -130,12 +91,8 @@ class AgentRunService(BaseService):
         # However, with AsyncSession, we often need to ensure it.
         # For simplicity, we assume the fields we need are simple or we reload them.
         
-<<<<<<< HEAD
-        db_obj = await self.repo.update(db_obj, {"status": AgentRunStatus.RUNNING})
-=======
         _apply_updates(db_obj, {"status": AgentRunStatus.RUNNING})
         await self.db.commit()
->>>>>>> origin/main
 
         stage = db_obj.stage
         stage_type = None
@@ -147,23 +104,14 @@ class AgentRunService(BaseService):
             )
 
         try:
-<<<<<<< HEAD
-            ai_provider = provider_runtime.AIProviderService(self.db)
-            output_data = await ai_provider.run_agent_execution(
-=======
             output_data = await provider_runtime.run_agent_execution(
->>>>>>> origin/main
                 db_obj.input_data,
                 agent_name=db_obj.agent.name if db_obj.agent else "agent",
                 stage_type=stage_type,
             )
             score = float(output_data.get("score", 0.92))
 
-<<<<<<< HEAD
-            db_obj = await self.repo.update(
-=======
             _apply_updates(
->>>>>>> origin/main
                 db_obj,
                 {
                     "output_data": output_data,
@@ -171,11 +119,8 @@ class AgentRunService(BaseService):
                     "status": AgentRunStatus.SUCCESS,
                 },
             )
-<<<<<<< HEAD
-=======
             await self.db.commit()
             await self.db.refresh(db_obj)
->>>>>>> origin/main
 
             await self.record_validation_log(
                 agent_run_id=db_obj.id,
@@ -186,11 +131,7 @@ class AgentRunService(BaseService):
             await dispatcher.emit("agent_run.completed", {"run_id": db_obj.id, "status": "SUCCESS"})
         except Exception as exc:
             logger.exception("Agent run execution failed for %s: %s", run_id, exc)
-<<<<<<< HEAD
-            db_obj = await self.repo.update(
-=======
             _apply_updates(
->>>>>>> origin/main
                 db_obj,
                 {
                     "status": AgentRunStatus.FAILED,
@@ -198,11 +139,8 @@ class AgentRunService(BaseService):
                     "confidence_score": 0.0,
                 },
             )
-<<<<<<< HEAD
-=======
             await self.db.commit()
             await self.db.refresh(db_obj)
->>>>>>> origin/main
 
             await self.record_validation_log(
                 agent_run_id=db_obj.id,
@@ -215,35 +153,15 @@ class AgentRunService(BaseService):
 
     async def get_validation_log(self, id: UUID) -> Optional[ValidationLog]:
         """Retrieve a validation log by ID."""
-<<<<<<< HEAD
-        return await self.validation_repo.get(id)
-=======
         stmt = select(ValidationLog).where(ValidationLog.id == id)
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
->>>>>>> origin/main
 
     async def record_validation_log(self, agent_run_id: UUID, result: str, details: str) -> ValidationLog:
         """Create and store a validation log for an agent run."""
         confidence = 0.9 if result.upper() == "SUCCESS" else 0.4
         threshold_passed = confidence >= 0.8
 
-<<<<<<< HEAD
-        db_obj = await self.validation_repo.create({
-            "agent_run_id": agent_run_id,
-            "confidence_score": confidence,
-            "critique_json": {"message": details},
-            "threshold_passed": threshold_passed,
-        })
-        return db_obj
-
-async def get_agent_run_service(
-    db: AsyncSession,
-    billing_service: Optional[IBillingService] = None,
-) -> AgentRunService:
-    """Dependency provider for AgentRunService."""
-    billing_service = billing_service or UsageService(db)
-=======
         db_obj = ValidationLog(
             agent_run_id=agent_run_id,
             confidence_score=confidence,
@@ -260,5 +178,4 @@ async def get_agent_run_service(
     billing_service: IBillingService = Depends(get_usage_service)
 ) -> AgentRunService:
     """Dependency provider for AgentRunService."""
->>>>>>> origin/main
     return AgentRunService(db, billing_service)

@@ -5,26 +5,16 @@ import logging
 import asyncio
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query, status
-<<<<<<< HEAD
-
-=======
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_async_db
 from app.services.chat import chat_service
->>>>>>> origin/main
 import jwt
 from config.settings import settings
 import app.models as models
 from app.models.enums import ChatRole
 
-<<<<<<< HEAD
-from app.services.chat.chat_service import ChatService
-from app.services.users.user_service import UserService
-from app.api.v1.service_dependencies import get_chat_service, get_user_service
-=======
 from app.services.users.user_service import UserService, get_user_service
->>>>>>> origin/main
 
 logger = logging.getLogger(__name__)
 
@@ -81,11 +71,7 @@ async def websocket_endpoint(
     websocket: WebSocket,
     session_id: UUID,
     token: str = Query(...),
-<<<<<<< HEAD
-    chat_service: ChatService = Depends(get_chat_service),
-=======
     db: AsyncSession = Depends(get_async_db),
->>>>>>> origin/main
     user_service: UserService = Depends(get_user_service),
 ):
     user = await get_user_from_token(token, user_service)
@@ -96,11 +82,7 @@ async def websocket_endpoint(
         return
 
     # Verify session ownership
-<<<<<<< HEAD
-    chat_session = await chat_service.get_chat_session(id=session_id)
-=======
     chat_session = await chat_service.get_chat_session(db, id=session_id)
->>>>>>> origin/main
     if not chat_session or chat_session.user_id != user.id:
         logger.warning(f"FAILED WS: Session issue. Session: {chat_session}. user_id: {user.id}")
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
@@ -147,10 +129,7 @@ async def websocket_endpoint(
 
             # 1. Save User Message
             await chat_service.add_message(
-<<<<<<< HEAD
-=======
                 db, 
->>>>>>> origin/main
                 session_id=session_id, 
                 role=ChatRole.USER, 
                 content=content
@@ -160,10 +139,7 @@ async def websocket_endpoint(
             ai_response_content = f"Echo from AI: {content}"
             
             await chat_service.add_message(
-<<<<<<< HEAD
-=======
                 db,
->>>>>>> origin/main
                 session_id=session_id,
                 role=ChatRole.AI,
                 content=ai_response_content

@@ -3,12 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.pagination import LimitParam, SkipParam
 from app.schemas.ideation.experiment import ExperimentCreate, ExperimentUpdate, ExperimentResponse
-<<<<<<< HEAD
-from app.services.ideation.idea_experiment import IdeaExperimentService
-from app.api.v1.service_dependencies import get_idea_experiment_service
-=======
 from app.services.ideation.idea_experiment import IdeaExperimentService, get_idea_experiment_service
->>>>>>> origin/main
 
 router = APIRouter()
 

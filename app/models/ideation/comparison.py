@@ -1,11 +1,7 @@
 import uuid
 from typing import List, TYPE_CHECKING
 from datetime import datetime
-<<<<<<< HEAD
-from sqlalchemy import String, DateTime, ForeignKey, Float, Integer, UniqueConstraint
-=======
 from sqlalchemy import String, DateTime, ForeignKey, Float, Integer
->>>>>>> origin/main
 from app.db.guid import GUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.database import Base
@@ -29,12 +25,6 @@ class IdeaComparison(Base):
 
 class ComparisonItem(Base):
     __tablename__ = "comparison_items"
-<<<<<<< HEAD
-    __table_args__ = (
-        UniqueConstraint("comparison_id", "idea_id", name="uq_comparison_item_comparison_idea"),
-    )
-=======
->>>>>>> origin/main
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     comparison_id: Mapped[uuid.UUID] = mapped_column(GUID, ForeignKey("idea_comparisons.id", ondelete="CASCADE"), nullable=False)
@@ -43,19 +33,9 @@ class ComparisonItem(Base):
 
     comparison: Mapped["IdeaComparison"] = relationship("IdeaComparison", back_populates="items")
     idea: Mapped["Idea"] = relationship("Idea", foreign_keys=[idea_id], back_populates="comparisons")
-<<<<<<< HEAD
-    
-class ComparisonMetric(Base):
-    __tablename__ = "comparison_metrics"
-    ##Afnan - Added unique constraint for comparison_metrics
-    __table_args__ = (
-        UniqueConstraint("comparison_id", "metric_name", name="uq_comparison_metric_comparison_name"),
-    )
-=======
 
 class ComparisonMetric(Base):
     __tablename__ = "comparison_metrics"
->>>>>>> origin/main
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     comparison_id: Mapped[uuid.UUID] = mapped_column(GUID, ForeignKey("idea_comparisons.id", ondelete="CASCADE"), nullable=False)

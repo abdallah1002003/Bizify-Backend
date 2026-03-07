@@ -1,11 +1,7 @@
 import uuid
 from typing import List, Optional, TYPE_CHECKING
 from datetime import datetime
-<<<<<<< HEAD
-from sqlalchemy import String, DateTime, ForeignKey, Text, Enum, JSON, UniqueConstraint
-=======
 from sqlalchemy import String, DateTime, ForeignKey, Text, Enum, JSON
->>>>>>> origin/main
 from app.db.guid import GUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.database import Base
@@ -38,24 +34,12 @@ class PartnerProfile(Base):
 
 class PartnerRequest(Base):
     __tablename__ = "partner_requests"
-<<<<<<< HEAD
-    ##Afnan - Added unique constraint for partner_requests
-    __table_args__ = (
-        UniqueConstraint("business_id", "partner_id", name="uq_partner_request_business_partner"),
-    )
-=======
->>>>>>> origin/main
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     business_id: Mapped[uuid.UUID] = mapped_column(GUID, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False)
     partner_id: Mapped[uuid.UUID] = mapped_column(GUID, ForeignKey("partner_profiles.id", ondelete="CASCADE"), nullable=False)
     requested_by: Mapped[Optional[uuid.UUID]] = mapped_column(GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     status: Mapped[RequestStatus] = mapped_column(Enum(RequestStatus), default=RequestStatus.PENDING)
-<<<<<<< HEAD
-    request_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    context_data: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
-=======
->>>>>>> origin/main
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     business: Mapped["Business"] = relationship("Business", back_populates="partner_requests")

@@ -27,11 +27,7 @@ class TestErrorHandling:
         """Test ValidationError when required fields are missing."""
         with pytest.raises(ValidationError) as exc_info:
             # Try to create subscription without required fields
-<<<<<<< HEAD
-            await subscription_service.SubscriptionService(async_db).create_subscription( obj_in={})
-=======
             await subscription_service.create_subscription(async_db, obj_in={})
->>>>>>> origin/main
         
         exc = exc_info.value
         assert exc.code == "VALIDATION_ERROR"
@@ -42,11 +38,7 @@ class TestErrorHandling:
     async def test_resource_not_found_error(self, async_db: AsyncSession):
         """Test ResourceNotFoundError when resource doesn't exist."""
         with pytest.raises(ResourceNotFoundError) as exc_info:
-<<<<<<< HEAD
-            await subscription_service.SubscriptionService(async_db).create_subscription( obj_in={
-=======
             await subscription_service.create_subscription(async_db, obj_in={
->>>>>>> origin/main
                 "user_id": uuid4(),
                 "plan_id": uuid4()  # Non-existent plan
             })

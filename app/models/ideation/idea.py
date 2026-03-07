@@ -3,11 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from typing import List, Optional, TYPE_CHECKING
-<<<<<<< HEAD
-from sqlalchemy import String, Boolean, DateTime, ForeignKey, Text, Enum, JSON, Float, CheckConstraint, Index, UniqueConstraint
-=======
 from sqlalchemy import String, Boolean, DateTime, ForeignKey, Text, Enum, JSON, Float, CheckConstraint, Index
->>>>>>> origin/main
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.guid import GUID
 from app.db.database import Base
@@ -136,15 +132,8 @@ class Experiment(Base, TimestampMixin, SoftDeleteMixin):
 class IdeaAccess(Base, TimestampMixin, SoftDeleteMixin):
     """Access control permissions for ideas."""
     __tablename__ = "idea_accesses"
-<<<<<<< HEAD
-    ##Afnan - Added unique constraint for idea_accesses (merged with index)
     __table_args__ = (
         Index("ix_idea_accesses_idea_id_user_id", "idea_id", "user_id"),
-        UniqueConstraint("idea_id", "user_id", name="uq_idea_access_idea_user"),
-=======
-    __table_args__ = (
-        Index("ix_idea_accesses_idea_id_user_id", "idea_id", "user_id"),
->>>>>>> origin/main
     )
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)

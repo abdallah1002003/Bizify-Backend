@@ -3,12 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.pagination import LimitParam, SkipParam
 from app.schemas.ideation.idea_metric import IdeaMetricCreate, IdeaMetricUpdate, IdeaMetricResponse
-<<<<<<< HEAD
-from app.services.ideation.idea_metric import IdeaMetricService
-from app.api.v1.service_dependencies import get_idea_metric_service
-=======
 from app.services.ideation.idea_metric import IdeaMetricService, get_idea_metric_service
->>>>>>> origin/main
 
 router = APIRouter()
 

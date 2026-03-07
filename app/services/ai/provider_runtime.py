@@ -3,13 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-<<<<<<< HEAD
-from typing import Any, Dict, Optional, List
-
-from sqlalchemy.ext.asyncio import AsyncSession
-=======
 from typing import Any, Dict, Optional
->>>>>>> origin/main
 
 import httpx
 
@@ -91,148 +85,6 @@ def _mock_agent_response(
     }
 
 
-<<<<<<< HEAD
-from app.services.base_service import BaseService
-
-class AIProviderService(BaseService):
-    """Service for interacting with AI providers (e.g. OpenAI)."""
-
-    async def _call_openai_embeddings(self, content: str) -> Optional[list[float]]:
-        if not _is_openai_enabled():
-            return None
-
-        payload = {
-            "model": settings.OPENAI_EMBEDDING_MODEL,
-            "input": content,
-        }
-        headers = {
-            "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
-            "Content-Type": "application/json",
-        }
-        url = f"{settings.OPENAI_BASE_URL.rstrip('/')}/embeddings"
-        try:
-            async def _do_request() -> list[float]:
-                async with httpx.AsyncClient() as client:
-                    response = await client.post(
-                        url,
-                        headers=headers,
-                        json=payload,
-                        timeout=settings.AI_REQUEST_TIMEOUT_SECONDS,
-                    )
-                response.raise_for_status()
-                data = response.json()
-                raw_vector = data["data"][0]["embedding"]
-                vector = [float(x) for x in raw_vector]
-                return _normalize_vector(vector, DEFAULT_VECTOR_DIMENSION)
-
-            return await _openai_embeddings_circuit.call(
-                _do_request,
-                open_error_message="OpenAI embeddings circuit is open; using deterministic fallback.",
-            )
-        except CircuitBreakerOpenError as exc:  # pragma: no cover
-            logger.warning("%s", exc)
-            return None
-        except Exception as exc:  # pragma: no cover
-            logger.warning("OpenAI embedding call failed; using deterministic fallback: %s", exc)
-            return None
-
-    async def generate_embedding_vector(self, content: str, dimensions: int = DEFAULT_VECTOR_DIMENSION) -> list[float]:
-        vector = await self._call_openai_embeddings(content)
-        if vector is not None:
-            return _normalize_vector(vector, dimensions)
-        return _normalize_vector(_deterministic_vector(content, dimensions), dimensions)
-
-    async def _call_openai_agent_response(
-        self,
-        input_data: Optional[Dict[str, Any]],
-        *,
-        agent_name: str,
-        stage_type: Optional[str],
-    ) -> Optional[Dict[str, Any]]:
-        if not _is_openai_enabled():
-            return None
-
-        prompt_payload = {
-            "agent_name": agent_name,
-            "stage_type": stage_type,
-            "context": input_data or {},
-        }
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    "You are a startup execution assistant. Return concise actionable output "
-                    "and include a numeric 'score' between 0 and 1."
-                ),
-            },
-            {"role": "user", "content": json.dumps(prompt_payload, ensure_ascii=True)},
-        ]
-        payload = {
-            "model": settings.OPENAI_CHAT_MODEL,
-            "messages": messages,
-            "temperature": 0.2,
-        }
-        headers = {
-            "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
-            "Content-Type": "application/json",
-        }
-        url = f"{settings.OPENAI_BASE_URL.rstrip('/')}/chat/completions"
-        try:
-            async def _do_request() -> Dict[str, Any]:
-                async with httpx.AsyncClient() as client:
-                    response = await client.post(
-                        url,
-                        headers=headers,
-                        json=payload,
-                        timeout=settings.AI_REQUEST_TIMEOUT_SECONDS,
-                    )
-                response.raise_for_status()
-                data = response.json()
-                content = data["choices"][0]["message"]["content"]
-                if not isinstance(content, str) or not content.strip():
-                    raise ValueError("OpenAI response content is empty")
-
-                try:
-                    parsed = json.loads(content)
-                    output: Dict[str, Any] = parsed if isinstance(parsed, dict) else {"summary": str(parsed)}
-                except json.JSONDecodeError:
-                    output = {"summary": content.strip()}
-
-                output.setdefault("mode", "openai")
-                output["score"] = _normalize_score(output.get("score"))
-                return output
-
-            return await _openai_agent_circuit.call(
-                _do_request,
-                open_error_message="OpenAI agent circuit is open; using mock fallback.",
-            )
-        except CircuitBreakerOpenError as exc:  # pragma: no cover
-            logger.warning("%s", exc)
-            return None
-        except Exception as exc:  # pragma: no cover
-            logger.warning("OpenAI agent call failed; using mock fallback: %s", exc)
-            return None
-
-    async def run_agent_execution(
-        self,
-        input_data: Optional[Dict[str, Any]],
-        *,
-        agent_name: str,
-        stage_type: Optional[str],
-    ) -> Dict[str, Any]:
-        output = await self._call_openai_agent_response(
-            input_data,
-            agent_name=agent_name,
-            stage_type=stage_type,
-        )
-        if output is not None:
-            return output
-        return _mock_agent_response(input_data, agent_name=agent_name, stage_type=stage_type)
-
-async def get_ai_provider_service(db: AsyncSession) -> AIProviderService:
-    """Dependency provider for AIProviderService."""
-    return AIProviderService(db)
-=======
 async def _call_openai_embeddings(content: str) -> Optional[list[float]]:
     if not _is_openai_enabled():
         return None
@@ -365,4 +217,3 @@ async def run_agent_execution(
     if output is not None:
         return output
     return _mock_agent_response(input_data, agent_name=agent_name, stage_type=stage_type)
->>>>>>> origin/main

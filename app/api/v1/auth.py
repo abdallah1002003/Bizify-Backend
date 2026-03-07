@@ -2,24 +2,12 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import UUID
 
-<<<<<<< HEAD
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
-=======
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request, status, Query
->>>>>>> origin/main
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr, Field
 import logging
 import jwt
 
-<<<<<<< HEAD
-from app.models.enums import UserRole
-from app.services.auth.auth_service import AuthService
-from app.api.v1.service_dependencies import get_auth_service
-from app.schemas.users.user import UserCreate
-from app.core.token_blacklist import blacklist_token
-from config.settings import settings
-=======
 import app.models as models
 from app.core import security
 from app.models.enums import UserRole
@@ -28,7 +16,6 @@ from app.schemas.users.user import UserCreate
 from app.core.token_blacklist import blacklist_token
 from config.settings import settings
 from sqlalchemy import select
->>>>>>> origin/main
 
 logger = logging.getLogger(__name__)
 
@@ -131,12 +118,6 @@ async def bootstrap_admin(
     if bootstrap_token != expected_token:
         raise HTTPException(status_code=403, detail="Invalid bootstrap token")
 
-<<<<<<< HEAD
-    admin_user = await auth_service.bootstrap_admin(
-        name=payload.name,
-        email=str(payload.email),
-        password=payload.password,
-=======
     stmt = select(models.User).where(models.User.role == UserRole.ADMIN)
     result = await auth_service.db.execute(stmt)
     existing_admin = result.scalar_one_or_none()
@@ -156,7 +137,6 @@ async def bootstrap_admin(
             "is_active": True,
             "is_verified": True,
         },
->>>>>>> origin/main
     )
     access_token, refresh_token = await auth_service.create_tokens(admin_user.id)
 
@@ -204,10 +184,7 @@ async def logout(
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(
     item_in: UserCreate,
-<<<<<<< HEAD
-=======
     background_tasks: BackgroundTasks,
->>>>>>> origin/main
     auth_service: AuthService = Depends(get_auth_service),
 ):
     """Register a new user account and send verification email."""
@@ -252,13 +229,6 @@ async def reset_password(
     payload: ResetPasswordRequest,
     auth_service: AuthService = Depends(get_auth_service),
 ):
-<<<<<<< HEAD
-    """Verify reset token and update the user's password."""
-    await auth_service.reset_password(
-        token=payload.token,
-        new_password=payload.new_password,
-    )
-=======
     """Verify reset token against DB and update the user's password."""
     token_payload = security.verify_password_reset_token(payload.token)
     if not token_payload:
@@ -302,5 +272,4 @@ async def reset_password(
         if remaining_ttl > 0:
             await blacklist_token(jti, remaining_ttl)
 
->>>>>>> origin/main
     return {"message": "Password updated successfully"}

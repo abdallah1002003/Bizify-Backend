@@ -3,12 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.pagination import LimitParam, SkipParam
 from app.schemas.ideation.comparison_metric import ComparisonMetricCreate, ComparisonMetricUpdate, ComparisonMetricResponse
-<<<<<<< HEAD
-from app.services.ideation.idea_comparison_metric import ComparisonMetricService
-from app.api.v1.service_dependencies import get_comparison_metric_service
-=======
 from app.services.ideation.idea_comparison_metric import ComparisonMetricService, get_comparison_metric_service
->>>>>>> origin/main
 
 router = APIRouter()
 

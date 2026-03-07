@@ -3,12 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.pagination import LimitParam, SkipParam
 from app.schemas.business.business import BusinessCreate, BusinessUpdate, BusinessResponse
-<<<<<<< HEAD
-from app.services.business.business_service import BusinessService
-from app.api.v1.service_dependencies import get_business_service
-=======
 from app.services.business.business_service import BusinessService, get_business_service
->>>>>>> origin/main
 from app.core import dependencies
 import app.models as models
 from app.core.cache import get_cache_manager

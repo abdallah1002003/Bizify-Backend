@@ -1,10 +1,6 @@
 import pytest
 import importlib
-<<<<<<< HEAD
-from unittest.mock import AsyncMock
-=======
 
->>>>>>> origin/main
 
 # ---------------------------------------------------------------------------
 # Tests: MAIL_ENABLED=False (no-op path)
@@ -22,15 +18,8 @@ class TestEmailServiceDisabled:
         import app.services.core.email_service as svc
         importlib.reload(svc)
 
-<<<<<<< HEAD
-        db = AsyncMock()
-        service = svc.EmailService(db)
-        # Should complete without error
-        await service.send_verification_email("user@example.com", "fake-token")
-=======
         # Should complete without error and without touching FastMail
         await svc.send_verification_email("user@example.com", "fake-token")
->>>>>>> origin/main
 
     @pytest.mark.asyncio
     async def test_send_password_reset_email_noop(self, monkeypatch):
@@ -40,13 +29,7 @@ class TestEmailServiceDisabled:
         import app.services.core.email_service as svc
         importlib.reload(svc)
 
-<<<<<<< HEAD
-        db = AsyncMock()
-        service = svc.EmailService(db)
-        await service.send_password_reset_email("user@example.com", "fake-token")
-=======
         await svc.send_password_reset_email("user@example.com", "fake-token")
->>>>>>> origin/main
 
 
 # ---------------------------------------------------------------------------
@@ -80,12 +63,7 @@ class TestEmailServiceEnabled:
         # Patch _queue_email on the EmailService class
         monkeypatch.setattr(svc.EmailService, "_queue_email", _record_send)
 
-<<<<<<< HEAD
-        db = AsyncMock()
-        email_service = svc.EmailService(db)
-=======
         email_service = svc.EmailService()
->>>>>>> origin/main
         await email_service.send_verification_email("verify@example.com", "tok123")
         
         assert len(sent) == 1
@@ -108,12 +86,7 @@ class TestEmailServiceEnabled:
 
         monkeypatch.setattr(svc.EmailService, "_queue_email", _fake_send)
 
-<<<<<<< HEAD
-        db = AsyncMock()
-        email_service = svc.EmailService(db)
-=======
         email_service = svc.EmailService()
->>>>>>> origin/main
         await email_service.send_password_reset_email("reset@example.com", "tok456")
 
         assert len(sent) == 1

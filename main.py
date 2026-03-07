@@ -14,23 +14,13 @@ from app.middleware.rate_limiter_redis import RedisRateLimiterMiddleware
 from config.settings import settings
 from app.api.v1.api import api_router as api_router_v1
 from app.db.database import AsyncSessionLocal
-<<<<<<< HEAD
-from app.services.core.cleanup_service import CleanupService
-=======
 from app.services.core.cleanup_service import cleanup_all, cleanup_expired_tokens
->>>>>>> origin/main
 from app.core.structured_logging import configure_structured_logging, get_logger
 from app.core.event_handlers import register_all_handlers
 from app.core.metrics import REGISTRY
 from app.middleware.prometheus import setup_prometheus
 import logging
 import asyncio
-<<<<<<< HEAD
-from fastapi import Depends, HTTPException
-from fastapi.security import APIKeyHeader
-from starlette import status
-=======
->>>>>>> origin/main
 
 # Configure structured logging at startup
 configure_structured_logging(log_level="DEBUG" if settings.APP_ENV == "development" else "INFO")
@@ -70,11 +60,7 @@ async def lifespan(_: FastAPI):
     if settings.APP_ENV != "test":
         async with AsyncSessionLocal() as db:
             try:
-<<<<<<< HEAD
-                summary = await CleanupService(db).cleanup_all()
-=======
                 summary = await cleanup_all(db)
->>>>>>> origin/main
                 if any(v > 0 for v in summary.values()):
                     logger.info("Startup cleanup: %s", summary)
             except Exception as e:
@@ -99,18 +85,11 @@ app.add_middleware(
 )
 
 # Custom middleware - Order matters (first added = last executed)
-<<<<<<< HEAD
-app.add_middleware(ErrorHandlerMiddleware)
-=======
->>>>>>> origin/main
 if settings.REDIS_ENABLED:
     app.add_middleware(RedisRateLimiterMiddleware)
 else:
     app.add_middleware(RateLimiterMiddleware)
-<<<<<<< HEAD
-=======
 app.add_middleware(ErrorHandlerMiddleware)
->>>>>>> origin/main
 app.add_middleware(LogMiddleware)
 
 # Include routers
@@ -147,13 +126,8 @@ async def health_check(
     overall_status = "ok"
 
     try:
-<<<<<<< HEAD
-        async with engine.connect() as conn:
-            await conn.execute(text("SELECT 1"))
-=======
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
->>>>>>> origin/main
     except Exception as e:
         logger.error("Health check - Database failed: %s", e)
         db_status = "error"
@@ -204,13 +178,10 @@ async def health_check(
 
     return results
 
-<<<<<<< HEAD
-=======
 from fastapi import Depends, HTTPException
 from fastapi.security import APIKeyHeader
 from starlette import status
 
->>>>>>> origin/main
 metrics_api_key_header = APIKeyHeader(name="X-Metrics-Key", auto_error=False)
 
 def verify_metrics_key(api_key: str = Depends(metrics_api_key_header)):
@@ -241,16 +212,9 @@ def get_metrics():
     Requires X-Metrics-Key header matching METRICS_API_KEY setting.
     Access at http://localhost:8001/metrics
     """
-<<<<<<< HEAD
-    from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
-    from fastapi import Response
-    
-    return Response(content=generate_latest(REGISTRY), media_type=CONTENT_TYPE_LATEST)
-=======
     from prometheus_client import REGISTRY as prom_registry, generate_latest
     
     return generate_latest(REGISTRY).decode("utf-8")
->>>>>>> origin/main
 
 
 # Initialize Prometheus instrumentation (after all routes are defined)

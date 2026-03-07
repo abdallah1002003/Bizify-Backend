@@ -4,15 +4,6 @@ import logging
 from typing import Any, List, Optional
 from uuid import UUID
 
-<<<<<<< HEAD
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models import Usage
-from app.services.base_service import BaseService
-from app.core.crud_utils import _to_update_dict
-from app.core.exceptions import ValidationError, InvalidStateError
-from app.repositories.billing_repository import UsageRepository
-=======
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -22,7 +13,6 @@ from app.db.database import get_async_db
 from app.services.base_service import BaseService
 from app.core.crud_utils import _to_update_dict, _apply_updates
 from app.core.exceptions import ValidationError, InvalidStateError
->>>>>>> origin/main
 
 logger = logging.getLogger(__name__)
 
@@ -30,13 +20,6 @@ logger = logging.getLogger(__name__)
 class UsageService(BaseService):
     """Service for managing resource usage tracking and enforcement."""
 
-<<<<<<< HEAD
-    def __init__(self, db: AsyncSession) -> None:
-        super().__init__(db)
-        self.repo = UsageRepository(db)
-
-=======
->>>>>>> origin/main
     @staticmethod
     def _normalize_resource_type(resource_type: str) -> str:
         normalized = resource_type.strip().upper()
@@ -63,9 +46,6 @@ class UsageService(BaseService):
         resource_type: str,
         for_update: bool = False,
     ) -> Optional[Usage]:
-<<<<<<< HEAD
-        return await self.repo.get_by_resource(user_id=user_id, resource_type=resource_type, for_update=for_update)
-=======
         stmt = select(Usage).where(
             Usage.user_id == user_id,
             Usage.resource_type == resource_type,
@@ -74,7 +54,6 @@ class UsageService(BaseService):
             stmt = stmt.with_for_update()
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
->>>>>>> origin/main
 
     async def check_usage_limit(self, user_id: UUID, resource_type: str) -> bool:
         """Return whether the user's usage remains below the configured limit."""
@@ -100,16 +79,8 @@ class UsageService(BaseService):
         )
         
         if usage is None:
-<<<<<<< HEAD
-            usage = await self.repo.create({
-                "user_id": user_id, 
-                "resource_type": normalized_resource, 
-                "used": 0
-            })
-=======
             usage = Usage(user_id=user_id, resource_type=normalized_resource, used=0)
             self.db.add(usage)
->>>>>>> origin/main
 
         if usage.limit_value is not None and usage.used + delta > usage.limit_value:
             raise InvalidStateError(
@@ -123,22 +94,14 @@ class UsageService(BaseService):
                 },
             )
 
-<<<<<<< HEAD
-        usage = await self.repo.update(usage, {"used": usage.used + delta})
-=======
         usage.used += delta
         await self.db.commit()
         await self.db.refresh(usage)
->>>>>>> origin/main
         return usage
 
     async def get_usage(self, id: UUID) -> Optional[Usage]:
         """Return a single usage row by id."""
-<<<<<<< HEAD
-        return await self.repo.get(id)
-=======
         return await self.db.get(Usage, id)
->>>>>>> origin/main
 
     async def get_usages(
         self,
@@ -147,12 +110,6 @@ class UsageService(BaseService):
         user_id: Optional[UUID] = None,
     ) -> List[Usage]:
         """Return paginated usage rows, optionally filtered by user."""
-<<<<<<< HEAD
-        if user_id is not None:
-            rows = await self.repo.get_for_user(user_id)
-            return rows[skip: skip + limit]
-        return await self.repo.get_all(skip=skip, limit=limit)
-=======
         stmt = select(Usage)
         if user_id is not None:
             stmt = stmt.where(Usage.user_id == user_id)
@@ -163,7 +120,6 @@ class UsageService(BaseService):
         )
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
->>>>>>> origin/main
 
     async def create_usage(self, obj_in: Any) -> Usage:
         """Create or update a usage row for a given (user_id, resource_type) pair."""
@@ -186,10 +142,6 @@ class UsageService(BaseService):
                 field="limit_value",
             )
 
-<<<<<<< HEAD
-        # Use the repository's upsert logic to handle the unique constraint
-        return await self.repo.upsert_usage(data)
-=======
         existing = await self._get_usage_by_resource(
             user_id=user_id,
             resource_type=data["resource_type"],
@@ -207,7 +159,6 @@ class UsageService(BaseService):
         await self.db.commit()
         await self.db.refresh(db_obj)
         return db_obj
->>>>>>> origin/main
 
     async def update_usage(self, db_obj: Usage, obj_in: Any) -> Usage:
         """Update mutable fields on a usage row."""
@@ -222,16 +173,6 @@ class UsageService(BaseService):
                 field="limit_value",
             )
 
-<<<<<<< HEAD
-        return await self.repo.update(db_obj, update_data)
-
-    async def delete_usage(self, id: UUID) -> Optional[Usage]:
-        """Delete a usage row by id."""
-        return await self.repo.delete(id)
-
-
-async def get_usage_service(db: AsyncSession) -> UsageService:
-=======
         _apply_updates(db_obj, update_data)
         self.db.add(db_obj)
         await self.db.commit()
@@ -250,13 +191,10 @@ async def get_usage_service(db: AsyncSession) -> UsageService:
 
 
 async def get_usage_service(db: AsyncSession = Depends(get_async_db)) -> UsageService:
->>>>>>> origin/main
     """Dependency provider for UsageService."""
     return UsageService(db)
 
 
-<<<<<<< HEAD
-=======
 # ----------------------------
 # Legacy Aliases
 # ----------------------------
@@ -287,4 +225,3 @@ async def update_usage(db: AsyncSession, db_obj: Usage, obj_in: Any) -> Usage:
 
 async def delete_usage(db: AsyncSession, id: UUID) -> Optional[Usage]:
     return await UsageService(db).delete_usage(id)
->>>>>>> origin/main

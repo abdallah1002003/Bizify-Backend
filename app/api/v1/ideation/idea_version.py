@@ -3,12 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.pagination import LimitParam, SkipParam
 from app.schemas.ideation.idea_version import IdeaVersionCreate, IdeaVersionUpdate, IdeaVersionResponse
-<<<<<<< HEAD
-from app.services.ideation.idea_version import IdeaVersionService
-from app.api.v1.service_dependencies import get_idea_version_service
-=======
 from app.services.ideation.idea_version import IdeaVersionService, get_idea_version_service
->>>>>>> origin/main
 
 router = APIRouter()
 

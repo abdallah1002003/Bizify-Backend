@@ -1,16 +1,6 @@
 from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
-<<<<<<< HEAD
-from app.services.business.business_invite import BusinessInviteService
-
-
-class BusinessInviteServiceFacade(BusinessInviteService):
-    """Thin facade kept for backward compatibility. Now inherits from BusinessInviteService directly."""
-    pass
-
-
-=======
 from app.services.business import business_invite
 
 
@@ -22,4 +12,3 @@ async def create_business_invite(db: AsyncSession, obj_in):
 async def update_business_invite(db: AsyncSession, db_obj, obj_in):
     """Async wrapper for update_business_invite."""
     return await business_invite.update_business_invite(db, db_obj=db_obj, obj_in=obj_in)
->>>>>>> origin/main

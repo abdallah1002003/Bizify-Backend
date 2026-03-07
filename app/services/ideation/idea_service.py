@@ -1,16 +1,6 @@
 from typing import Any, List, Optional
 from uuid import UUID
 
-<<<<<<< HEAD
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models.ideation.idea import Idea
-from app.services.base_service import BaseService
-from app.core.crud_utils import _to_update_dict
-from app.services.ideation.idea_access import IdeaAccessService
-from app.services.ideation.idea_version import IdeaVersionService
-from app.repositories.idea_repository import IdeaRepository
-=======
 from fastapi import Depends
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,7 +11,6 @@ from app.services.base_service import BaseService
 from app.core.crud_utils import _to_update_dict, _apply_updates
 from app.services.ideation.idea_access import IdeaAccessService, get_idea_access_service
 from app.services.ideation.idea_version import IdeaVersionService, get_idea_version_service
->>>>>>> origin/main
 
 class IdeaService(BaseService):
     """Main service for managing Ideas, delegating to access and version services."""
@@ -36,10 +25,6 @@ class IdeaService(BaseService):
         super().__init__(db)
         self.access = access_service
         self.version = version_service
-<<<<<<< HEAD
-        self.repo = IdeaRepository(db)
-=======
->>>>>>> origin/main
 
     # ----------------------------
     # Idea CRUD
@@ -47,15 +32,10 @@ class IdeaService(BaseService):
 
     async def get_idea(self, id: UUID, user_id: Optional[UUID] = None) -> Optional[Idea]:
         """Retrieve an idea by ID with optional access control."""
-<<<<<<< HEAD
-        db_obj = await self.repo.get(id)
-
-=======
         stmt = select(Idea).where(Idea.id == id)
         result = await self.db.execute(stmt)
         db_obj = result.scalar_one_or_none()
         
->>>>>>> origin/main
         if db_obj is None:
             return None
 
@@ -72,9 +52,6 @@ class IdeaService(BaseService):
         user_id: Optional[UUID] = None,
     ) -> List[Idea]:
         """Retrieve ideas with optional user-based filtering."""
-<<<<<<< HEAD
-        return await self.repo.get_all_filtered(user_id=user_id, skip=skip, limit=limit)
-=======
         from sqlalchemy.orm import selectinload
         
         stmt = select(Idea).options(
@@ -88,19 +65,14 @@ class IdeaService(BaseService):
         stmt = stmt.distinct().offset(skip).limit(limit)
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
->>>>>>> origin/main
 
 
     async def create_idea(self, obj_in: Any) -> Idea:
         """Create a new idea and its initial version snapshot."""
-<<<<<<< HEAD
-        db_obj = await self.repo.create(_to_update_dict(obj_in))
-=======
         db_obj = Idea(**_to_update_dict(obj_in))
         self.db.add(db_obj)
         await self.db.commit()
         await self.db.refresh(db_obj)
->>>>>>> origin/main
 
         # Restore synchronous side-effect: initial snapshot
         await self.version.create_idea_snapshot(db_obj)
@@ -114,14 +86,10 @@ class IdeaService(BaseService):
         update_data = _to_update_dict(obj_in)
         major_changed = any(field in update_data for field in ("title", "description", "status"))
 
-<<<<<<< HEAD
-        db_obj = await self.repo.update(db_obj, update_data)
-=======
         _apply_updates(db_obj, update_data)
         self.db.add(db_obj)
         await self.db.commit()
         await self.db.refresh(db_obj)
->>>>>>> origin/main
 
         # Restore synchronous side-effect: snapshot on major change
         if major_changed:
@@ -131,9 +99,6 @@ class IdeaService(BaseService):
 
     async def delete_idea(self, id: UUID) -> Optional[Idea]:
         """Delete an idea from the system."""
-<<<<<<< HEAD
-        return await self.repo.delete(id)
-=======
         stmt = select(Idea).where(Idea.id == id)
         result = await self.db.execute(stmt)
         db_obj = result.scalar_one_or_none()
@@ -144,7 +109,6 @@ class IdeaService(BaseService):
         await self.db.delete(db_obj)
         await self.db.commit()
         return db_obj
->>>>>>> origin/main
 
     async def check_idea_access(self, idea_id: UUID, user_id: UUID, required_perm: str = "view") -> bool:
         """Helper to expose access check via this service."""
@@ -152,18 +116,6 @@ class IdeaService(BaseService):
 
 
 async def get_idea_service(
-<<<<<<< HEAD
-    db: AsyncSession,
-    access: Optional[IdeaAccessService] = None,
-    version: Optional[IdeaVersionService] = None,
-) -> IdeaService:
-    """Dependency provider for IdeaService."""
-    access = access or IdeaAccessService(db)
-    version = version or IdeaVersionService(db)
-    return IdeaService(db, access, version)
-
-
-=======
     db: AsyncSession = Depends(get_async_db),
     access: IdeaAccessService = Depends(get_idea_access_service),
     version: IdeaVersionService = Depends(get_idea_version_service),
@@ -207,4 +159,3 @@ async def delete_idea(db: AsyncSession, id: UUID) -> Optional[Idea]:
     """Legacy async alias for deleting an idea."""
     service = await get_idea_service_manual(db)
     return await service.delete_idea(id)
->>>>>>> origin/main

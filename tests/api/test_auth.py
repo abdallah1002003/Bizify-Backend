@@ -1,23 +1,3 @@
-<<<<<<< HEAD
-import uuid
-
-def test_create_user_and_login(client):
-    # 1. Create a user via /auth/register
-    email = f"auth_{uuid.uuid4().hex[:8]}@example.com"
-    user_payload = {
-        "name": "Test User 2",
-        "email": email,
-        "password": "securepassword123",
-        "role": "entrepreneur"
-    }
-    
-    response = client.post("/api/v1/auth/register", json=user_payload)
-    assert response.status_code == 201
-    
-    # 2. Try to login
-    login_payload = {
-        "username": email,
-=======
 
 def test_create_user_and_login(client):
     # 1. Create a user
@@ -35,7 +15,6 @@ def test_create_user_and_login(client):
     # 2. Try to login
     login_payload = {
         "username": "newtest@example.com",
->>>>>>> origin/main
         "password": "securepassword123"
     }
     

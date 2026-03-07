@@ -109,10 +109,6 @@ def log_context(
         with log_context(correlation_id="abc-123", request_id="req-xyz", user_id="user-123"):
             logger.info("Processing request")
     """
-<<<<<<< HEAD
-    previous_context = get_log_context()
-=======
->>>>>>> origin/main
     context = LogContext(
         correlation_id=correlation_id,
         request_id=request_id,
@@ -125,14 +121,7 @@ def log_context(
     try:
         yield context
     finally:
-<<<<<<< HEAD
-        if previous_context:
-            set_log_context(previous_context)
-        else:
-            clear_log_context()
-=======
         clear_log_context()
->>>>>>> origin/main
 
 
 class PerformanceTimer:
