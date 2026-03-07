@@ -1,0 +1,56 @@
+version: "3.9"
+
+# ---------------------------------------------------------------------------
+# Local Development Infrastructure
+# ---------------------------------------------------------------------------
+# Spins up only PostgreSQL and Redis so you can run the API locally
+# with hot-reload (uvicorn) without rebuilding a Docker image on every change.
+#
+# Usage:
+#   make dev-up            # start
+#   make dev-down          # stop
+#   make dev-logs          # tail logs
+#
+# Then in a separate terminal:
+#   uvicorn main:app --reload --port 8000
+# ---------------------------------------------------------------------------
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL with pgvector extension
+  # ---------------------------------------------------------------------------
+  db:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bizify}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bizify_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-bizify_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bizify}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Redis (JTI blacklisting + email queue)
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata_dev:
+    driver: local

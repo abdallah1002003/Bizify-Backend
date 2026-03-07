@@ -1,0 +1,109 @@
+# ruff: noqa
+"""
+Partner Request CRUD operations and status transitions.
+"""
+from __future__ import annotations
+
+import logging
+from typing import Any, List, Optional
+from uuid import UUID
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
+from app.models import PartnerRequest
+from app.models.enums import RequestStatus
+from app.core.crud_utils import _to_update_dict, _apply_updates
+from app.repositories.partner_repository import PartnerRequestRepository
+from app.services.base_service import BaseService
+
+logger = logging.getLogger(__name__)
+
+
+class PartnerRequestService(BaseService):
+    """Service for managing Partner Requests and status transitions."""
+
+    def __init__(self, db: AsyncSession) -> None:
+        super().__init__(db)
+        self.repo = PartnerRequestRepository(db)
+
+    async def get_partner_request(self, id: UUID) -> Optional[PartnerRequest]:
+        """Retrieve a partner request by ID."""
+        return await self.repo.get(id)
+
+    async def get_partner_requests(self, skip: int = 0, limit: int = 100) -> List[PartnerRequest]:
+        """Retrieve all partner requests with pagination."""
+        return await self.repo.get_all(skip=skip, limit=limit)
+
+    async def submit_partner_request(
+        self,
+        business_id: UUID,
+        partner_id: UUID,
+        request_type: Optional[str] = None,
+        context: Optional[Any] = None,
+        requested_by: Optional[UUID] = None,
+    ) -> PartnerRequest:
+        """Submit a new partner request."""
+        # Convert context string or dict to valid JSON dict if possible
+        import json
+        context_data = None
+        if context:
+            if isinstance(context, str):
+                try:
+                    context_data = json.loads(context)
+                except json.JSONDecodeError:
+                    context_data = {"raw_context": context}
+            elif isinstance(context, dict):
+                context_data = context
+
+        return await self.repo.upsert_request({
+            "business_id": business_id,
+            "partner_id": partner_id,
+            "requested_by": requested_by,
+            "status": RequestStatus.PENDING,
+            "request_type": request_type,
+            "context_data": context_data,
+        })
+
+    async def create_partner_request(self, obj_in: Any) -> PartnerRequest:
+        """Create a partner request from a schema object."""
+        return await self.repo.upsert_request(_to_update_dict(obj_in))
+
+    async def update_partner_request(self, db_obj: PartnerRequest, obj_in: Any) -> PartnerRequest:
+        """Update an existing partner request."""
+        return await self.repo.update(db_obj, _to_update_dict(obj_in))
+
+    async def delete_partner_request(self, id: UUID) -> Optional[PartnerRequest]:
+        """Delete a partner request by ID."""
+        return await self.repo.delete(id)
+
+    async def transition_request_status(
+        self,
+        request_id: UUID,
+        new_status: RequestStatus,
+        performer_id: Optional[UUID] = None,
+    ) -> Optional[PartnerRequest]:
+        """Transition a partner request to a new status."""
+        _ = performer_id
+        request = await self.repo.get(request_id)
+        if request is None:
+            return None
+
+        return await self.repo.update(request, {"status": new_status})
+
+    async def accept_partner_request(self, request_id: UUID) -> Optional[PartnerRequest]:
+        """Accept a partner request."""
+        return await self.transition_request_status(request_id, RequestStatus.ACCEPTED)
+
+
+# ----------------------------
+# Legacy Aliases
+# ----------------------------
+
+
+async def get_partner_request_service(db: AsyncSession) -> PartnerRequestService:
+    """Dependency provider for PartnerRequestService."""
+    return PartnerRequestService(db)
+
+
+

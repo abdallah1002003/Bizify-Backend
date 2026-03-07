@@ -1,0 +1,23 @@
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.pyc
+.DS_Store
+.coverage
+.env
+sql_app.db
+*.db
+
+# Logs
+logs/
+
+# Temporary files
+*.db
+*.sqlite
+*.sqlite3
+
+# Verification scripts
+verify_files.py

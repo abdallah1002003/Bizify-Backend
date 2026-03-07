@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: bizify-api
+  namespace: default
+  labels:
+    app: bizify-api
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+    protocol: TCP
+  - name: metrics
+    port: 9090
+    targetPort: metrics
+    protocol: TCP
+  selector:
+    app: bizify-api
+  sessionAffinity: None
+  publishNotReadyAddresses: false
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bizify-api-headless
+  namespace: default
+  labels:
+    app: bizify-api
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - name: http
+    port: 8001
+    targetPort: http
+    protocol: TCP
+  selector:
+    app: bizify-api
+  publishNotReadyAddresses: true

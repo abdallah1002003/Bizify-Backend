@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bizify-config
+  namespace: default
+  labels:
+    app: bizify-api
+data:
+  app.env: "production"
+  
+  # Database Configuration
+  database.host: "postgres-service"
+  database.port: "5432"
+  database.name: "bizify"
+  database.pool-size: "20"
+  database.max-overflow: "40"
+  
+  # Redis Configuration
+  redis.enabled: "true"
+  redis.host: "redis-service"
+  redis.port: "6379"
+  redis.db: "0"
+  
+  # API Configuration
+  cors.enabled: "true"
+  cors.allowed-origins: "https://app.bizify.com,https://www.bizify.com,https://api.bizify.com"
+  rate-limit.per-minute: "120"
+  rate-limit.per-hour: "5000"
+  
+  # Security
+  jwt.algorithm: "RS256"
+  jwt.access-token-expire-minutes: "30"
+  jwt.refresh-token-expire-days: "7"
+  
+  # AI Service
+  ai.provider: "openai"
+  ai.timeout-seconds: "30"
+  ai.max-retries: "3"
+  
+  # Email Configuration
+  mail.enabled: "true"
+  mail.server: "smtp.gmail.com"
+  mail.port: "587"
+  mail.tls: "true"
+  
+  # Stripe Configuration
+  stripe.enabled: "true"
+  stripe.timeout-seconds: "10"
+  
+  # Logging
+  logging.level: "INFO"
+  logging.format: "json"
+  
+  # Monitoring
+  metrics.enabled: "true"
+  sentry.enabled: "true"
+  
+  # App Settings
+  app.name: "Bizify"
+  app.version: "1.0.0"
+  frontend.url: "https://app.bizify.com"
