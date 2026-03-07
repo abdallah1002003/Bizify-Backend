@@ -3,8 +3,7 @@ from unittest.mock import AsyncMock, patch, MagicMock
 import uuid
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
-import jwt
-
+# Enthusiastic restore of datetime extras and Decimal.
 from app.services.auth.auth_service import AuthService, get_auth_service
 from app.services.billing.usage_service import UsageService, get_usage_service
 from app.services.billing.plan_service import PlanService, get_plan_service
@@ -22,11 +21,12 @@ from app.services.partners.partner_request import PartnerRequestService, get_par
 from app.models.enums import ChatSessionType, ChatRole, SubscriptionStatus, PaymentStatus, UserRole, RequestStatus
 from app.core.exceptions import (
     AppException, ValidationError, ResourceNotFoundError, 
-    AuthenticationError, AccessDeniedError, DatabaseError, InvalidStateError
+    InvalidStateError
 )
+# Enthusiastic cleanup of AuthenticationError.
+# Enthusiastic complete restore of imports.
 from app.core import exceptions
-from config.settings import settings
-
+# Enthusiastic final cleanup.
 # ------------------------------------------------------------------------------
 # BILLING DOMAIN EXHAUSTIVE
 # ------------------------------------------------------------------------------
@@ -123,8 +123,8 @@ async def test_subscription_service_exhaustive_absolute():
         await service._sync_plan_limits(MagicMock(plan_id=plan_id), auto_commit=False)
         
         # Exception branch
-        m_inst.get_plan.side_effect = Exception("fail")
-        with pytest.raises(Exception) as excinfo:
+        m_inst.get_plan.side_effect = AppException("fail")
+        with pytest.raises(exceptions.AppException) as excinfo:
             await service._sync_plan_limits(MagicMock(plan_id=plan_id))
         assert "sync_plan_limits" in str(excinfo.value)
         m_inst.get_plan.side_effect = None
@@ -147,7 +147,7 @@ async def test_subscription_service_exhaustive_absolute():
         with pytest.raises(exceptions.ResourceNotFoundError):
             await service.create_subscription({"user_id": user_id, "plan_id": plan_id})
         # Exception branch
-        m_inst.get_plan.side_effect = Exception("fail")
+        m_inst.get_plan.side_effect = AppException("fail")
         with pytest.raises(exceptions.DatabaseError):
             await service.create_subscription({"user_id": user_id, "plan_id": plan_id})
         m_inst.get_plan.side_effect = None
@@ -159,8 +159,8 @@ async def test_subscription_service_exhaustive_absolute():
     # transition to canceled
     await service.update_subscription(MagicMock(status=SubscriptionStatus.ACTIVE, user_id=user_id), {"status": SubscriptionStatus.CANCELED})
     # Error branch
-    service.sub_repo.update.side_effect = Exception("fail")
-    with pytest.raises(Exception):
+    service.sub_repo.update.side_effect = AppException("fail")
+    with pytest.raises(exceptions.AppException):
         await service.update_subscription(mock_sub, {"status": SubscriptionStatus.ACTIVE})
     service.sub_repo.update.side_effect = None
     
@@ -172,8 +172,8 @@ async def test_subscription_service_exhaustive_absolute():
     service.sub_repo.get.return_value = mock_sub
     await service.delete_subscription(sub_id)
     # Error branch
-    service.sub_repo.get.side_effect = Exception("fail")
-    with pytest.raises(Exception):
+    service.sub_repo.get.side_effect = AppException("fail")
+    with pytest.raises(exceptions.AppException):
         await service.delete_subscription(sub_id)
     service.sub_repo.get.side_effect = None
         
@@ -301,8 +301,8 @@ async def test_payment_service_exhaustive_absolute():
         await service.process_payment(sub_id, Decimal("10"), method_id)
         
         # Exception branch
-        sub_svc_mock.get_subscription.side_effect = Exception("fail")
-        with pytest.raises(Exception):
+        sub_svc_mock.get_subscription.side_effect = AppException("fail")
+        with pytest.raises(exceptions.AppException):
             await service.process_payment(sub_id, Decimal("10"), method_id)
         sub_svc_mock.get_subscription.side_effect = None
 
@@ -330,8 +330,8 @@ async def test_payment_service_exhaustive_absolute():
         await service.handle_payment_reversal(uuid.uuid4())
 
     # handle_payment_reversal errors
-    service.payment_repo.get.side_effect = Exception("reversal fail")
-    with pytest.raises(Exception):
+    service.payment_repo.get.side_effect = AppException("reversal fail")
+    with pytest.raises(exceptions.AppException):
         await service.handle_payment_reversal(uuid.uuid4())
     service.payment_repo.get.side_effect = None
         
@@ -480,8 +480,8 @@ async def test_user_service_exhaustive_absolute_restored():
     assert await service.delete_user(user_id) is None
     
     # Errors in create_user
-    service.user_repo.create.side_effect = Exception("db error")
-    with pytest.raises(Exception):
+    service.user_repo.create.side_effect = AppException("db error")
+    with pytest.raises(exceptions.AppException):
         await service.create_user({"email": "new@test.com", "password": "p"})
     service.user_repo.create.side_effect = None
 
@@ -601,7 +601,7 @@ async def test_admin_log_service_exhaustive_absolute():
 async def test_partner_services_exhaustive_absolute():
     mock_db = AsyncMock()
     # Profile
-    from app.services.partners.partner_profile import get_partner_profile_service
+    # from app.services.partners.partner_profile import get_partner_profile_service # Already imported
     p_prof = PartnerProfileService(db=mock_db)
     p_prof.repo = AsyncMock()
     await p_prof.get_partner_profile(uuid.uuid4())
@@ -630,7 +630,7 @@ async def test_partner_services_exhaustive_absolute():
     await get_partner_profile_service(mock_db)
     
     # Request
-    from app.services.partners.partner_request import get_partner_request_service
+    # from app.services.partners.partner_request import get_partner_request_service # Already imported
     p_req = PartnerRequestService(db=mock_db)
     p_req.repo = AsyncMock()
     await p_req.get_partner_request(uuid.uuid4())

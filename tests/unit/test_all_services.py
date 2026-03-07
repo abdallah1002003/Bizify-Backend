@@ -2,7 +2,6 @@
 Comprehensive tests for all services in app/services/ targeting near-100% coverage.
 """
 import pytest
-import asyncio
 from uuid import uuid4
 from unittest.mock import AsyncMock, MagicMock, patch
 

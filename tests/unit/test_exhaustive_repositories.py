@@ -1,9 +1,6 @@
 """Exhaustive tests for the Repository layer resolving coverage gaps."""
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
-import uuid
-from datetime import datetime, timezone
-
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import declarative_base
 from sqlalchemy import Column, Integer, String
@@ -124,7 +121,7 @@ async def test_auth_repositories_exhaustive():
         assert await r_repo.create_safe({"jti": "j2"}) is None
         db.rollback.assert_called()
         
-    with patch.object(r_repo, "get_by_jti", return_value=MagicMock()) as m_get_jti, \
+    with patch.object(r_repo, "get_by_jti", return_value=MagicMock()) as _m_get_jti, \
          patch.object(r_repo, "update", new_callable=AsyncMock) as m_upd:
          
          await r_repo.revoke("j1")

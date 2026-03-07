@@ -3,7 +3,6 @@ import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import uuid
 
-from app.models.enums import AgentRunStatus
 from app.services.ai.agent_service import AgentService, get_agent_service
 from app.services.ai.agent_run_service import AgentRunService, get_agent_run_service
 

@@ -2,34 +2,49 @@
 import pytest
 import asyncio
 import time
-import json
 import zlib
 import pickle
-import jwt
 import sys
 import importlib
-import os
-from uuid import uuid4, UUID
-from unittest.mock import AsyncMock, MagicMock, patch, ANY
-from datetime import datetime, timezone, timedelta
+import jwt
+from uuid import uuid4
+from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import timezone
+from fastapi import HTTPException
 
-from fastapi import HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+
 
 from app.core.circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitState, CircuitBreakerOpenError
 # Initial imports for types (careful with reloads)
-from app.core.cache import InMemoryCache, RedisCache, CacheManager, get_cache_manager, clear_cache_manager, CacheBackend
+from app.core.cache import CacheBackend
 from app.core.token_blacklist import blacklist_token, is_token_blacklisted, clear_blacklist
-from app.core.encryption import encrypt, decrypt
-from app.core.pagination import PaginationParams, PageResponse, get_pagination_params
-from app.core.structured_logging import PerformanceTimer, get_logger, log_context, get_log_context, set_log_context
-from app.core.events import EventDispatcher
-from app.core.metrics import MetricsTimer, record_http_request, record_db_query, record_cache_operation, REGISTRY
+from app.core.encryption import encrypt, decrypt, _get_key, EncryptedString
+from app.core.pagination import PageResponse, get_pagination_params
+from app.core.structured_logging import (
+    PerformanceTimer, get_logger, log_context, get_log_context, StructuredFormatter
+)
+from app.core.metrics import MetricsTimer, record_http_request, record_db_query, record_cache_operation
 from app.core.exceptions import (
     AppException, ResourceNotFoundError, AuthenticationError, 
-    ValidationError, AccessDeniedError, ConflictError
+    ValidationError, AccessDeniedError, ConflictError,
+    BadRequestError, ExternalServiceError, DatabaseError, InvalidStateError,
+    http_exception_from_app_exception
 )
+from app.core.config import get_settings
+from app.core.async_patterns import (
+    get_chat_session_async, get_chat_sessions_by_user_async,
+    create_chat_session_async, add_messages_batch_async,
+    fetch_multiple_sessions_async, stream_sessions_async
+)
+from app.core.security import (
+    create_access_token,
+    create_password_reset_token, verify_password_reset_token,
+    create_email_verification_token, verify_email_verification_token,
+    get_password_hash, verify_password
+)
+from app.core.dependencies import get_current_user, require_roles, is_admin_or_self, require_admin_or_self
+from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates, transactional
+from app.core.event_handlers import register_all_handlers
 from app.models.enums import ChatSessionType, UserRole
 
 class AsyncContextManagerMock:
@@ -44,12 +59,7 @@ class AsyncContextManagerMock:
 
 @pytest.mark.asyncio
 async def test_async_patterns_exhaustive():
-    from app.core.async_patterns import (
-        get_chat_session_async, get_chat_sessions_by_user_async,
-        create_chat_session_async, add_messages_batch_async,
-        fetch_multiple_sessions_async, update_session_summary_async,
-        transfer_session_ownership_async, stream_sessions_async
-    )
+    # Imports moved to top-level
     db = AsyncMock()
     db.begin = MagicMock(return_value=AsyncContextManagerMock(db))
     uid = uuid4()
@@ -113,7 +123,12 @@ async def test_cache_logic_exhaustive():
         async def clear(self): return await super().clear()
         async def health_check(self): return await super().health_check()
     d = DummyBackend()
-    await d.get("k"); await d.set("k", 1); await d.delete("k"); await d.exists("k"); await d.clear(); await d.health_check()
+    await d.get("k")
+    await d.set("k", 1)
+    await d.delete("k")
+    await d.exists("k")
+    await d.clear()
+    await d.health_check()
 
     # Ensure redis is present for CacheManager logic
     with patch.dict(sys.modules, {'redis': MagicMock()}):
@@ -228,8 +243,14 @@ async def test_cache_logic_exhaustive():
 
     cm = R_CacheManager(use_redis=False)
     assert isinstance(cm.backend, R_InMemoryCache)
-    await cm.set("mgr", 1); await cm.get("mgr"); await cm.exists("mgr"); await cm.delete("mgr")
-    await cm.clear(); await cm.is_healthy(); await cm.get_generation_key("ns"); await cm.increment_generation_key("ns")
+    await cm.set("mgr", 1)
+    await cm.get("mgr")
+    await cm.exists("mgr")
+    await cm.delete("mgr")
+    await cm.clear()
+    await cm.is_healthy()
+    await cm.get_generation_key("ns")
+    await cm.increment_generation_key("ns")
     
     @cm.setup_caching_decorator(ttl_seconds=60)
     async def cached_func(x): return x * 2
@@ -237,7 +258,8 @@ async def test_cache_logic_exhaustive():
     assert await cached_func(10) == 20
     
     def sync_func(): pass
-    with pytest.raises(TypeError): cm.setup_caching_decorator()(sync_func)
+    with pytest.raises(TypeError): 
+        cm.setup_caching_decorator()(sync_func)
 
     with patch("app.core.cache.redis", None):
          assert R_get_cache_manager() is not None
@@ -247,22 +269,30 @@ async def test_cache_logic_exhaustive():
 
 @pytest.mark.asyncio
 async def test_circuit_breaker_exhaustive():
-    with pytest.raises(ValueError): CircuitBreaker("v", config=CircuitBreakerConfig(failure_threshold=0))
-    with pytest.raises(ValueError): CircuitBreaker("v", config=CircuitBreakerConfig(recovery_timeout_seconds=0))
-    with pytest.raises(ValueError): CircuitBreaker("v", config=CircuitBreakerConfig(half_open_success_threshold=0))
+    with pytest.raises(ValueError):
+        CircuitBreaker("v", config=CircuitBreakerConfig(failure_threshold=0))
+    with pytest.raises(ValueError):
+        CircuitBreaker("v", config=CircuitBreakerConfig(recovery_timeout_seconds=0))
+    with pytest.raises(ValueError):
+        CircuitBreaker("v", config=CircuitBreakerConfig(half_open_success_threshold=0))
 
     config = CircuitBreakerConfig(failure_threshold=2, recovery_timeout_seconds=0.1)
     cb = CircuitBreaker("test-cb", config=config)
-    async def success_fn(): return "ok"
-    async def fail_fn(): raise ValueError("bad")
+    async def success_fn():
+        return "ok"
+    async def fail_fn():
+        raise ValueError("bad")
     
     assert await cb.call(success_fn) == "ok"
     # Coverage for line 69, 79-82
     with patch.object(cb, "allow_call", return_value=False):
-        with pytest.raises(CircuitBreakerOpenError): await cb.call(success_fn)
+        with pytest.raises(CircuitBreakerOpenError):
+            await cb.call(success_fn)
     
-    with pytest.raises(ValueError): await cb.call(fail_fn)
-    with pytest.raises(ValueError): await cb.call(fail_fn)
+    with pytest.raises(ValueError):
+        await cb.call(fail_fn)
+    with pytest.raises(ValueError):
+        await cb.call(fail_fn)
     assert cb.state == CircuitState.OPEN
     
     assert cb._should_attempt_reset(time.monotonic()) is False
@@ -271,7 +301,8 @@ async def test_circuit_breaker_exhaustive():
     await cb._enter_half_open_if_ready()
     cb._state = CircuitState.OPEN
     
-    with pytest.raises(CircuitBreakerOpenError): await cb.call(success_fn)
+    with pytest.raises(CircuitBreakerOpenError):
+        await cb.call(success_fn)
         
     await asyncio.sleep(0.15)
     cb._state = CircuitState.HALF_OPEN
@@ -315,7 +346,7 @@ async def test_token_blacklist_exhaustive():
             assert await is_token_blacklisted("r-fail") is True
 
 
-# ── Metrics ───────────────────────────────────────────────────────────────────
+ #── Metrics ───────────────────────────────────────────────────────────────────
 
 def test_metrics_exhaustive():
     record_http_request("GET", "/test", 200, 0.1)
@@ -340,42 +371,39 @@ def test_metrics_exhaustive():
 # ── Encryption & Pagination & Utils ───────────────────────────────────────────
 
 def test_core_utils_exhaustive():
-    from app.core.encryption import _get_key
+    # Imports moved to top-level
+
     with patch("app.core.encryption.settings") as m_settings_enc:
         m_settings_enc.ENCRYPTION_KEY = ""
         m_settings_enc.APP_ENV = "production"
-        with pytest.raises(RuntimeError): _get_key()
+        with pytest.raises(RuntimeError):
+            _get_key()
         
         m_settings_enc.APP_ENV = "development"
         m_settings_enc.ENCRYPTION_KEY = "00" * 31
-        with pytest.raises(RuntimeError): _get_key()
+        with pytest.raises(RuntimeError):
+            _get_key()
         
         m_settings_enc.ENCRYPTION_KEY = "invalid hex"
-        with pytest.raises(RuntimeError): _get_key()
+        with pytest.raises(RuntimeError):
+            _get_key()
 
     data = "hello world"
-    encrypted = encrypt(data)
-    assert (decrypted := decrypt(encrypted)) == data
+    decrypted = decrypt(encrypt(data))
+    assert decrypted == data
     
-    from app.core.encryption import EncryptedString
     decorator = EncryptedString()
     assert decorator.process_bind_param(None, None) is None
     assert isinstance(decorator.process_bind_param("raw", None), str)
     assert decorator.process_result_value(None, None) is None
     assert decorator.process_result_value("invalid", None) == "invalid"
     # Coverage for line 84-86 (encrypted case)
-    assert decorator.process_result_value(encrypted, None) == data
+    assert decorator.process_result_value(encrypt(data), None) == data
 
     assert get_pagination_params(5, 0) == (5, 0)
     resp = PageResponse(items=[1], total=1, skip=0, limit=1)
     assert resp.total == 1
 
-    from app.core.exceptions import (
-        AppException, ResourceNotFoundError, AuthenticationError, 
-        ValidationError, AccessDeniedError, ConflictError,
-        BadRequestError, ExternalServiceError, DatabaseError, InvalidStateError,
-        http_exception_from_app_exception
-    )
     exs = [
         AppException("msg"), ResourceNotFoundError("U", "1"), AuthenticationError("b"),
         ValidationError("i", field="f"), AccessDeniedError("n"), ConflictError("e", conflict_field="f", existing_value="v"),
@@ -383,10 +411,10 @@ def test_core_utils_exhaustive():
         DatabaseError("d", entity_type="T", original_error="e"), InvalidStateError("is", current_state="A", required_state="B")
     ]
     for ex in exs:
-        with pytest.raises(AppException): raise ex
+        with pytest.raises(AppException): 
+            raise ex
         assert http_exception_from_app_exception(ex) is not None
 
-    from app.core.config import get_settings
     assert get_settings() is not None
 
 
@@ -399,15 +427,17 @@ async def test_structured_logging_exhaustive():
 
     logger = get_logger("test")
     # Coverage for threshold_ms branch
-    with PerformanceTimer(logger, "slow-op", threshold_ms=-1): await asyncio.sleep(0.001)
+    with PerformanceTimer(logger, "slow-op", threshold_ms=-1): 
+        await asyncio.sleep(0.001)
     with PerformanceTimer(logger, "err", threshold_ms=100) as pt:
-        try: raise ValueError("fail")
-        except: pt.__exit__(ValueError, ValueError("fail"), None)
-
-    from app.core.structured_logging import log_context, get_log_context, StructuredFormatter
+        try: 
+            raise ValueError("fail")
+        except Exception: 
+            pt.__exit__(ValueError, ValueError("fail"), None)
     with log_context(correlation_id="root"):
         assert get_log_context().correlation_id == "root"
-        with log_context(correlation_id="child"): pass
+        with log_context(correlation_id="child"): 
+            pass
         assert get_log_context().correlation_id == "root"
     
     f = StructuredFormatter()
@@ -430,15 +460,11 @@ async def test_structured_logging_exhaustive():
 # ── Security ──────────────────────────────────────────────────────────────────
 
 def test_security_exhaustive():
-    from app.core.security import (
-        create_access_token, create_refresh_token, 
-        create_password_reset_token, verify_password_reset_token,
-        create_email_verification_token, verify_email_verification_token,
-        get_password_hash, verify_password
-    )
+    # Imports moved to top-level
     subject = "user-123"
     token = create_access_token(subject)
-    assert jwt.decode(token, options={"verify_signature": False})["type"] == "access"
+    token_payload = jwt.decode(token, options={"verify_signature": False})
+    assert token_payload["type"] == "access"
     
     pr_token = create_password_reset_token("a@b.com")
     assert verify_password_reset_token(pr_token)["sub"] == "a@b.com"
@@ -482,7 +508,6 @@ async def test_events_exhaustive():
 
 @pytest.mark.asyncio
 async def test_dependencies_exhaustive():
-    from app.core.dependencies import get_current_user, get_current_active_user, require_roles
     db = AsyncMock()
     
     mock_res = MagicMock()
@@ -490,47 +515,51 @@ async def test_dependencies_exhaustive():
     db.execute.return_value = mock_res
     
     with patch("jwt.decode", return_value={"sub": "u", "type": "access", "jti": "j"}):
-        with pytest.raises(HTTPException): await get_current_user(db, "token")
+        with pytest.raises(HTTPException): 
+            await get_current_user(db, "token")
 
     with patch("app.core.dependencies.is_token_blacklisted", return_value=True):
         with patch("jwt.decode", return_value={"sub": "u", "type": "access", "jti": "j"}):
-            with pytest.raises(HTTPException): await get_current_user(db, "token")
+            with pytest.raises(HTTPException): 
+                await get_current_user(db, "token")
 
     with patch("jwt.decode") as m_decode_dep_final:
         m_decode_dep_final.return_value = {"sub": str(uuid4()), "type": "refresh", "jti": "j1"}
-        with pytest.raises(HTTPException): await get_current_user(db, "token")
+        with pytest.raises(HTTPException): 
+            await get_current_user(db, "token")
         
         m_decode_dep_final.side_effect = jwt.PyJWTError()
-        with pytest.raises(HTTPException): await get_current_user(db, "invalid")
+        with pytest.raises(HTTPException): 
+            await get_current_user(db, "invalid")
         m_decode_dep_final.side_effect = None
 
-    from app.core.dependencies import is_admin_or_self, require_admin_or_self
     mock_user = MagicMock(id=uuid4(), role=UserRole.ADMIN)
     assert is_admin_or_self(mock_user, mock_user.id) is True
     require_admin_or_self(mock_user, mock_user.id)
     
     # role check fail coverage
-    with pytest.raises(HTTPException): require_roles(UserRole.ADMIN)(MagicMock(role=UserRole.MENTOR))
+    with pytest.raises(HTTPException): 
+        require_roles(UserRole.ADMIN)(MagicMock(role=UserRole.MENTOR))
 
 
 @pytest.mark.asyncio
 async def test_crud_and_handlers_exhaustive():
-    from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates, transactional
     assert _utc_now().tzinfo == timezone.utc
     assert _to_update_dict(None) == {}
     
     assert _apply_updates(None, {"a": 1}) is None
     
     db = MagicMock()
-    with transactional(db): pass
+    with transactional(db): 
+        pass
     db.commit.assert_called()
     
-    db.commit.side_effect = Exception("fail")
-    with pytest.raises(Exception):
-        with transactional(db): pass
+    db.commit.side_effect = AppException("fail")
+    with pytest.raises(AppException):
+        with transactional(db): 
+            pass
     db.rollback.assert_called()
 
-    from app.core.event_handlers import register_all_handlers
     with patch("app.core.event_handlers.register_email_handlers") as m_reg_h:
         register_all_handlers()
         m_reg_h.assert_called()

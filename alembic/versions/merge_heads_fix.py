@@ -6,7 +6,6 @@ Create Date: 2026-03-07 21:26:00.000000
 
 """
 from typing import Sequence, Union
-from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = 'merge_heads_fix'

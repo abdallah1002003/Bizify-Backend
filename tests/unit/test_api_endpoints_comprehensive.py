@@ -3,7 +3,7 @@ Comprehensive API endpoint tests for app/api/v1/ targeting near-100% coverage.
 Uses FastAPI TestClient with dependency overrides to test all route handlers.
 """
 import pytest
-from uuid import uuid4, UUID
+from uuid import uuid4
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
@@ -78,7 +78,7 @@ def test_auth_api_comprehensive():
     tok = jwt.encode(payload, settings.jwt_signing_key, algorithm=settings.jwt_algorithm)
 
     mock_auth.revoke_refresh_token = AsyncMock()
-    with patch("app.api.v1.auth.blacklist_token", new=AsyncMock()) as mock_bt:
+    with patch("app.api.v1.auth.blacklist_token", new=AsyncMock()) as _mock_bt:
         resp = client.post(
             "/auth/logout",
             json={"refresh_token": "some_refresh"},
@@ -256,7 +256,6 @@ async def test_redis_cache_remaining_gaps():
     import sys
     import importlib
     from unittest.mock import patch, AsyncMock, MagicMock
-    import pickle
 
     with patch.dict(sys.modules, {'redis': MagicMock()}):
         import app.core.cache as cache_mod
@@ -310,7 +309,6 @@ def test_circuit_breaker_remaining_gaps():
     """Target circuit_breaker.py lines 69, 79-82, 118-123."""
     import asyncio
     from app.core.circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitState, CircuitBreakerOpenError
-    import time
 
     config = CircuitBreakerConfig(failure_threshold=2, recovery_timeout_seconds=0.05, half_open_success_threshold=1)
     cb = CircuitBreaker("test-gaps", config=config)
@@ -324,10 +322,14 @@ def test_circuit_breaker_remaining_gaps():
         assert result == "ok"
 
         # Force failures to open the circuit
-        try: await cb.call(fail)
-        except ValueError: pass
-        try: await cb.call(fail)
-        except ValueError: pass
+        try:
+            await cb.call(fail)
+        except ValueError:
+            pass
+        try:
+            await cb.call(fail)
+        except ValueError:
+            pass
 
         assert cb.state == CircuitState.OPEN
 
@@ -345,8 +347,10 @@ def test_circuit_breaker_remaining_gaps():
         # Test lines 79-82: half_open_in_flight prevents concurrent calls
         config2 = CircuitBreakerConfig(failure_threshold=1, recovery_timeout_seconds=0.05)
         cb2 = CircuitBreaker("test-concurrent", config=config2)
-        try: await cb2.call(fail)
-        except ValueError: pass
+        try:
+            await cb2.call(fail)
+        except ValueError:
+            pass
 
         await asyncio.sleep(0.1)
         # Manually put in half-open state with in-flight 
@@ -361,7 +365,7 @@ def test_circuit_breaker_remaining_gaps():
 def test_crud_utils_remaining_gaps():
     """Target crud_utils.py lines 73-75, 106."""
     from app.core.crud_utils import _to_update_dict, _apply_updates
-    from unittest.mock import MagicMock, patch
+    from unittest.mock import MagicMock
 
     # _to_update_dict with schema having model_dump (pydantic v2)
     class PydanticV2Schema:
@@ -396,7 +400,7 @@ def test_crud_utils_remaining_gaps():
 async def test_service_dependencies_coverage():
     """Test all service dependency provider functions to cover service_dependencies.py."""
     from app.api.v1.service_dependencies import (
-        get_user_service, get_auth_service, get_ai_service,
+        get_user_service, get_ai_service,
         get_plan_service, get_payment_service, get_payment_method_service,
         get_subscription_service, get_usage_service, get_stripe_webhook_service,
         get_business_collaborator_service, get_business_roadmap_service,
@@ -615,7 +619,7 @@ def test_schema_validators():
     assert update.name == "Updated Plan"
 
     # schemas/users/user_profile.py lines 23-33, 49-58, 75-84
-    from app.schemas.users.user_profile import UserProfileUpdate, UserProfileResponse
+    from app.schemas.users.user_profile import UserProfileUpdate
     
     profile_update = UserProfileUpdate(
         bio="A software developer",
@@ -646,7 +650,7 @@ def test_schema_validators():
 
 def test_middleware_error_handler():
     """Cover error_handler.py to improve its low coverage."""
-    from fastapi import FastAPI, Request
+    from fastapi import FastAPI
     from fastapi.testclient import TestClient
     from app.middleware.error_handler import ErrorHandlerMiddleware
     from app.core.exceptions import ResourceNotFoundError, ValidationError, AuthenticationError

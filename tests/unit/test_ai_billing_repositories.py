@@ -5,6 +5,12 @@ from uuid import uuid4
 
 from sqlalchemy.exc import IntegrityError
 
+from app.repositories.ai_repository import AgentRepository, AgentRunRepository, ValidationLogRepository, EmbeddingRepository
+from app.repositories.billing_repository import (
+    PlanRepository, SubscriptionRepository, PaymentMethodRepository,
+    PaymentRepository, UsageRepository, ProcessedEventRepository
+)
+
 class MockRes:
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
@@ -20,7 +26,7 @@ class MockRes:
 
 # ── AI Repositories ───────────────────────────────────────────────────────────
 
-from app.repositories.ai_repository import AgentRepository, AgentRunRepository, ValidationLogRepository, EmbeddingRepository
+# ── AI Repositories ───────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_ai_repositories_exhaustive():
@@ -67,10 +73,7 @@ async def test_ai_repositories_exhaustive():
 
 # ── Billing Repositories ──────────────────────────────────────────────────────
 
-from app.repositories.billing_repository import (
-    PlanRepository, SubscriptionRepository, PaymentMethodRepository,
-    PaymentRepository, UsageRepository, ProcessedEventRepository
-)
+# ── Billing Repositories ──────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_billing_repositories_exhaustive():

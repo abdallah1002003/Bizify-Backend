@@ -1,15 +1,13 @@
 """Tests covering the exhaustiveness of UserService and AuthService missing branches."""
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock, ANY
+from unittest.mock import AsyncMock, patch, MagicMock
 import uuid
 import jwt
 from datetime import datetime, timezone
 
 from app.services.users.user_service import UserService, get_user_service
 from app.services.auth.auth_service import AuthService, get_auth_service
-from app.models.enums import UserRole
 from app.core.exceptions import AuthenticationError, BadRequestError, ConflictError, ResourceNotFoundError
-from config.settings import settings
 
 
 # ── UserService ────────────────────────────────────────────────────────────────
@@ -228,15 +226,15 @@ async def test_auth_service_exhaustive():
             
         # user valid but already verified
         user_svc.get_user_by_email.return_value = MagicMock(is_verified=True)
-        with patch("app.services.auth.auth_service.blacklist_token", new_callable=AsyncMock) as m_bl:
+        with patch("app.services.auth.auth_service.blacklist_token", new_callable=AsyncMock) as _m_bl:
             res = await svc.verify_email("tok")
             assert res.is_verified is True
-            m_bl.assert_called()
+            _m_bl.assert_called()
             
         # user valid not verified
         mock_user = MagicMock(is_verified=False)
         user_svc.get_user_by_email.return_value = mock_user
-        with patch("app.services.auth.auth_service.blacklist_token", new_callable=AsyncMock) as m_bl2:
+        with patch("app.services.auth.auth_service.blacklist_token", new_callable=AsyncMock) as _m_bl2:
             await svc.verify_email("tok")
             user_svc.update_user.assert_called_with(mock_user, {"is_verified": True})
 

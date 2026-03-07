@@ -3,7 +3,6 @@ import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import uuid
 from datetime import datetime, timezone
-import importlib
 import sys
 
 from app.services.chat.chat_service import ChatService
@@ -43,7 +42,7 @@ def test_core_init_fallback():
             
         with patch("builtins.__import__", side_effect=ImportError("Mocked failure")):
             # this shouldn't crash
-            import app.services.core
+            import app.services.core as _  # noqa: F401
     except Exception:
         pass # The test is just to ensure it hits the block
     finally:
@@ -56,7 +55,7 @@ def test_partners_init_fallback():
             del sys.modules["app.services.partners"]
             
         with patch("builtins.__import__", side_effect=ImportError("Mocked failure")):
-            import app.services.partners
+            import app.services.partners as _  # noqa: F401
     except Exception:
         pass
     finally:
@@ -108,7 +107,7 @@ async def test_email_worker_service_exhaustive():
                 await svc.run_email_worker(0)
 
     # run_email_worker handles regular Exception in loop
-    with patch("app.services.core.email_worker.AsyncSessionLocal") as m_session2, \
+    with patch("app.services.core.email_worker.AsyncSessionLocal") as _m_session2, \
          patch("app.services.core.email_worker.asyncio.sleep", new_callable=AsyncMock, side_effect=[None, asyncio.CancelledError]):
 
         # The loop runs, process_email_queue raises Exception, is logged, loop continues, hits CancelledError on next sleep

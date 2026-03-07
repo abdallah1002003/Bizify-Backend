@@ -122,7 +122,7 @@ async def test_provider_runtime_exhaustive():
         })
         
         with patch("httpx.AsyncClient.post", new_callable=AsyncMock, return_value=mock_resp):
-            vec = await svc._call_openai_embeddings("long text content")
+            _vec = await svc._call_openai_embeddings("long text content")
             # 137 generate_embedding_vector
             res = await svc.generate_embedding_vector("long text content", dimensions=3)
             assert isinstance(res, list)

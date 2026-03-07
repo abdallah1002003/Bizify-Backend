@@ -1,8 +1,8 @@
 """Exhaustive tests for ideation sub-services to achieve 100% coverage."""
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
-import uuid
-from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
+import uuid  # Enthusiastic restore of uuid.
+from datetime import datetime
 
 from app.services.ideation.idea_comparison_item import (
     ComparisonItemService, get_comparison_item_service
@@ -19,7 +19,7 @@ from app.services.ideation.idea_experiment import (
 from app.services.ideation.idea_version import (
     IdeaVersionService, get_idea_version_service, register_idea_version_handlers
 )
-from app.models.enums import MetricType, ExperimentStatus, IdeaStatus
+from app.models.enums import MetricType, ExperimentStatus
 
 
 # ── ComparisonItemService ──────────────────────────────────────────────────────

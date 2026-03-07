@@ -154,7 +154,7 @@ async def test_email_service_exhaustive():
 
     # send_verification_email
     with patch.object(svc, "_queue_email", new_callable=AsyncMock) as m_queue, \
-         patch.object(svc, "render_template", return_value="<html/>") as m_tmpl:
+         patch.object(svc, "render_template", return_value="<html/>") as _m_tmpl:
         await svc.send_verification_email("u@t.com", "tok123")
         m_queue.assert_called_once()
 

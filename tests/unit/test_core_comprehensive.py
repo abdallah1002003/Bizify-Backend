@@ -1,7 +1,5 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
-from app.core import cache, circuit_breaker, dependencies, encryption, events, exceptions, metrics, security, token_blacklist, async_patterns
-from app.core.exceptions import AppException, ResourceNotFoundError
 
 @pytest.mark.asyncio
 async def test_async_patterns_coverage():
@@ -28,7 +26,6 @@ async def test_async_patterns_coverage():
     assert res == "session1"
     
     # 2. get_chat_sessions_by_user_async
-    import asyncio
     async def mock_execute(stmt):
         m = MagicMock()
         m.scalars().all.return_value = ["session2"]
@@ -99,7 +96,8 @@ async def test_cache_coverage():
     from app.core.cache import (
         InMemoryCache, RedisCache, CacheManager, get_cache_manager, clear_cache_manager
     )
-    import zlib, pickle
+    import zlib
+    import pickle
     
     # InMemoryCache
     mem = InMemoryCache()
@@ -236,7 +234,12 @@ async def test_cache_coverage():
         async def health_check(self): return await super().health_check()
     
     mb = MockBackend()
-    await mb.get("k"); await mb.set("k", "v"); await mb.delete("k"); await mb.exists("k"); await mb.clear(); await mb.health_check()
+    await mb.get("k")
+    await mb.set("k", "v")
+    await mb.delete("k")
+    await mb.exists("k")
+    await mb.clear()
+    await mb.health_check()
         
     # CacheManager coverage (lines 315, 327, 331, 335)
     clear_cache_manager()
@@ -553,8 +556,8 @@ async def test_events_coverage():
 @pytest.mark.asyncio
 async def test_exceptions_coverage():
     from app.core.exceptions import (
-        AppException, ValidationError, ResourceNotFoundError, 
-        AccessDeniedError, AuthenticationError, BadRequestError, 
+        AppException, ValidationError, ResourceNotFoundError,
+        AccessDeniedError, AuthenticationError, BadRequestError,
         ConflictError, ExternalServiceError, DatabaseError, InvalidStateError,
         http_exception_from_app_exception
     )
@@ -628,7 +631,7 @@ async def test_metrics_coverage():
 async def test_structured_logging_coverage():
     from app.core import structured_logging
     from app.core.structured_logging import (
-        LogContext, StructuredFormatter, log_context, 
+        StructuredFormatter, log_context, 
         PerformanceTimer, get_logger, configure_structured_logging
     )
     import logging
@@ -784,13 +787,13 @@ async def test_token_blacklist_coverage():
 
 @pytest.mark.asyncio
 async def test_dependencies_coverage():
-    from app.core.dependencies import get_current_user, get_current_active_user, require_roles, require_admin, is_admin_or_self, require_admin_or_self
+    from app.core.dependencies import get_current_user, get_current_active_user, require_roles, is_admin_or_self, require_admin_or_self
     from app.models.enums import UserRole
     from fastapi import HTTPException
     from config.settings import settings
     from uuid import uuid4
     import jwt
-    import time
+
     
     # 1. get_current_user
     db = AsyncMock()

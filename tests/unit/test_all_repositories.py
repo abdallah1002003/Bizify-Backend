@@ -2,10 +2,8 @@
 Comprehensive tests for ALL repository classes targeting near-100% coverage.
 """
 import pytest
-import asyncio
-from uuid import uuid4, UUID
+from uuid import uuid4
 from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime, timezone
 
 
 # ── Base Repository ─────────────────────────────────────────────────────────

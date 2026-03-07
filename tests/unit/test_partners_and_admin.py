@@ -1,9 +1,9 @@
 """Tests covering PartnerRequest, PartnerProfile and AdminLogService unique branches."""
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock
 import uuid
 
-from app.models.enums import ApprovalStatus, RequestStatus
+from app.models.enums import RequestStatus
 from app.services.partners.partner_profile import PartnerProfileService, get_partner_profile_service
 from app.services.partners.partner_request import PartnerRequestService, get_partner_request_service
 from app.services.partners.partner_service import get_detailed_status, reset_internal_state
