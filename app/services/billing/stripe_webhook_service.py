@@ -8,8 +8,15 @@ from sqlalchemy import select
 
 from app.models import Payment, Subscription
 from app.models.enums import PaymentStatus, SubscriptionStatus
+from app.services.base_service import BaseService
 
 logger = logging.getLogger(__name__)
+
+
+class StripeWebhookService(BaseService):
+    """Refactored class-based access to Stripe webhook handlers."""
+    async def dispatch(self, event: Any) -> bool:
+        return await dispatch(self.db, event)
 
 
 # ---------------------------------------------------------------------------

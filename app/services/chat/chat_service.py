@@ -24,7 +24,49 @@ from app.services.chat.chat_message_operations import (
     get_session_history,
 )
 
+from app.services.base_service import BaseService
+
 logger = get_logger(__name__)
+
+
+class ChatService(BaseService):
+    """Refactored class-based access to chat services."""
+    async def get_chat_session(self, id: Any) -> Any:
+        return await get_chat_session(self.db, id)
+
+    async def get_chat_sessions(self, skip: int = 0, limit: int = 100) -> Any:
+        return await get_chat_sessions(self.db, skip, limit)
+
+    async def get_chat_sessions_by_user(self, user_id: Any) -> Any:
+        return await get_chat_sessions_by_user(self.db, user_id)
+
+    async def create_chat_session(self, **kwargs) -> Any:
+        return await create_chat_session(self.db, **kwargs)
+
+    async def update_chat_session(self, db_obj: Any, obj_in: Any) -> Any:
+        return await update_chat_session(self.db, db_obj, obj_in)
+
+    async def delete_chat_session(self, id: Any) -> Any:
+        return await delete_chat_session(self.db, id)
+
+    async def get_chat_message(self, id: Any) -> Any:
+        return await get_chat_message(self.db, id)
+
+    async def get_chat_messages(self, skip: int = 0, limit: int = 100) -> Any:
+        return await get_chat_messages(self.db, skip, limit)
+
+    async def add_message(self, session_id: Any, role: str, content: str) -> Any:
+        return await add_message(self.db, session_id, role, content)
+
+    async def update_chat_message(self, db_obj: Any, obj_in: Any) -> Any:
+        return await update_chat_message(self.db, db_obj, obj_in)
+
+    async def delete_chat_message(self, id: Any) -> Any:
+        return await delete_chat_message(self.db, id)
+
+    async def get_session_history(self, session_id: Any) -> Any:
+        return await get_session_history(self.db, session_id)
+
 
 # Re-export unified async interface
 __all__ = [

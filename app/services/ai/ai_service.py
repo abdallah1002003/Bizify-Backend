@@ -12,11 +12,36 @@ from app.services.ai import provider_runtime  # noqa: F401 — exposed for monke
 from app.services.ai.agent_run_service import AgentRunService
 from app.services.ai.embedding_service import EmbeddingService
 from app.services.billing.usage_service import UsageService
+from app.services.base_service import BaseService
 from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
 
 logger = logging.getLogger(__name__)
 
 
+# ----------------------------
+# AIService class
+# ----------------------------
+
+class AIService(BaseService):
+    """Refactored class-based access to AI services."""
+    async def get_agent(self, id: UUID) -> Optional[Agent]:
+        return await get_agent(self.db, id)
+
+    async def get_agents(self, skip: int = 0, limit: int = 100) -> List[Agent]:
+        return await get_agents(self.db, skip, limit)
+
+    async def create_agent(self, **kwargs) -> Agent:
+        return await create_agent(self.db, **kwargs)
+
+    async def update_agent(self, db_obj: Agent, obj_in: Any) -> Agent:
+        return await update_agent(self.db, db_obj, obj_in)
+
+    async def delete_agent(self, id: UUID) -> Optional[Agent]:
+        return await delete_agent(self.db, id)
+
+
+# ----------------------------
+# Legacy function interface
 # ----------------------------
 # Agent
 # ----------------------------

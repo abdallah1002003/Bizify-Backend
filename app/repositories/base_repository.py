@@ -70,18 +70,20 @@ class GenericRepository(Generic[ModelType]):
     # Write
     # ------------------------------------------------------------------
 
-    async def create(self, obj_in: Dict[str, Any]) -> ModelType:
+    async def create(self, obj_in: Dict[str, Any], auto_commit: bool = True) -> ModelType:
         """Create and persist a new record."""
         db_obj = self.model(**obj_in)
         self.db.add(db_obj)
-        await self.db.commit()
-        await self.db.refresh(db_obj)
+        if auto_commit:
+            await self.db.commit()
+            await self.db.refresh(db_obj)
         return db_obj
 
     async def update(
         self,
         db_obj: ModelType,
         obj_in: Union[Dict[str, Any], Any],
+        auto_commit: bool = True,
     ) -> ModelType:
         """Update an existing record with new field values."""
         if isinstance(obj_in, dict):
@@ -98,8 +100,9 @@ class GenericRepository(Generic[ModelType]):
                 setattr(db_obj, field, value)
 
         self.db.add(db_obj)
-        await self.db.commit()
-        await self.db.refresh(db_obj)
+        if auto_commit:
+            await self.db.commit()
+            await self.db.refresh(db_obj)
         return db_obj
 
     async def delete(self, id: Any) -> Optional[ModelType]:

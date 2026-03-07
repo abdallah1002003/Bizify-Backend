@@ -16,6 +16,7 @@ from sqlalchemy import select
 from app.models import Payment, PaymentMethod, Subscription, Usage
 from app.models.enums import SubscriptionStatus, PaymentStatus
 from app.services.billing import subscription_service
+from app.services.base_service import BaseService
 from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
 from app.core.exceptions import (
     ResourceNotFoundError,
@@ -56,6 +57,30 @@ def _normalize_currency(raw: str | None) -> str:
             details={"expected": "3-letter ISO code"},
         )
     return value
+
+class PaymentService(BaseService):
+    """Refactored class-based access to payments."""
+    async def get_payment(self, id: UUID) -> Optional[Payment]:
+        return await get_payment(self.db, id)
+
+    async def get_payments(self, skip: int = 0, limit: int = 100, user_id: Optional[UUID] = None, status: Optional[PaymentStatus] = None) -> List[Payment]:
+        return await get_payments(self.db, skip, limit, user_id, status)
+
+    async def create_payment(self, obj_in: Any) -> Payment:
+        return await create_payment(self.db, obj_in)
+
+    async def update_payment(self, db_obj: Payment, obj_in: Any) -> Payment:
+        return await update_payment(self.db, db_obj, obj_in)
+
+    async def delete_payment(self, id: UUID) -> Optional[Payment]:
+        return await delete_payment(self.db, id)
+
+    async def process_payment(self, subscription_id: UUID, amount: Decimal, method_id: UUID, currency: str = "usd") -> Payment:
+        return await process_payment(self.db, subscription_id, amount, method_id, currency)
+
+    async def handle_payment_reversal(self, payment_id: UUID) -> None:
+        return await handle_payment_reversal(self.db, payment_id)
+
 
 
 # ----------------------------

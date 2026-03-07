@@ -11,10 +11,29 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.models import PaymentMethod
+from app.services.base_service import BaseService
 from app.core.crud_utils import _to_update_dict, _apply_updates
 from app.core.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
+
+class PaymentMethodService(BaseService):
+    """Refactored class-based access to payment methods."""
+    async def get_payment_method(self, id: UUID) -> Optional[PaymentMethod]:
+        return await get_payment_method(self.db, id)
+
+    async def get_payment_methods(self, skip: int = 0, limit: int = 100, user_id: Optional[UUID] = None) -> List[PaymentMethod]:
+        return await get_payment_methods(self.db, skip, limit, user_id)
+
+    async def create_payment_method(self, obj_in: Any) -> PaymentMethod:
+        return await create_payment_method(self.db, obj_in)
+
+    async def update_payment_method(self, db_obj: PaymentMethod, obj_in: Any) -> PaymentMethod:
+        return await update_payment_method(self.db, db_obj, obj_in)
+
+    async def delete_payment_method(self, id: UUID) -> Optional[PaymentMethod]:
+        return await delete_payment_method(self.db, id)
+
 
 
 def _normalize_provider(raw: str | None) -> str:

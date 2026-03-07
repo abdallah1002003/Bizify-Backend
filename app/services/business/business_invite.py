@@ -13,7 +13,55 @@ from app.models import BusinessInvite, BusinessInviteIdea, User
 from app.models.enums import CollaboratorRole, InviteStatus
 from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
 
+from app.services.base_service import BaseService
+
 logger = logging.getLogger(__name__)
+
+
+class BusinessInviteService(BaseService):
+    """Refactored class-based access to business invites."""
+    async def get_invite(self, id: UUID) -> Optional[BusinessInvite]:
+        return await get_invite(self.db, id)
+
+    async def get_business_invite(self, id: UUID) -> Optional[BusinessInvite]:
+        return await get_business_invite(self.db, id)
+
+    async def get_invites(self, business_id: UUID) -> List[BusinessInvite]:
+        return await get_invites(self.db, business_id)
+
+    async def get_business_invites(self, skip: int = 0, limit: int = 100) -> List[BusinessInvite]:
+        return await get_business_invites(self.db, skip, limit)
+
+    async def create_invite(self, business_id: UUID, email: str, invited_by: UUID) -> BusinessInvite:
+        return await create_invite(self.db, business_id, email, invited_by)
+
+    async def create_business_invite(self, obj_in: Any) -> BusinessInvite:
+        return await create_business_invite(self.db, obj_in)
+
+    async def update_business_invite(self, db_obj: BusinessInvite, obj_in: Any) -> BusinessInvite:
+        return await update_business_invite(self.db, db_obj, obj_in)
+
+    async def delete_business_invite(self, id: UUID) -> Optional[BusinessInvite]:
+        return await delete_business_invite(self.db, id)
+
+    async def accept_invite(self, token: str, user_id: UUID) -> bool:
+        return await accept_invite(self.db, token, user_id)
+
+    # BusinessInviteIdea
+    async def get_business_invite_idea(self, id: UUID) -> Optional[BusinessInviteIdea]:
+        return await get_business_invite_idea(self.db, id)
+
+    async def get_business_invite_ideas(self, skip: int = 0, limit: int = 100) -> List[BusinessInviteIdea]:
+        return await get_business_invite_ideas(self.db, skip, limit)
+
+    async def create_business_invite_idea(self, obj_in: Any) -> BusinessInviteIdea:
+        return await create_business_invite_idea(self.db, obj_in)
+
+    async def update_business_invite_idea(self, db_obj: BusinessInviteIdea, obj_in: Any) -> BusinessInviteIdea:
+        return await update_business_invite_idea(self.db, db_obj, obj_in)
+
+    async def delete_business_invite_idea(self, id: UUID) -> Optional[BusinessInviteIdea]:
+        return await delete_business_invite_idea(self.db, id)
 
 
 # ----------------------------

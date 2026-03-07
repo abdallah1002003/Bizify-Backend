@@ -14,7 +14,34 @@ from sqlalchemy import select
 from app.models import PartnerProfile
 from app.models.enums import ApprovalStatus, PartnerType
 
+from app.services.base_service import BaseService
+
 logger = logging.getLogger(__name__)
+
+
+class PartnerProfileService(BaseService):
+    """Refactored class-based access to partner profiles."""
+    async def get_partner_profile(self, id: UUID) -> Optional[PartnerProfile]:
+        return await get_partner_profile(self.db, id)
+
+    async def get_partner_profiles(self, skip: int = 0, limit: int = 100) -> List[PartnerProfile]:
+        return await get_partner_profiles(self.db, skip, limit)
+
+    async def create_partner_profile(self, **kwargs) -> PartnerProfile:
+        return await create_partner_profile(self.db, **kwargs)
+
+    async def update_partner_profile(self, db_obj: PartnerProfile, obj_in: Any) -> PartnerProfile:
+        return await update_partner_profile(self.db, db_obj, obj_in)
+
+    async def delete_partner_profile(self, id: UUID) -> Optional[PartnerProfile]:
+        return await delete_partner_profile(self.db, id)
+
+    async def approve_partner_profile(self, profile_id: UUID, approver_id: UUID) -> Optional[PartnerProfile]:
+        return await approve_partner_profile(self.db, profile_id, approver_id)
+
+    async def match_partners_by_capability(self, business_needs: Dict[str, Any]) -> List[PartnerProfile]:
+        return await match_partners_by_capability(self.db, business_needs)
+
 
 from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
 
