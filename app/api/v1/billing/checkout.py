@@ -17,9 +17,14 @@ from app.core.dependencies import get_current_active_user
 from config.settings import settings
 import app.models as models
 
+<<<<<<< HEAD
 from app.services.billing.plan_service import PlanService
 from app.services.users.user_service import UserService
 from app.api.v1.service_dependencies import get_plan_service, get_user_service
+=======
+from app.services.billing.plan_service import PlanService, get_plan_service
+from app.services.users.user_service import UserService, get_user_service
+>>>>>>> origin/main
 
 logger = logging.getLogger(__name__)
 

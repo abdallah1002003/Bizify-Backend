@@ -4,7 +4,16 @@ from sqlalchemy import select
 
 import app.models as models
 from app.core.security import get_password_hash
+<<<<<<< HEAD
 from app.services.core.cleanup_service import CleanupService
+=======
+from app.services.core.cleanup_service import (
+    cleanup_all,
+    cleanup_expired_refresh_tokens,
+    cleanup_expired_password_reset_tokens,
+    cleanup_expired_verification_tokens,
+)
+>>>>>>> origin/main
 
 
 # ---------------------------------------------------------------------------
@@ -51,8 +60,12 @@ class TestCleanupRefreshTokens:
         async_db.add_all([expired, active])
         await async_db.commit()
 
+<<<<<<< HEAD
         service = CleanupService(async_db)
         deleted = await service.cleanup_expired_refresh_tokens()
+=======
+        deleted = await cleanup_expired_refresh_tokens(async_db)
+>>>>>>> origin/main
         assert deleted == 1
         
         stmt_expired = select(models.RefreshToken).filter_by(jti="expired-jti")
@@ -65,8 +78,12 @@ class TestCleanupRefreshTokens:
 
     @pytest.mark.asyncio
     async def test_returns_zero_when_nothing_to_clean(self, async_db):
+<<<<<<< HEAD
         service = CleanupService(async_db)
         assert await service.cleanup_expired_refresh_tokens() == 0
+=======
+        assert await cleanup_expired_refresh_tokens(async_db) == 0
+>>>>>>> origin/main
 
 
 # ---------------------------------------------------------------------------
@@ -82,8 +99,12 @@ class TestCleanupPasswordResetTokens:
         async_db.add_all([expired, fresh])
         await async_db.commit()
 
+<<<<<<< HEAD
         service = CleanupService(async_db)
         deleted = await service.cleanup_expired_password_reset_tokens()
+=======
+        deleted = await cleanup_expired_password_reset_tokens(async_db)
+>>>>>>> origin/main
         assert deleted == 1
         
         stmt = select(models.PasswordResetToken).filter_by(jti="pr-expired")
@@ -97,8 +118,12 @@ class TestCleanupPasswordResetTokens:
         async_db.add(used)
         await async_db.commit()
 
+<<<<<<< HEAD
         service = CleanupService(async_db)
         deleted = await service.cleanup_expired_password_reset_tokens()
+=======
+        deleted = await cleanup_expired_password_reset_tokens(async_db)
+>>>>>>> origin/main
         assert deleted == 1
 
 
@@ -115,8 +140,12 @@ class TestCleanupVerificationTokens:
         async_db.add_all([expired, fresh])
         await async_db.commit()
 
+<<<<<<< HEAD
         service = CleanupService(async_db)
         deleted = await service.cleanup_expired_verification_tokens()
+=======
+        deleted = await cleanup_expired_verification_tokens(async_db)
+>>>>>>> origin/main
         assert deleted == 1
         
         stmt = select(models.EmailVerificationToken).filter_by(jti="ev-expired")
@@ -130,8 +159,12 @@ class TestCleanupVerificationTokens:
         async_db.add(used)
         await async_db.commit()
 
+<<<<<<< HEAD
         service = CleanupService(async_db)
         deleted = await service.cleanup_expired_verification_tokens()
+=======
+        deleted = await cleanup_expired_verification_tokens(async_db)
+>>>>>>> origin/main
         assert deleted == 1
 
 
@@ -142,8 +175,12 @@ class TestCleanupVerificationTokens:
 class TestCleanupAll:
     @pytest.mark.asyncio
     async def test_returns_summary_dict(self, async_db):
+<<<<<<< HEAD
         service = CleanupService(async_db)
         result = await service.cleanup_all()
+=======
+        result = await cleanup_all(async_db)
+>>>>>>> origin/main
         assert set(result.keys()) == {"refresh_tokens", "password_reset_tokens", "verification_tokens"}
         assert all(isinstance(v, int) for v in result.values())
 
@@ -157,8 +194,12 @@ class TestCleanupAll:
         ])
         await async_db.commit()
 
+<<<<<<< HEAD
         service = CleanupService(async_db)
         summary = await service.cleanup_all()
+=======
+        summary = await cleanup_all(async_db)
+>>>>>>> origin/main
         assert summary["refresh_tokens"] >= 1
         assert summary["password_reset_tokens"] >= 1
         assert summary["verification_tokens"] >= 1

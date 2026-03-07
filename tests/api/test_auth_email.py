@@ -12,12 +12,18 @@ Integration tests for the auth email flow:
 # Helpers
 # ---------------------------------------------------------------------------
 
+<<<<<<< HEAD
 import pytest
 from uuid import UUID, uuid4
 from app.core.exceptions import BadRequestError
 
 def _register_user(client, email=None, password="securepass123"):
     email = email or f"reg_{uuid4().hex[:8]}@example.com"
+=======
+from uuid import UUID
+
+def _register_user(client, email="newuser@example.com", password="securepass123"):
+>>>>>>> origin/main
     return client.post(
         "/api/v1/auth/register",
         json={"name": "New User", "email": email, "password": password},
@@ -33,8 +39,12 @@ class TestVerificationEmailFlow:
 
     def test_register_queues_verification_email(self, client, mock_dispatcher):
         """POST /register must call dispatcher.emit for user.created."""
+<<<<<<< HEAD
         email = f"reg_{uuid4().hex[:8]}@example.com"
         resp = _register_user(client, email=email)
+=======
+        resp = _register_user(client)
+>>>>>>> origin/main
         assert resp.status_code == 201
         data = resp.json()
         assert "id" in data
@@ -42,12 +52,20 @@ class TestVerificationEmailFlow:
 
         # Check if the event was emitted
         from unittest.mock import ANY
+<<<<<<< HEAD
         mock_dispatcher.assert_called_with("auth.user_registered", {"user_id": UUID(data["id"]), "email": email, "token": ANY})
 
     def test_register_duplicate_email_returns_409(self, client):
         email = f"dup_{uuid4().hex[:8]}@example.com"
         _register_user(client, email=email)
         resp = _register_user(client, email=email)
+=======
+        mock_dispatcher.assert_called_with("auth.user_registered", {"user_id": UUID(data["id"]), "email": "newuser@example.com", "token": ANY})
+
+    def test_register_duplicate_email_returns_409(self, client):
+        _register_user(client)
+        resp = _register_user(client)
+>>>>>>> origin/main
         assert resp.status_code == 409
 
     def test_verify_email_endpoint_sets_verified(self, client, db, monkeypatch):
@@ -60,10 +78,15 @@ class TestVerificationEmailFlow:
 
         # 1. Create an unverified user directly
         from app.core.security import get_password_hash
+<<<<<<< HEAD
         import uuid
         email = f"verify_{uuid.uuid4().hex[:8]}@example.com"
         user = models.User(
             email=email,
+=======
+        user = models.User(
+            email="toverify@example.com",
+>>>>>>> origin/main
             name="Verify Me",
             password_hash=get_password_hash("pass1234"),
             role="entrepreneur",
@@ -110,10 +133,15 @@ class TestVerificationEmailFlow:
         import jwt
         from datetime import datetime, timezone
 
+<<<<<<< HEAD
         import uuid
         email = f"single_{uuid.uuid4().hex[:8]}@example.com"
         user = models.User(
             email=email,
+=======
+        user = models.User(
+            email="singleuse@example.com",
+>>>>>>> origin/main
             name="Single Use",
             password_hash=get_password_hash("pass1234"),
             role="entrepreneur",
@@ -141,12 +169,21 @@ class TestVerificationEmailFlow:
         first = client.get(f"/api/v1/auth/verify-email?token={token}")
         assert first.status_code == 200
 
+<<<<<<< HEAD
         with pytest.raises(BadRequestError):
             client.get(f"/api/v1/auth/verify-email?token={token}")
 
     def test_verify_email_invalid_token_returns_400(self, client):
         with pytest.raises(BadRequestError):
             client.get("/api/v1/auth/verify-email?token=not-a-real-token")
+=======
+        second = client.get(f"/api/v1/auth/verify-email?token={token}")
+        assert second.status_code == 400
+
+    def test_verify_email_invalid_token_returns_400(self, client):
+        resp = client.get("/api/v1/auth/verify-email?token=not-a-real-token")
+        assert resp.status_code == 400
+>>>>>>> origin/main
 
 
 # ---------------------------------------------------------------------------
@@ -176,7 +213,11 @@ class TestPasswordResetEmailFlow:
         """POST /forgot-password for unknown email must return 200 (no user enumeration)."""
         resp = client.post(
             "/api/v1/auth/forgot-password",
+<<<<<<< HEAD
             json={"email": f"ghost_{uuid4().hex[:8]}@example.com"},
+=======
+            json={"email": "ghost@example.com"},
+>>>>>>> origin/main
         )
         assert resp.status_code == 200
         mock_dispatcher.assert_not_called()  # no email event sent for unknown user
@@ -221,8 +262,16 @@ class TestPasswordResetEmailFlow:
         assert "updated" in resp2.json()["message"].lower()
 
         # 4. Token must be single-use
+<<<<<<< HEAD
         with pytest.raises(BadRequestError):
             client.post(
                 "/api/v1/auth/reset-password",
                 json={"token": token, "new_password": "AnotherPass99"},
             )
+=======
+        resp3 = client.post(
+            "/api/v1/auth/reset-password",
+            json={"token": token, "new_password": "AnotherPass99"},
+        )
+        assert resp3.status_code == 400
+>>>>>>> origin/main

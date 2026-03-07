@@ -3,7 +3,11 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from typing import List, Optional, TYPE_CHECKING
+<<<<<<< HEAD
 from sqlalchemy import String, Boolean, DateTime, ForeignKey, Enum, JSON, Float, Integer, UniqueConstraint
+=======
+from sqlalchemy import String, Boolean, DateTime, ForeignKey, Enum, JSON, Float, Integer
+>>>>>>> origin/main
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.guid import GUID
 from app.db.database import Base
@@ -85,6 +89,7 @@ class BusinessCollaborator(Base, TimestampMixin, SoftDeleteMixin):
 
     business: Mapped["Business"] = relationship("Business", back_populates="collaborators")
     user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
+<<<<<<< HEAD
     ##Afnan - Added unique constraint for business_collaborators
     __table_args__ = (
     UniqueConstraint(
@@ -93,6 +98,8 @@ class BusinessCollaborator(Base, TimestampMixin, SoftDeleteMixin):
         name="uq_business_collaborator_business_user"
     ),
 )
+=======
+>>>>>>> origin/main
 
 class BusinessInvite(Base, TimestampMixin, SoftDeleteMixin):
     """Invitation to join a business with token tracking."""
@@ -134,8 +141,12 @@ class BusinessInviteIdea(Base, TimestampMixin, SoftDeleteMixin):
         "BusinessInvite", back_populates="ideas_invited_for"
     )
     idea: Mapped["Idea"] = relationship("Idea", back_populates="business_invites")
+<<<<<<< HEAD
     ##Afnan - Added unique constraint for business_invite_ideas
     __table_args__ = (UniqueConstraint("invite_id", "idea_id"),)
+=======
+
+>>>>>>> origin/main
 
 class BusinessRoadmap(Base, TimestampMixin, SoftDeleteMixin):
     """Business development roadmap with stages."""

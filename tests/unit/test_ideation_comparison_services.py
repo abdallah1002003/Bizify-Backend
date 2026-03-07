@@ -53,16 +53,25 @@ async def test_idea_comparison_crud(async_db):
     
     # 1. create_idea_comparison
     input_data = {"name": "Test Comparison", "user_id": user.id}
+<<<<<<< HEAD
     comp = await idea_comparison.IdeaComparisonService(async_db).create_idea_comparison( input_data)
+=======
+    comp = await idea_comparison.create_idea_comparison(async_db, input_data)
+>>>>>>> origin/main
     assert comp.name == "Test Comparison"
     assert comp.user_id == user.id
     
     # 2. get_idea_comparison
+<<<<<<< HEAD
     found = await idea_comparison.IdeaComparisonService(async_db).get_idea_comparison( comp.id)
+=======
+    found = await idea_comparison.get_idea_comparison(async_db, comp.id)
+>>>>>>> origin/main
     assert found is not None
     assert found.id == comp.id
     
     # 3. get_idea_comparisons
+<<<<<<< HEAD
     all_comps = await idea_comparison.IdeaComparisonService(async_db).get_idea_comparisons( skip=0, limit=10)
     assert len(all_comps) >= 1
     
@@ -80,6 +89,25 @@ async def test_idea_comparison_crud(async_db):
     
     # delete non-existent
     assert await idea_comparison.IdeaComparisonService(async_db).delete_idea_comparison( uuid4()) is None
+=======
+    all_comps = await idea_comparison.get_idea_comparisons(async_db, skip=0, limit=10)
+    assert len(all_comps) >= 1
+    
+    # 4. update_idea_comparison
+    updated = await idea_comparison.update_idea_comparison(async_db, comp, {"name": "Updated Name"})
+    assert updated.name == "Updated Name"
+    
+    # 5. create_comparison (convenience)
+    conv_comp = await idea_comparison.create_comparison(async_db, "Convenience", user.id)
+    assert conv_comp.name == "Convenience"
+    
+    # 6. delete_idea_comparison
+    await idea_comparison.delete_idea_comparison(async_db, conv_comp.id)
+    assert await idea_comparison.get_idea_comparison(async_db, conv_comp.id) is None
+    
+    # delete non-existent
+    assert await idea_comparison.delete_idea_comparison(async_db, uuid4()) is None
+>>>>>>> origin/main
 
 # ---------------------------------------------------------------------------
 # Comparison Item Tests
@@ -90,15 +118,23 @@ async def test_comparison_item_crud_and_ranking(async_db):
     user = await _create_user(async_db, "item_user")
     idea1 = await _create_idea(async_db, user.id, "Idea 1")
     idea2 = await _create_idea(async_db, user.id, "Idea 2")
+<<<<<<< HEAD
     comp = await idea_comparison.IdeaComparisonService(async_db).create_comparison( "Ranking Comp", user.id)
     
     # 1. add_item_to_comparison (first item - rank 0)
     item1 = await idea_comparison_item.ComparisonItemService(async_db).add_item_to_comparison( comp.id, idea1.id)
+=======
+    comp = await idea_comparison.create_comparison(async_db, "Ranking Comp", user.id)
+    
+    # 1. add_item_to_comparison (first item - rank 0)
+    item1 = await idea_comparison_item.add_item_to_comparison(async_db, comp.id, idea1.id)
+>>>>>>> origin/main
     assert item1.rank_index == 0
     assert item1.comparison_id == comp.id
     assert item1.idea_id == idea1.id
     
     # 2. add_item_to_comparison (second item - rank 1)
+<<<<<<< HEAD
     item2 = await idea_comparison_item.ComparisonItemService(async_db).add_item_to_comparison( comp.id, idea2.id)
     assert item2.rank_index == 1
     
@@ -122,6 +158,31 @@ async def test_comparison_item_crud_and_ranking(async_db):
     await idea_comparison_item.ComparisonItemService(async_db).delete_comparison_item( direct.id)
     assert await idea_comparison_item.ComparisonItemService(async_db).get_comparison_item( direct.id) is None
     assert await idea_comparison_item.ComparisonItemService(async_db).delete_comparison_item( uuid4()) is None
+=======
+    item2 = await idea_comparison_item.add_item_to_comparison(async_db, comp.id, idea2.id)
+    assert item2.rank_index == 1
+    
+    # 3. get_comparison_item
+    found = await idea_comparison_item.get_comparison_item(async_db, item1.id)
+    assert found.id == item1.id
+    
+    # 4. get_comparison_items
+    all_items = await idea_comparison_item.get_comparison_items(async_db)
+    assert len(all_items) >= 2
+    
+    # 5. update_comparison_item
+    updated = await idea_comparison_item.update_comparison_item(async_db, item1, {"rank_index": 10})
+    assert updated.rank_index == 10
+    
+    # 6. create_comparison_item (direct)
+    direct = await idea_comparison_item.create_comparison_item(async_db, {"comparison_id": comp.id, "idea_id": idea1.id, "rank_index": 5})
+    assert direct.rank_index == 5
+    
+    # 7. delete_comparison_item
+    await idea_comparison_item.delete_comparison_item(async_db, direct.id)
+    assert await idea_comparison_item.get_comparison_item(async_db, direct.id) is None
+    assert await idea_comparison_item.delete_comparison_item(async_db, uuid4()) is None
+>>>>>>> origin/main
 
 # ---------------------------------------------------------------------------
 # Comparison Metric Tests
@@ -130,7 +191,11 @@ async def test_comparison_item_crud_and_ranking(async_db):
 @pytest.mark.asyncio
 async def test_comparison_metric_crud(async_db):
     user = await _create_user(async_db, "metric_user")
+<<<<<<< HEAD
     comp = await idea_comparison.IdeaComparisonService(async_db).create_comparison( "Metric Comp", user.id)
+=======
+    comp = await idea_comparison.create_comparison(async_db, "Metric Comp", user.id)
+>>>>>>> origin/main
     
     # 1. create_comparison_metric
     metric_data = {
@@ -138,11 +203,16 @@ async def test_comparison_metric_crud(async_db):
         "metric_name": "Cost",
         "value": 100.0
     }
+<<<<<<< HEAD
     metric = await idea_comparison_metric.ComparisonMetricService(async_db).create_comparison_metric( metric_data)
+=======
+    metric = await idea_comparison_metric.create_comparison_metric(async_db, metric_data)
+>>>>>>> origin/main
     assert metric.metric_name == "Cost"
     assert metric.value == 100.0
     
     # 2. get_comparison_metric
+<<<<<<< HEAD
     found = await idea_comparison_metric.ComparisonMetricService(async_db).get_comparison_metric( metric.id)
     assert found.id == metric.id
     
@@ -158,3 +228,20 @@ async def test_comparison_metric_crud(async_db):
     await idea_comparison_metric.ComparisonMetricService(async_db).delete_comparison_metric( metric.id)
     assert await idea_comparison_metric.ComparisonMetricService(async_db).get_comparison_metric( metric.id) is None
     assert await idea_comparison_metric.ComparisonMetricService(async_db).delete_comparison_metric( uuid4()) is None
+=======
+    found = await idea_comparison_metric.get_comparison_metric(async_db, metric.id)
+    assert found.id == metric.id
+    
+    # 3. get_comparison_metrics
+    all_metrics = await idea_comparison_metric.get_comparison_metrics(async_db)
+    assert len(all_metrics) >= 1
+    
+    # 4. update_comparison_metric
+    updated = await idea_comparison_metric.update_comparison_metric(async_db, metric, {"value": 200.0})
+    assert updated.value == 200.0
+    
+    # 5. delete_comparison_metric
+    await idea_comparison_metric.delete_comparison_metric(async_db, metric.id)
+    assert await idea_comparison_metric.get_comparison_metric(async_db, metric.id) is None
+    assert await idea_comparison_metric.delete_comparison_metric(async_db, uuid4()) is None
+>>>>>>> origin/main

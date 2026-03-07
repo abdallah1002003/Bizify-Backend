@@ -5,7 +5,12 @@ from app.services.ai.provider_runtime import (
     _normalize_vector,
     _deterministic_vector,
     _mock_agent_response,
+<<<<<<< HEAD
     AIProviderService
+=======
+    generate_embedding_vector,
+    run_agent_execution
+>>>>>>> origin/main
 )
 
 def test_normalize_score():
@@ -40,18 +45,29 @@ def test_mock_agent_response():
 async def test_generate_embedding_vector_fallback():
     # Force OpenAI disabled
     with patch("app.services.ai.provider_runtime._is_openai_enabled", return_value=False):
+<<<<<<< HEAD
         service = AIProviderService(None) # type: ignore
         v = await service.generate_embedding_vector("hello", dimensions=10)
         assert len(v) == 10
         # Should be deterministic
         v2 = await service.generate_embedding_vector("hello", dimensions=10)
+=======
+        v = await generate_embedding_vector("hello", dimensions=10)
+        assert len(v) == 10
+        # Should be deterministic
+        v2 = await generate_embedding_vector("hello", dimensions=10)
+>>>>>>> origin/main
         assert v == v2
 
 @pytest.mark.asyncio
 async def test_run_agent_execution_mock_fallback():
     # Force OpenAI disabled
     with patch("app.services.ai.provider_runtime._is_openai_enabled", return_value=False):
+<<<<<<< HEAD
         service = AIProviderService(None) # type: ignore
         resp = await service.run_agent_execution({"q": "test"}, agent_name="AgentA", stage_type="T")
+=======
+        resp = await run_agent_execution({"q": "test"}, agent_name="AgentA", stage_type="T")
+>>>>>>> origin/main
         assert resp["mode"] == "mock"
         assert "AgentA" in resp["summary"]

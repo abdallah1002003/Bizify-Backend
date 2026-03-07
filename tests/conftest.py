@@ -130,9 +130,7 @@ async def async_client(async_db) -> AsyncGenerator[AsyncClient, None]:
 
 @pytest.fixture(scope="function", autouse=True)
 def mock_dispatcher():
-    """Global mock for event dispatcher and cleanup of global states."""
-    from app.core.token_blacklist import clear_blacklist
-    clear_blacklist()
+    """Global mock for event dispatcher."""
     with patch("app.core.events.dispatcher.emit", new_callable=AsyncMock) as mock:
         yield mock
 

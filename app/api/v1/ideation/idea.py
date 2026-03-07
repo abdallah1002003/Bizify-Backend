@@ -3,8 +3,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.pagination import LimitParam, SkipParam
 from app.schemas.ideation.idea import IdeaCreate, IdeaUpdate, IdeaResponse
+<<<<<<< HEAD
 from app.services.ideation.idea_service import IdeaService
 from app.api.v1.service_dependencies import get_idea_service
+=======
+from app.services.ideation.idea_service import IdeaService, get_idea_service
+>>>>>>> origin/main
 from app.core.dependencies import get_current_active_user
 import app.models as models
 from app.core.cache import get_cache_manager

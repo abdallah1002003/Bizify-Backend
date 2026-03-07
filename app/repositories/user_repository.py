@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 """
 Repository for User domain models:
   - User
@@ -8,23 +9,34 @@ Repository for User domain models:
 # Service → Repository → Database
 # User services should delegate all persistence to this repository.
 """
+=======
+>>>>>>> origin/main
 from typing import List, Optional, cast
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
+<<<<<<< HEAD
 from sqlalchemy.exc import IntegrityError
 
 from app.models.users.user import User, UserProfile, AdminActionLog
 from app.models.enums import UserRole
+=======
+
+from app.models.users.user import User
+>>>>>>> origin/main
 from app.repositories.base_repository import GenericRepository
 
 
 class UserRepository(GenericRepository[User]):
     """Repository for User model (Asynchronous)."""
 
+<<<<<<< HEAD
     def __init__(self, db: AsyncSession, model: type[User] = User) -> None:
+=======
+    def __init__(self, db: AsyncSession, model: type[User]) -> None:
+>>>>>>> origin/main
         super().__init__(db, model)
 
     async def get_by_email(self, email: str) -> Optional[User]:
@@ -33,6 +45,7 @@ class UserRepository(GenericRepository[User]):
         result = await self.db.execute(stmt)
         return cast(Optional[User], result.scalar_one_or_none())
 
+<<<<<<< HEAD
     async def create_safe(self, obj_in: dict, auto_commit: bool = True) -> Optional[User]:
         """Create a user safely, returning None on IntegrityError (duplicate email)."""
         try:
@@ -52,6 +65,8 @@ class UserRepository(GenericRepository[User]):
         result = await self.db.execute(stmt)
         return cast(Optional[User], result.scalar_one_or_none())
 
+=======
+>>>>>>> origin/main
 
     async def get_with_profile(self, id: UUID) -> Optional[User]:
         """Retrieve a user by ID, eager loading their profile."""
@@ -65,6 +80,7 @@ class UserRepository(GenericRepository[User]):
         stmt = select(User).options(joinedload(User.profile)).offset(skip).limit(limit)
         result = await self.db.execute(stmt)
         return cast(List[User], list(result.scalars().all()))
+<<<<<<< HEAD
 
     async def has_admin_user(self) -> bool:
         """Return True if at least one admin account exists."""
@@ -100,3 +116,5 @@ class AdminActionLogRepository(GenericRepository[AdminActionLog]):
 
     def __init__(self, db: AsyncSession) -> None:
         super().__init__(db, AdminActionLog)
+=======
+>>>>>>> origin/main

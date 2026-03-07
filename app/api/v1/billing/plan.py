@@ -4,8 +4,12 @@ from app.core.pagination import LimitParam, SkipParam, PageResponse
 from app.core.dependencies import get_current_active_user, require_admin
 import app.models as models
 from app.schemas.billing.plan import PlanCreate, PlanUpdate, PlanResponse
+<<<<<<< HEAD
 from app.services.billing.plan_service import PlanService
 from app.api.v1.service_dependencies import get_plan_service
+=======
+from app.services.billing.plan_service import PlanService, get_plan_service
+>>>>>>> origin/main
 
 router = APIRouter()
 

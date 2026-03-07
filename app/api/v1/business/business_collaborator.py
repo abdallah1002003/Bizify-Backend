@@ -3,8 +3,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.pagination import LimitParam, SkipParam
 from app.schemas.business.business_collaborator import BusinessCollaboratorCreate, BusinessCollaboratorUpdate, BusinessCollaboratorResponse
+<<<<<<< HEAD
 from app.services.business.business_collaborator import BusinessCollaboratorService
 from app.api.v1.service_dependencies import get_business_collaborator_service
+=======
+from app.services.business.business_collaborator import BusinessCollaboratorService, get_business_collaborator_service
+>>>>>>> origin/main
 
 router = APIRouter()
 

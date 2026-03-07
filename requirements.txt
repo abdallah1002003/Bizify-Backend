@@ -85,4 +85,14 @@ zope.event==6.0
 zope.interface==8.0.1
 redis>=5.2.1
 
+<<<<<<< HEAD
 # Dev / CI Dependencies are now in dev-requirements.txt
+=======
+# Dev / CI Dependencies
+ruff==0.1.14
+mypy==1.8.0
+pytest==8.0.0
+pytest-cov==4.1.0
+coverage==7.10.7
+types-bleach==6.1.0.20240331
+>>>>>>> origin/main

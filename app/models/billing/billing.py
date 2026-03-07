@@ -4,7 +4,11 @@ import uuid
 from datetime import datetime
 from typing import List, Optional, TYPE_CHECKING
 from decimal import Decimal
+<<<<<<< HEAD
 from sqlalchemy import String, Boolean, DateTime, ForeignKey, Enum, JSON, Numeric, Integer, Index, UniqueConstraint
+=======
+from sqlalchemy import String, Boolean, DateTime, ForeignKey, Enum, JSON, Numeric, Integer, Index
+>>>>>>> origin/main
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.guid import GUID
 from app.core.encryption import EncryptedString
@@ -118,10 +122,15 @@ class Payment(Base, TimestampMixin, SoftDeleteMixin):
 class Usage(Base, TimestampMixin, SoftDeleteMixin):
     """Resource usage tracking per user and resource type."""
     __tablename__ = "usages"
+<<<<<<< HEAD
     ##Afnan - Added unique constraint for usages
     __table_args__ = (
         Index("ix_usages_user_id_resource_type", "user_id", "resource_type"),
         UniqueConstraint("user_id", "resource_type", name="uq_usage_user_resource_type"),
+=======
+    __table_args__ = (
+        Index("ix_usages_user_id_resource_type", "user_id", "resource_type"),
+>>>>>>> origin/main
     )
 
     id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)

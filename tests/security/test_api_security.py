@@ -2,10 +2,8 @@ from uuid import uuid4
 
 import app.models as models
 import pytest
-from unittest.mock import patch
 
 from config.settings import settings
-from app.core.exceptions import ConflictError
 
 
 def _signup(client, email: str, role: str = "entrepreneur"):
@@ -164,35 +162,40 @@ def test_bootstrap_admin_requires_valid_token(client, bootstrap_admin_config):
     assert response.status_code == 403
 
 
-def test_bootstrap_admin_is_one_time_flow(client, db, bootstrap_admin_config):
+def test_bootstrap_admin_is_one_time_flow(client, bootstrap_admin_config):
     settings.ALLOW_ADMIN_BOOTSTRAP = True
     settings.ADMIN_BOOTSTRAP_TOKEN = "bootstrap-secret"
 
     email = f"bootstrap_{uuid4().hex[:8]}@example.com"
-    
-    # Mock has_admin_user to ensure the first call returns False
-    with patch("app.services.users.user_service.UserService.has_admin_user", side_effect=[False, True]):
-        response = client.post(
-            "/api/v1/auth/bootstrap-admin",
-            headers={"X-Bootstrap-Token": "bootstrap-secret"},
-            json={
-                "name": "Bootstrap Admin",
-                "email": email,
-                "password": "securepassword123",
-            },
-        )
-        assert response.status_code == 201
-        data = response.json()
-        assert data["role"] == "admin"
+    response = client.post(
+        "/api/v1/auth/bootstrap-admin",
+        headers={"X-Bootstrap-Token": "bootstrap-secret"},
+        json={
+            "name": "Bootstrap Admin",
+            "email": email,
+            "password": "securepassword123",
+        },
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["role"] == "admin"
+    assert data["token_type"] == "bearer"
+    assert data["access_token"]
 
-        # The second call inside the patch will return True from side_effect
-        with pytest.raises(ConflictError):
-            client.post(
-                "/api/v1/auth/bootstrap-admin",
-                headers={"X-Bootstrap-Token": "bootstrap-secret"},
-                json={
-                    "name": "Second Admin",
-                    "email": f"second_{uuid4().hex[:8]}@example.com",
-                    "password": "securepassword123",
-                },
-            )
+    me_response = client.get(
+        "/api/v1/users/me",
+        headers={"Authorization": f"Bearer {data['access_token']}"},
+    )
+    assert me_response.status_code == 200
+    assert me_response.json()["role"] == "admin"
+
+    second_response = client.post(
+        "/api/v1/auth/bootstrap-admin",
+        headers={"X-Bootstrap-Token": "bootstrap-secret"},
+        json={
+            "name": "Second Admin",
+            "email": f"second_{uuid4().hex[:8]}@example.com",
+            "password": "securepassword123",
+        },
+    )
+    assert second_response.status_code == 409

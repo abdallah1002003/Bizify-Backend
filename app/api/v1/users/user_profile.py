@@ -4,8 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.core.pagination import LimitParam, SkipParam
 from app.models.enums import UserRole
 from app.schemas.users.user_profile import UserProfileCreate, UserProfileUpdate, UserProfileResponse
+<<<<<<< HEAD
 from app.services.users.user_service import UserService
 from app.api.v1.service_dependencies import get_user_service
+=======
+from app.services.users.user_service import UserService, get_user_service
+>>>>>>> origin/main
 from app.core.dependencies import (
     get_current_active_user,
     require_admin,

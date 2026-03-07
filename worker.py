@@ -13,8 +13,13 @@ from app.core.cache import get_cache_manager
 from app.core.events import dispatcher
 from app.core.event_handlers import register_all_handlers
 from app.db.database import AsyncSessionLocal
+<<<<<<< HEAD
 from app.services.core.cleanup_service import CleanupService
 from app.services.core.email_worker import EmailWorkerService
+=======
+from app.services.core.cleanup_service import cleanup_all
+from app.services.core.email_worker import run_email_worker
+>>>>>>> origin/main
 
 configure_structured_logging("INFO")
 logger = logging.getLogger("worker")
@@ -27,7 +32,11 @@ async def _periodic_cleanup() -> None:
         await asyncio.sleep(_CLEANUP_INTERVAL_SECONDS)
         async with AsyncSessionLocal() as db:
             try:
+<<<<<<< HEAD
                 summary = await CleanupService(db).cleanup_all()
+=======
+                summary = await cleanup_all(db)
+>>>>>>> origin/main
                 logger.info("Periodic cleanup completed: %s", summary)
             except Exception:
                 logger.exception("Periodic cleanup failed")
@@ -50,11 +59,18 @@ async def process_queue():
     while True:
         try:
             # Block until an event is available or timeout after 5 seconds
+<<<<<<< HEAD
             result = await redis_client.brpop(queue_key, timeout=5)
             if not result:
                 continue
                 
             # redis-py returns a tuple (key, value)
+=======
+            result = redis_client.brpop(queue_key, timeout=5)
+            if not result:
+                continue
+                
+>>>>>>> origin/main
             _, data_bytes = result
             
             try:
@@ -82,10 +98,16 @@ async def process_queue():
 async def main():
     logger.info("Starting background worker with multiple tasks...")
     # Run the various tasks concurrently using gather
+<<<<<<< HEAD
     email_service = EmailWorkerService(None) # type: ignore — loop creates its own sessions
     await asyncio.gather(
         process_queue(),
         email_service.run_email_worker(interval_seconds=10),
+=======
+    await asyncio.gather(
+        process_queue(),
+        run_email_worker(interval_seconds=10),
+>>>>>>> origin/main
         _periodic_cleanup()
     )
 

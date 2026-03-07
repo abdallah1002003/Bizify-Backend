@@ -23,9 +23,13 @@ from jinja2 import Environment, FileSystemLoader
 template_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "templates", "email")
 jinja_env = Environment(loader=FileSystemLoader(template_dir))
 
+<<<<<<< HEAD
 from app.services.base_service import BaseService
 
 class EmailService(BaseService):
+=======
+class EmailService:
+>>>>>>> origin/main
     """Service for sending transactional emails."""
 
     def render_template(self, template_name: str, **context) -> str:
@@ -43,6 +47,7 @@ class EmailService(BaseService):
 
     async def _queue_email(self, to_email: str, subject: str, html_body: str) -> None:
         """Add email to the database queue for asynchronous processing."""
+<<<<<<< HEAD
         from app.repositories.core_repository import EmailMessageRepository
 
         repo = EmailMessageRepository(self.db)
@@ -59,6 +64,25 @@ class EmailService(BaseService):
         except Exception as e:
             await repo.rollback()
             logger.error("Failed to queue email for %s: %s", to_email, e)
+=======
+        from app.db.database import AsyncSessionLocal
+        from app.models.core.core import EmailMessage
+
+        async with AsyncSessionLocal() as db:
+            try:
+                msg = EmailMessage(
+                    to_email=to_email,
+                    subject=subject,
+                    html_body=html_body,
+                    status="PENDING"
+                )
+                db.add(msg)
+                await db.commit()
+                logger.info("Email queued for %s (subject: %s)", to_email, subject)
+            except Exception as e:
+                await db.rollback()
+                logger.error("Failed to queue email for %s: %s", to_email, e)
+>>>>>>> origin/main
 
     async def send_verification_email(self, email: str, token: str) -> None:
         """Queue an account verification email using HTML template."""
@@ -98,6 +122,7 @@ class EmailService(BaseService):
         if not email or not token:
             return
 
+<<<<<<< HEAD
         from app.db.database import AsyncSessionLocal
         async with AsyncSessionLocal() as db:
             service = EmailService(db)
@@ -105,8 +130,28 @@ class EmailService(BaseService):
                 await service.send_verification_email(email, token)
             elif event_type == "auth.password_reset_requested":
                 await service.send_password_reset_email(email, token)
+=======
+        service = EmailService()
+        if event_type == "auth.user_registered":
+            await service.send_verification_email(email, token)
+        elif event_type == "auth.password_reset_requested":
+            await service.send_password_reset_email(email, token)
+>>>>>>> origin/main
 
 def register_email_handlers():
     """Register EmailService handlers with the dispatcher."""
     dispatcher.subscribe("auth.user_registered", EmailService.handle_auth_event)
     dispatcher.subscribe("auth.password_reset_requested", EmailService.handle_auth_event)
+<<<<<<< HEAD
+=======
+
+# ---------------------------------------------------------------------------
+# Public API (Legacy Aliases)
+# ---------------------------------------------------------------------------
+
+async def send_verification_email(email: str, token: str) -> None:
+    await EmailService().send_verification_email(email, token)
+
+async def send_password_reset_email(email: str, token: str) -> None:
+    await EmailService().send_password_reset_email(email, token)
+>>>>>>> origin/main

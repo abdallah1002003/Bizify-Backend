@@ -9,7 +9,11 @@ from app.services.business.business_service import BusinessService
 from app.services.business.business_roadmap import BusinessRoadmapService
 from app.services.business.business_collaborator import BusinessCollaboratorService
 from app.services.billing.usage_service import UsageService
+<<<<<<< HEAD
 from app.services.ai.ai_service import AIService
+=======
+from app.services.ai import ai_service
+>>>>>>> origin/main
 from app.schemas.ideation.idea import IdeaCreate, IdeaUpdate
 from app.schemas.business.business import BusinessCreate
 from app.models.enums import IdeaStatus, RoadmapStageStatus, BusinessStage
@@ -82,7 +86,10 @@ async def test_billing_cross_module_enforcement(async_db: AsyncSession, test_use
     collab_svc = BusinessCollaboratorService(async_db)
     biz_svc = BusinessService(async_db, roadmap_svc, collab_svc)
     usage_svc = UsageService(async_db)
+<<<<<<< HEAD
     ai_svc = AIService(async_db)
+=======
+>>>>>>> origin/main
     
     # 1. Setup Business and Roadmap Stage
     bus_in = BusinessCreate(
@@ -110,11 +117,20 @@ async def test_billing_cross_module_enforcement(async_db: AsyncSession, test_use
     await async_db.commit()
     
     # 3. Attempt AI run -> Should fail
+<<<<<<< HEAD
     agent = await ai_svc.create_agent("SupremeBot", "RESEARCH", {})
     
     with pytest.raises(PermissionError, match="Insufficient AI quota"):
         # Correctly call the service instance method
         await ai_svc.initiate_agent_run(agent.id, test_user.id, test_user.id, "USER", stage_id=stage.id)
+=======
+    agent = await ai_service.create_agent(async_db, "SupremeBot", "RESEARCH", {})
+    
+    with pytest.raises(PermissionError, match="Insufficient AI quota"):
+        # Wait, the signature in test is: (db, agent.id, test_user.id, test_user.id, "USER", stage_id)
+        # Let's hope it's correct.
+        await ai_service.initiate_agent_run(async_db, agent.id, test_user.id, test_user.id, "USER", stage_id=stage.id)
+>>>>>>> origin/main
 
 if __name__ == "__main__":
     pytest.main([__file__])

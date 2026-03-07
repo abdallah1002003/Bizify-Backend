@@ -11,8 +11,21 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from app.models import User, Plan, Subscription
 from app.models.enums import UserRole, SubscriptionStatus, PaymentStatus
+<<<<<<< HEAD
 from app.services.billing.payment_method import PaymentMethodService
 from app.services.billing.payment_service import PaymentService
+=======
+from app.services.billing.payment_method import (
+    get_payment_method,
+    get_payment_methods,
+    create_payment_method,
+)
+from app.services.billing.payment_service import (
+    get_payment,
+    get_payments,
+    create_payment,
+)
+>>>>>>> origin/main
 from app.schemas.billing.payment_method import PaymentMethodCreate
 from app.core.security import get_password_hash
 
@@ -84,7 +97,11 @@ class TestPaymentMethodCRUD:
             last4="4242",
         )
         
+<<<<<<< HEAD
         method = await PaymentMethodService(async_db).create_payment_method(method_data)
+=======
+        method = await create_payment_method(async_db, method_data)
+>>>>>>> origin/main
         
         assert method is not None
         assert method.user_id == test_user.id
@@ -100,9 +117,15 @@ class TestPaymentMethodCRUD:
             token_ref="tok_123",
             last4="4242",
         )
+<<<<<<< HEAD
         created = await PaymentMethodService(async_db).create_payment_method(method_data)
         
         retrieved = await PaymentMethodService(async_db).get_payment_method(created.id)
+=======
+        created = await create_payment_method(async_db, method_data)
+        
+        retrieved = await get_payment_method(async_db, created.id)
+>>>>>>> origin/main
         
         assert retrieved is not None
         assert retrieved.id == created.id
@@ -118,9 +141,15 @@ class TestPaymentMethodCRUD:
                 token_ref=f"tok_{i}",
                 last4=f"424{i}",
             )
+<<<<<<< HEAD
             await PaymentMethodService(async_db).create_payment_method(method_data)
         
         methods = await PaymentMethodService(async_db).get_payment_methods(user_id=test_user.id)
+=======
+            await create_payment_method(async_db, method_data)
+        
+        methods = await get_payment_methods(async_db, user_id=test_user.id)
+>>>>>>> origin/main
         
         assert len(methods) >= 3
         assert all(m.user_id == test_user.id for m in methods)
@@ -135,7 +164,11 @@ class TestPaymentMethodCRUD:
             last4="1234",
         )
         
+<<<<<<< HEAD
         method = await PaymentMethodService(async_db).create_payment_method(method_data)
+=======
+        method = await create_payment_method(async_db, method_data)
+>>>>>>> origin/main
         
         assert method.user == test_user
 
@@ -157,7 +190,11 @@ class TestPaymentCRUD:
             "currency": "USD",
         }
         
+<<<<<<< HEAD
         payment = await PaymentService(async_db).create_payment(payment_data)
+=======
+        payment = await create_payment(async_db, payment_data)
+>>>>>>> origin/main
         
         assert payment is not None
         assert payment.amount == Decimal("29.99")
@@ -174,9 +211,15 @@ class TestPaymentCRUD:
             "amount": Decimal("49.99"),
             "currency": "USD",
         }
+<<<<<<< HEAD
         created = await PaymentService(async_db).create_payment(payment_data)
         
         retrieved = await PaymentService(async_db).get_payment(created.id)
+=======
+        created = await create_payment(async_db, payment_data)
+        
+        retrieved = await get_payment(async_db, created.id)
+>>>>>>> origin/main
         
         assert retrieved is not None
         assert retrieved.id == created.id
@@ -193,9 +236,15 @@ class TestPaymentCRUD:
                 "amount": Decimal("29.99") + Decimal(str(i)),
                 "currency": "USD",
             }
+<<<<<<< HEAD
             await PaymentService(async_db).create_payment(payment_data)
         
         payments = await PaymentService(async_db).get_payments(user_id=test_user.id)
+=======
+            await create_payment(async_db, payment_data)
+        
+        payments = await get_payments(async_db, user_id=test_user.id)
+>>>>>>> origin/main
         
         assert len(payments) >= 2
         assert all(p.user_id == test_user.id for p in payments)
@@ -209,7 +258,11 @@ class TestPaymentCRUD:
             "amount": Decimal("29.99"),
         }
         
+<<<<<<< HEAD
         payment = await PaymentService(async_db).create_payment(payment_data)
+=======
+        payment = await create_payment(async_db, payment_data)
+>>>>>>> origin/main
         
         assert payment.currency == "USD"
 
@@ -223,7 +276,11 @@ class TestPaymentCRUD:
             "currency": "USD",
         }
         
+<<<<<<< HEAD
         payment = await PaymentService(async_db).create_payment(payment_data)
+=======
+        payment = await create_payment(async_db, payment_data)
+>>>>>>> origin/main
         
         assert payment.subscription == test_subscription
 
@@ -237,7 +294,11 @@ class TestPaymentCRUD:
             "currency": "USD",
         }
         
+<<<<<<< HEAD
         payment = await PaymentService(async_db).create_payment(payment_data)
+=======
+        payment = await create_payment(async_db, payment_data)
+>>>>>>> origin/main
         
         assert payment.created_at is not None
         assert isinstance(payment.created_at, datetime)
@@ -252,9 +313,15 @@ class TestPaymentCRUD:
                 "amount": Decimal("29.99"),
                 "currency": "USD",
             }
+<<<<<<< HEAD
             await PaymentService(async_db).create_payment(payment_data)
         
         payments = await PaymentService(async_db).get_payments(user_id=test_user.id)
+=======
+            await create_payment(async_db, payment_data)
+        
+        payments = await get_payments(async_db, user_id=test_user.id)
+>>>>>>> origin/main
         subscription_payments = [p for p in payments if p.subscription_id == test_subscription.id]
         
         assert len(subscription_payments) == 3

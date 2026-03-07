@@ -141,6 +141,7 @@ class AccessDeniedError(AppException):
         )
 
 
+<<<<<<< HEAD
 class AuthenticationError(AppException):
     """Raised when authentication fails (invalid token/credentials/session)."""
 
@@ -173,6 +174,8 @@ class BadRequestError(AppException):
         )
 
 
+=======
+>>>>>>> origin/main
 class ConflictError(AppException):
     """Raised when operation conflicts with existing data.
     

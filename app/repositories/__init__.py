@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 """Repository package — provides reusable CRUD infrastructure.
 
 # NOTE (Architecture - Afnan):
@@ -91,3 +92,10 @@ __all__ = [
     "ChatSessionRepository",
     "ChatMessageRepository",
 ]
+=======
+"""Repository package — provides reusable CRUD infrastructure."""
+
+from app.repositories.base_repository import GenericRepository
+
+__all__ = ["GenericRepository"]
+>>>>>>> origin/main

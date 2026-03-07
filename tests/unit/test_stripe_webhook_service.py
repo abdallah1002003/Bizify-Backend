@@ -7,7 +7,16 @@ logic directly against the in-memory SQLite test DB.
 
 import pytest
 
+<<<<<<< HEAD
 from app.services.billing.stripe_webhook_service import StripeWebhookService
+=======
+from app.services.billing.stripe_webhook_service import (
+    dispatch,
+    handle_payment_intent_succeeded,
+    handle_payment_intent_failed,
+    handle_invoice_payment_succeeded,
+)
+>>>>>>> origin/main
 
 
 # ---------------------------------------------------------------------------
@@ -26,18 +35,30 @@ class TestDispatch:
     @pytest.mark.asyncio
     async def test_known_event_returns_true(self, async_db):
         event = _make_event("invoice.payment_succeeded", {"id": "in_test", "amount_paid": 1000, "currency": "usd"})
+<<<<<<< HEAD
         result = await StripeWebhookService(async_db).dispatch(event)
+=======
+        result = await dispatch(async_db, event)
+>>>>>>> origin/main
         assert result is True
 
     @pytest.mark.asyncio
     async def test_unknown_event_returns_false(self, async_db):
         event = _make_event("charge.refunded", {"id": "ch_test"})
+<<<<<<< HEAD
         result = await StripeWebhookService(async_db).dispatch(event)
+=======
+        result = await dispatch(async_db, event)
+>>>>>>> origin/main
         assert result is False
 
     @pytest.mark.asyncio
     async def test_missing_type_returns_false(self, async_db):
+<<<<<<< HEAD
         result = await StripeWebhookService(async_db).dispatch({"data": {"object": {}}})
+=======
+        result = await dispatch(async_db, {"data": {"object": {}}})
+>>>>>>> origin/main
         assert result is False
 
 
@@ -49,12 +70,20 @@ class TestPaymentIntentHandlers:
     @pytest.mark.asyncio
     async def test_succeeded_no_matching_payment_is_safe(self, async_db):
         """Should log a warning and return without crashing when no Payment is found."""
+<<<<<<< HEAD
         await StripeWebhookService(async_db).handle_payment_intent_succeeded({"id": "pi_nonexistent"})
+=======
+        await handle_payment_intent_succeeded(async_db, {"id": "pi_nonexistent"})
+>>>>>>> origin/main
         # No exception = pass
 
     @pytest.mark.asyncio
     async def test_failed_no_matching_payment_is_safe(self, async_db):
+<<<<<<< HEAD
         await StripeWebhookService(async_db).handle_payment_intent_failed({"id": "pi_nonexistent"})
+=======
+        await handle_payment_intent_failed(async_db, {"id": "pi_nonexistent"})
+>>>>>>> origin/main
 
 
 # ---------------------------------------------------------------------------
@@ -64,7 +93,11 @@ class TestPaymentIntentHandlers:
 class TestInvoiceHandler:
     @pytest.mark.asyncio
     async def test_invoice_payment_succeeded_logs_without_crash(self, async_db):
+<<<<<<< HEAD
         await StripeWebhookService(async_db).handle_invoice_payment_succeeded({
+=======
+        await handle_invoice_payment_succeeded(async_db, {
+>>>>>>> origin/main
             "id": "in_test_123",
             "amount_paid": 2000,
             "currency": "usd",

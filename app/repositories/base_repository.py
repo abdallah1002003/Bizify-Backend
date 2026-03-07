@@ -1,19 +1,42 @@
 """
 Base repository providing generic CRUD operations for SQLAlchemy models.
 
+<<<<<<< HEAD
 # NOTE (Architecture - Afnan):
 # Service → Repository → Database
 # All domain-specific repositories should inherit from GenericRepository.
 # Services must NOT access the database directly; they must use a repository instance.
+=======
+Services can optionally delegate database access to a typed repository
+instance to gain a clean separation between business logic and persistence.
+
+Usage::
+
+    from app.repositories.base_repository import GenericRepository
+    from app.models.users.user import User
+
+    class UserRepository(GenericRepository[User]):
+        pass  # inherits get, get_all, create, update, delete
+
+    # In a service:
+    repo = UserRepository(db, User)
+    user = repo.get(user_id)
+    users = repo.get_all(skip=0, limit=20)
+>>>>>>> origin/main
 """
 
 from __future__ import annotations
 
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union, cast
+<<<<<<< HEAD
 from uuid import UUID
 
 from sqlalchemy import select, func
 from sqlalchemy.orm import joinedload
+=======
+
+from sqlalchemy import select, func
+>>>>>>> origin/main
 from sqlalchemy.ext.asyncio import AsyncSession
 
 ModelType = TypeVar("ModelType")
@@ -61,6 +84,7 @@ class GenericRepository(Generic[ModelType]):
     # Write
     # ------------------------------------------------------------------
 
+<<<<<<< HEAD
     async def create(self, obj_in: Dict[str, Any], auto_commit: bool = True) -> ModelType:
         """Create and persist a new record."""
         db_obj = self.model(**obj_in)
@@ -70,13 +94,24 @@ class GenericRepository(Generic[ModelType]):
             await self.db.refresh(db_obj)
         else:
             await self.db.flush()
+=======
+    async def create(self, obj_in: Dict[str, Any]) -> ModelType:
+        """Create and persist a new record."""
+        db_obj = self.model(**obj_in)
+        self.db.add(db_obj)
+        await self.db.commit()
+        await self.db.refresh(db_obj)
+>>>>>>> origin/main
         return db_obj
 
     async def update(
         self,
         db_obj: ModelType,
         obj_in: Union[Dict[str, Any], Any],
+<<<<<<< HEAD
         auto_commit: bool = True,
+=======
+>>>>>>> origin/main
     ) -> ModelType:
         """Update an existing record with new field values."""
         if isinstance(obj_in, dict):
@@ -93,6 +128,7 @@ class GenericRepository(Generic[ModelType]):
                 setattr(db_obj, field, value)
 
         self.db.add(db_obj)
+<<<<<<< HEAD
         if auto_commit:
             await self.db.commit()
             await self.db.refresh(db_obj)
@@ -134,3 +170,16 @@ class GenericRepository(Generic[ModelType]):
     async def refresh(self, obj: Any) -> None:
         """Delegate refresh to the underlying database session."""
         await self.db.refresh(obj)
+=======
+        await self.db.commit()
+        await self.db.refresh(db_obj)
+        return db_obj
+
+    async def delete(self, id: Any) -> Optional[ModelType]:
+        """Delete a record by primary key."""
+        obj = await self.get(id)
+        if obj:
+            await self.db.delete(obj)
+            await self.db.commit()
+        return obj
+>>>>>>> origin/main

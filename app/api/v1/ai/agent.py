@@ -2,10 +2,18 @@ from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.pagination import LimitParam, SkipParam
+<<<<<<< HEAD
 from app.api.v1.service_dependencies import get_ai_service
 from app.schemas.ai.agent import AgentCreate, AgentUpdate, AgentResponse
 from app.core.dependencies import get_current_active_user
 from app.services.ai.ai_service import AIService
+=======
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.db.database import get_async_db
+from app.schemas.ai.agent import AgentCreate, AgentUpdate, AgentResponse
+from app.core.dependencies import get_current_active_user
+from app.services.ai import ai_service as service
+>>>>>>> origin/main
 
 router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
@@ -13,7 +21,11 @@ router = APIRouter(dependencies=[Depends(get_current_active_user)])
 async def read_agents(
     skip: SkipParam = 0,
     limit: LimitParam = 20,
+<<<<<<< HEAD
     service: AIService = Depends(get_ai_service),
+=======
+    db: AsyncSession = Depends(get_async_db)
+>>>>>>> origin/main
 ):
     """List all AI agents with pagination.
     
@@ -24,6 +36,7 @@ async def read_agents(
     Returns:
         List of Agent records
     """
+<<<<<<< HEAD
     return await service.get_agents(skip=skip, limit=limit)
 
 @router.post("/", response_model=AgentResponse)
@@ -42,11 +55,26 @@ async def read_agent(
     service: AIService = Depends(get_ai_service),
 ):
     db_obj = await service.get_agent(id=id)
+=======
+    return await service.get_agents(db, skip=skip, limit=limit)
+
+@router.post("/", response_model=AgentResponse)
+async def create_agent(item_in: AgentCreate, db: AsyncSession = Depends(get_async_db)):
+    """
+    Elite API: Registers a new AI agent template with phase logic.
+    """
+    return await service.create_agent(db, name=item_in.name, phase=item_in.phase, config={})
+
+@router.get("/{id}", response_model=AgentResponse)
+async def read_agent(id: UUID, db: AsyncSession = Depends(get_async_db)):
+    db_obj = await service.get_agent(db, id=id)
+>>>>>>> origin/main
     if not db_obj:
         raise HTTPException(status_code=404, detail="Agent not found")
     return db_obj
 
 @router.put("/{id}", response_model=AgentResponse)
+<<<<<<< HEAD
 async def update_agent(
     id: UUID,
     item_in: AgentUpdate,
@@ -66,3 +94,17 @@ async def delete_agent(
     if not db_obj:
         raise HTTPException(status_code=404, detail="Agent not found")
     return await service.delete_agent(id=id)
+=======
+async def update_agent(id: UUID, item_in: AgentUpdate, db: AsyncSession = Depends(get_async_db)):
+    db_obj = await service.get_agent(db, id=id)
+    if not db_obj:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return await service.update_agent(db, db_obj=db_obj, obj_in=item_in)
+
+@router.delete("/{id}", response_model=AgentResponse)
+async def delete_agent(id: UUID, db: AsyncSession = Depends(get_async_db)):
+    db_obj = await service.get_agent(db, id=id)
+    if not db_obj:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return await service.delete_agent(db, id=id)
+>>>>>>> origin/main

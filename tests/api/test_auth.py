@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import uuid
 
 def test_create_user_and_login(client):
@@ -16,6 +17,25 @@ def test_create_user_and_login(client):
     # 2. Try to login
     login_payload = {
         "username": email,
+=======
+
+def test_create_user_and_login(client):
+    # 1. Create a user
+    user_payload = {
+        "name": "Test User 2",
+        "email": "newtest@example.com",
+        "password": "securepassword123",
+        "is_active": True,
+        "is_verified": False
+    }
+    
+    response = client.post("/api/v1/users/", json=user_payload)
+    assert response.status_code in [200, 201]
+    
+    # 2. Try to login
+    login_payload = {
+        "username": "newtest@example.com",
+>>>>>>> origin/main
         "password": "securepassword123"
     }
     

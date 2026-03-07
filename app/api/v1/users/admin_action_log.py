@@ -3,8 +3,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.pagination import LimitParam, SkipParam
 from app.schemas.users.admin_action_log import AdminActionLogCreate, AdminActionLogUpdate, AdminActionLogResponse
+<<<<<<< HEAD
 from app.services.users.user_service import UserService
 from app.api.v1.service_dependencies import get_user_service
+=======
+from app.services.users.user_service import UserService, get_user_service
+>>>>>>> origin/main
 from app.core.dependencies import require_admin
 
 # All routes in this router require ADMIN role — enforced at the router level

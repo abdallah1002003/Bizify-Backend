@@ -3,9 +3,14 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.pagination import LimitParam, SkipParam
 from app.schemas.ideation.idea_access import IdeaAccessCreate, IdeaAccessUpdate, IdeaAccessResponse
+<<<<<<< HEAD
 from app.services.ideation.idea_access import IdeaAccessService
 from app.services.ideation.idea_service import IdeaService
 from app.api.v1.service_dependencies import get_idea_access_service, get_idea_service
+=======
+from app.services.ideation.idea_access import IdeaAccessService, get_idea_access_service
+from app.services.ideation.idea_service import IdeaService, get_idea_service
+>>>>>>> origin/main
 from app.core.dependencies import get_current_active_user
 import app.models as models
 
@@ -78,3 +83,7 @@ async def delete_idea_access(
         raise HTTPException(status_code=404, detail="IdeaAccess not found")
     await _require_idea_owner(idea_service, db_obj.idea_id, current_user.id)
     return await service.delete_idea_access(id=id)
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main

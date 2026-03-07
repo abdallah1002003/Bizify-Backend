@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # NOTE (Architecture - Afnan):
 # These interfaces define the service contracts for the system and
 # support dependency inversion and easier testing.
@@ -5,6 +6,8 @@
 # Ensure service implementations remain consistent with these
 # interfaces to maintain clear domain boundaries.
 
+=======
+>>>>>>> origin/main
 from __future__ import annotations
 from typing import Any, List, Optional, Protocol, runtime_checkable, Dict
 from uuid import UUID
@@ -16,7 +19,10 @@ class IUserService(Protocol):
     db: AsyncSession
     async def get_user(self, id: UUID) -> Optional[models.User]: ...
     async def get_user_by_email(self, email: str) -> Optional[models.User]: ...
+<<<<<<< HEAD
     async def has_admin_user(self) -> bool: ...
+=======
+>>>>>>> origin/main
     async def create_user(self, obj_in: Any) -> models.User: ...
     async def update_user(self, db_obj: models.User, obj_in: Any) -> models.User: ...
     async def delete_user(self, id: UUID) -> Optional[models.User]: ...

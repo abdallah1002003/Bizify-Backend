@@ -2,11 +2,19 @@ from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.pagination import LimitParam, SkipParam
+<<<<<<< HEAD
 import app.models as models
 from app.api.v1.service_dependencies import get_chat_service
 from app.core.dependencies import get_current_active_user
 from app.schemas.chat.chat_session import ChatSessionCreate, ChatSessionUpdate, ChatSessionResponse
 from app.services.chat.chat_service import ChatService
+=======
+from sqlalchemy.ext.asyncio import AsyncSession
+import app.models as models
+from app.core.dependencies import get_current_active_user, get_async_db
+from app.schemas.chat.chat_session import ChatSessionCreate, ChatSessionUpdate, ChatSessionResponse
+from app.services.chat import chat_service as service
+>>>>>>> origin/main
 
 router = APIRouter()
 
@@ -20,19 +28,34 @@ def _ensure_chat_session_owner(session: models.ChatSession, current_user: models
 async def read_chat_sessions(
     skip: SkipParam = 0,
     limit: LimitParam = 100,
+<<<<<<< HEAD
     service: ChatService = Depends(get_chat_service),
     current_user: models.User = Depends(get_current_active_user),
 ):
     return await service.get_chat_sessions(skip=skip, limit=limit, user_id=current_user.id)
+=======
+    db: AsyncSession = Depends(get_async_db),
+    current_user: models.User = Depends(get_current_active_user),
+):
+    return await service.get_chat_sessions(db, skip=skip, limit=limit, user_id=current_user.id)
+>>>>>>> origin/main
 
 @router.post("/", response_model=ChatSessionResponse)
 async def create_chat_session(
     item_in: ChatSessionCreate,
+<<<<<<< HEAD
     service: ChatService = Depends(get_chat_service),
+=======
+    db: AsyncSession = Depends(get_async_db),
+>>>>>>> origin/main
     current_user: models.User = Depends(get_current_active_user),
 ):
     """Elite API: Registers a context-aware chat session."""
     return await service.create_chat_session(
+<<<<<<< HEAD
+=======
+        db,
+>>>>>>> origin/main
         user_id=current_user.id,
         session_type=item_in.session_type,
         business_id=item_in.business_id,
@@ -42,10 +65,17 @@ async def create_chat_session(
 @router.get("/{id}", response_model=ChatSessionResponse)
 async def read_chat_session(
     id: UUID,
+<<<<<<< HEAD
     service: ChatService = Depends(get_chat_service),
     current_user: models.User = Depends(get_current_active_user),
 ):
     db_obj = await service.get_chat_session(id=id)
+=======
+    db: AsyncSession = Depends(get_async_db),
+    current_user: models.User = Depends(get_current_active_user),
+):
+    db_obj = await service.get_chat_session(db, id=id)
+>>>>>>> origin/main
     if not db_obj:
         raise HTTPException(status_code=404, detail="ChatSession not found")
     _ensure_chat_session_owner(db_obj, current_user)
@@ -55,20 +85,32 @@ async def read_chat_session(
 async def update_chat_session(
     id: UUID,
     item_in: ChatSessionUpdate,
+<<<<<<< HEAD
     service: ChatService = Depends(get_chat_service),
     current_user: models.User = Depends(get_current_active_user),
 ):
     db_obj = await service.get_chat_session(id=id)
+=======
+    db: AsyncSession = Depends(get_async_db),
+    current_user: models.User = Depends(get_current_active_user),
+):
+    db_obj = await service.get_chat_session(db, id=id)
+>>>>>>> origin/main
     if not db_obj:
         raise HTTPException(status_code=404, detail="ChatSession not found")
     _ensure_chat_session_owner(db_obj, current_user)
     data = item_in.model_dump(exclude_unset=True)
     data.pop("user_id", None)
+<<<<<<< HEAD
     return await service.update_chat_session(db_obj=db_obj, obj_in=data)
+=======
+    return await service.update_chat_session(db, db_obj=db_obj, obj_in=data)
+>>>>>>> origin/main
 
 @router.delete("/{id}", response_model=ChatSessionResponse)
 async def delete_chat_session(
     id: UUID,
+<<<<<<< HEAD
     service: ChatService = Depends(get_chat_service),
     current_user: models.User = Depends(get_current_active_user),
 ):
@@ -77,3 +119,13 @@ async def delete_chat_session(
         raise HTTPException(status_code=404, detail="ChatSession not found")
     _ensure_chat_session_owner(db_obj, current_user)
     return await service.delete_chat_session(id=id)
+=======
+    db: AsyncSession = Depends(get_async_db),
+    current_user: models.User = Depends(get_current_active_user),
+):
+    db_obj = await service.get_chat_session(db, id=id)
+    if not db_obj:
+        raise HTTPException(status_code=404, detail="ChatSession not found")
+    _ensure_chat_session_owner(db_obj, current_user)
+    return await service.delete_chat_session(db, id=id)
+>>>>>>> origin/main

@@ -2,8 +2,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.pagination import LimitParam, SkipParam, PageResponse
 from app.schemas.users.user import UserCreate, UserUpdate, UserResponse
+<<<<<<< HEAD
 from app.services.users.user_service import UserService
 from app.api.v1.service_dependencies import get_user_service
+=======
+from app.services.users.user_service import UserService, get_user_service
+>>>>>>> origin/main
 from app.core.dependencies import (
     get_current_active_user,
     require_admin,
