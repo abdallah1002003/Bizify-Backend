@@ -18,19 +18,18 @@ logger = logging.getLogger(__name__)
 
 class ComparisonItemService(BaseService):
     """Service for managing items within an Idea Comparison."""
-    db: AsyncSession
+    def __init__(self, db: AsyncSession):
+        super().__init__(db)
+        from app.repositories.idea_repository import ComparisonItemRepository
+        self.repo = ComparisonItemRepository(db)
 
     async def get_comparison_item(self, id: UUID) -> Optional[ComparisonItem]:
         """Retrieve a single comparison item by ID."""
-        stmt = select(ComparisonItem).where(ComparisonItem.id == id)
-        result = await self.db.execute(stmt)
-        return result.scalar_one_or_none()
+        return await self.repo.get(id)
 
     async def get_comparison_items(self, skip: int = 0, limit: int = 100) -> List[ComparisonItem]:
         """Retrieve pagination comparison items."""
-        stmt = select(ComparisonItem).offset(skip).limit(limit)
-        result = await self.db.execute(stmt)
-        return list(result.scalars().all())
+        return await self.repo.get_multi(skip=skip, limit=limit)
 
     async def create_comparison_item(self, obj_in: Any) -> ComparisonItem:
         """Create a new comparison item record."""
@@ -60,19 +59,25 @@ class ComparisonItemService(BaseService):
 
     async def add_item_to_comparison(self, comp_id: UUID, idea_id: UUID) -> ComparisonItem:
         """Add an idea to a comparison, automatically calculating the next rank index."""
-        stmt = (
-            select(ComparisonItem)
-            .where(ComparisonItem.comparison_id == comp_id)
-            .order_by(ComparisonItem.rank_index.desc())
-            .limit(1)
-        )
-        result = await self.db.execute(stmt)
-        last_rank = result.scalar_one_or_none()
+        # Check existing first
+        existing = await self.repo.get_by_comparison_and_idea(comp_id, idea_id)
+        if existing:
+            return existing
+
+        last_rank_obj = await self.repo.get_last_rank(comp_id)
+        next_rank = 0 if last_rank_obj is None else (last_rank_obj.rank_index + 1)
         
-        next_rank = 0 if last_rank is None else (last_rank.rank_index + 1)
-        return await self.create_comparison_item(
-            {"comparison_id": comp_id, "idea_id": idea_id, "rank_index": next_rank},
-        )
+        data = {"comparison_id": comp_id, "idea_id": idea_id, "rank_index": next_rank}
+        created = await self.repo.create_safe(data)
+        if created:
+            return created
+        
+        # Concurrency fallback
+        existing_again = await self.repo.get_by_comparison_and_idea(comp_id, idea_id)
+        if existing_again:
+            return existing_again
+            
+        return await self.repo.create(data)
 
 
 async def get_comparison_item_service(db: AsyncSession = Depends(get_async_db)) -> ComparisonItemService:
@@ -85,24 +90,4 @@ async def get_comparison_item_service(db: AsyncSession = Depends(get_async_db)) 
 # ----------------------------
 
 async def get_comparison_item(db: AsyncSession, id: UUID) -> Optional[ComparisonItem]:
-    return await ComparisonItemService(db).get_comparison_item(id)
-
-
-async def get_comparison_items(db: AsyncSession, skip: int = 0, limit: int = 100) -> List[ComparisonItem]:
-    return await ComparisonItemService(db).get_comparison_items(skip, limit)
-
-
-async def create_comparison_item(db: AsyncSession, obj_in: Any) -> ComparisonItem:
-    return await ComparisonItemService(db).create_comparison_item(obj_in)
-
-
-async def update_comparison_item(db: AsyncSession, db_obj: ComparisonItem, obj_in: Any) -> ComparisonItem:
-    return await ComparisonItemService(db).update_comparison_item(db_obj, obj_in)
-
-
-async def delete_comparison_item(db: AsyncSession, id: UUID) -> Optional[ComparisonItem]:
-    return await ComparisonItemService(db).delete_comparison_item(id)
-
-
-async def add_item_to_comparison(db: AsyncSession, comp_id: UUID, idea_id: UUID) -> ComparisonItem:
     return await ComparisonItemService(db).add_item_to_comparison(comp_id, idea_id)

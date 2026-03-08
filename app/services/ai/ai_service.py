@@ -24,25 +24,92 @@ logger = logging.getLogger(__name__)
 
 class AIService(BaseService):
     """Refactored class-based access to AI services."""
+    
+    def __init__(self, db: AsyncSession):
+        super().__init__(db)
+        from app.repositories.ai_repository import AgentRepository, AgentRunRepository, ValidationLogRepository, EmbeddingRepository
+        self.agent_repo = AgentRepository(db)
+        self.run_repo = AgentRunRepository(db)
+        self.validation_repo = ValidationLogRepository(db)
+        self.embedding_repo = EmbeddingRepository(db)
+
     async def get_agent(self, id: UUID) -> Optional[Agent]:
-        return await get_agent(self.db, id)
+        return await self.agent_repo.get(id)
 
     async def get_agents(self, skip: int = 0, limit: int = 100) -> List[Agent]:
-        return await get_agents(self.db, skip, limit)
+        return await self.agent_repo.get_all(skip=skip, limit=limit)
 
-    async def create_agent(self, **kwargs) -> Agent:
-        return await create_agent(self.db, **kwargs)
+    async def create_agent(self, obj_in: Any) -> Agent:
+        return await self.agent_repo.create(obj_in)
 
     async def update_agent(self, db_obj: Agent, obj_in: Any) -> Agent:
-        return await update_agent(self.db, db_obj, obj_in)
+        return await self.agent_repo.update(db_obj, obj_in)
 
     async def delete_agent(self, id: UUID) -> Optional[Agent]:
-        return await delete_agent(self.db, id)
+        return await self.agent_repo.delete(id)
 
+    async def get_agent_run(self, id: UUID) -> Optional[AgentRun]:
+        return await self._agent_run_svc().get_agent_run(id)
 
-# ----------------------------
-# Legacy function interface
-# ----------------------------
+    async def get_agent_runs(self, skip: int = 0, limit: int = 100, user_id: Optional[UUID] = None) -> List[AgentRun]:
+        return await self._agent_run_svc().get_agent_runs(skip=skip, limit=limit, user_id=user_id)
+
+    async def initiate_agent_run(self, *args, **kwargs) -> AgentRun:
+        return await self._agent_run_svc().initiate_agent_run(*args, **kwargs)
+
+    async def execute_agent_run_async(self, run_id: UUID) -> Optional[AgentRun]:
+        return await self._agent_run_svc().execute_agent_run_async(run_id)
+
+    async def delete_agent_run(self, id: UUID) -> Optional[AgentRun]:
+        return await self.run_repo.delete(id)
+
+    async def update_agent_run(self, db_obj: AgentRun, obj_in: Any) -> AgentRun:
+        return await self.run_repo.update(db_obj, obj_in)
+
+    async def get_validation_log(self, id: UUID) -> Optional[ValidationLog]:
+        return await self.validation_repo.get(id)
+
+    async def get_validation_logs(self, skip: int = 0, limit: int = 100) -> List[ValidationLog]:
+        return await self.validation_repo.get_all(skip=skip, limit=limit)
+
+    async def record_validation_log(self, agent_run_id: UUID, result: str, details: str) -> ValidationLog:
+        return await self._agent_run_svc().record_validation_log(agent_run_id, result, details)
+
+    async def update_validation_log(self, db_obj: ValidationLog, obj_in: Any) -> ValidationLog:
+        return await self.validation_repo.update(db_obj, obj_in)
+
+    async def delete_validation_log(self, id: UUID) -> Optional[ValidationLog]:
+        return await self.validation_repo.delete(id)
+
+    async def get_embedding(self, id: UUID) -> Optional[Embedding]:
+        return await self.embedding_repo.get(id)
+
+    async def get_embeddings(self, skip: int = 0, limit: int = 100) -> List[Embedding]:
+        return await self.embedding_repo.get_all(skip=skip, limit=limit)
+
+    async def create_embedding(self, obj_in: Any) -> Embedding:
+        return await self.embedding_repo.create(obj_in)
+
+    async def delete_embedding(self, id: UUID) -> Optional[Embedding]:
+        return await self.embedding_repo.delete(id)
+    
+    async def trigger_vectorization(self, *args, **kwargs) -> Optional[Embedding]:
+        from app.services.ai.embedding_service import EmbeddingService
+        return await EmbeddingService(self.db).trigger_vectorization(*args, **kwargs)
+
+    def _billing(self):
+        from app.services.billing.usage_service import UsageService
+        return UsageService(self.db)
+            
+    def _agent_run_svc(self):
+        from app.services.ai.agent_run_service import AgentRunService
+        return AgentRunService(self.db, self._billing())
+            
+    def reset_internal_state(self):
+        pass
+    
+    def get_detailed_status(self):
+        return {"status": "ok"}
 # Agent
 # ----------------------------
 
@@ -60,10 +127,22 @@ async def get_agents(db: AsyncSession, skip: int = 0, limit: int = 100) -> List[
     return list(result.scalars().all())
 
 
-async def create_agent(db: AsyncSession, name: str, phase: str, config: Optional[dict] = None) -> Agent:
+async def create_agent(
+    db: AsyncSession, 
+    name: Optional[str] = None, 
+    phase: Optional[str] = None, 
+    config: Optional[dict] = None,
+    obj_in: Any = None
+) -> Agent:
     """Create a new AI agent template."""
-    _ = config
-    db_obj = Agent(name=name, phase=phase)
+    if obj_in:
+        data = _to_update_dict(obj_in)
+    else:
+        data = {"name": name, "phase": phase}
+        if config:
+            data["config_json"] = config # Map config -> config_json
+            
+    db_obj = Agent(**data)
     db.add(db_obj)
     await db.commit()
     await db.refresh(db_obj)

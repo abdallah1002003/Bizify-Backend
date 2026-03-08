@@ -139,6 +139,17 @@ class PaymentMethodRepository(GenericRepository[PaymentMethod]):
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_first_for_user(self, user_id: UUID) -> Optional[PaymentMethod]:
+        """Retrieve the first (oldest) payment method for a user."""
+        stmt = (
+            select(PaymentMethod)
+            .where(PaymentMethod.user_id == user_id)
+            .order_by(PaymentMethod.created_at.asc())
+            .limit(1)
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
 
 class PaymentRepository(GenericRepository[Payment]):
     """Repository for Payment model."""
@@ -268,3 +279,9 @@ class ProcessedEventRepository(GenericRepository[ProcessedEvent]):
         except IntegrityError:
             await self.db.rollback()
             return None
+
+
+class StripeWebhookRepository(GenericRepository[ProcessedEvent]):
+    """Repository for Stripe Webhook events (using ProcessedEvent model)."""
+    def __init__(self, db: AsyncSession):
+        super().__init__(db, ProcessedEvent)

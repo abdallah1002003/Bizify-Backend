@@ -133,3 +133,9 @@ async def is_token_blacklisted(jti: str) -> bool:
             logger.warning("JTI blacklist: Redis read failed, falling back to memory: %s", exc)
 
     return _memory_is_blacklisted(jti)
+
+
+def clear_blacklist() -> None:
+    """Clear all entries from the in-memory blacklist (used for tests)."""
+    with _memory_lock:
+        _memory_store.clear()

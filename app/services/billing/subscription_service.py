@@ -15,6 +15,7 @@ from app.services.base_service import BaseService
 from app.services.billing import plan_service
 from app.core.metrics import subscriptions_active
 from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
+from app.repositories.billing_repository import SubscriptionRepository, UsageRepository
 from app.core.exceptions import (
     ResourceNotFoundError,
     DatabaseError,
@@ -27,6 +28,13 @@ logger = logging.getLogger(__name__)
 
 class SubscriptionService(BaseService):
     """Service for managing user subscriptions and plan limit synchronization."""
+
+    def __init__(self, db: AsyncSession):
+        super().__init__(db)
+        from app.repositories.billing_repository import SubscriptionRepository, PlanRepository, UsageRepository
+        self.repo = SubscriptionRepository(db)
+        self.plan_repo = PlanRepository(db)
+        self.usage_repo = UsageRepository(db)
 
     _ALLOWED_TRANSITIONS: dict[SubscriptionStatus, set[SubscriptionStatus]] = {
         SubscriptionStatus.PENDING: {
@@ -48,12 +56,8 @@ class SubscriptionService(BaseService):
         user_id: UUID,
         keep_subscription_id: Optional[UUID] = None,
     ) -> None:
-        stmt = select(Subscription).where(
-            Subscription.user_id == user_id,
-            Subscription.status == SubscriptionStatus.ACTIVE,
-        )
-        result = await self.db.execute(stmt)
-        active_rows = list(result.scalars().all())
+        active_rows = await self.repo.get_for_user(user_id)
+        active_rows = [r for r in active_rows if r.status == SubscriptionStatus.ACTIVE]
 
         for row in active_rows:
             if keep_subscription_id and row.id == keep_subscription_id:
@@ -113,8 +117,8 @@ class SubscriptionService(BaseService):
     async def _sync_plan_limits(self, subscription: Subscription, auto_commit: bool = True) -> None:
         """Synchronize usage limits from subscription plan to user's usage record."""
         try:
-            plan = await plan_service.get_plan(self.db, id=subscription.plan_id)
-            if plan is None:
+            plan = await self.plan_repo.get(subscription.plan_id)
+            if not plan:
                 logger.warning(f"Plan {subscription.plan_id} not found for subscription {subscription.id}")
                 raise ResourceNotFoundError(
                     resource_type="Plan",
@@ -130,21 +134,18 @@ class SubscriptionService(BaseService):
             }
             limit = limit_by_plan.get(level, 10)
 
-            stmt = select(Usage).where(Usage.user_id == subscription.user_id, Usage.resource_type == "AI_REQUEST")
-            result = await self.db.execute(stmt)
-            usage = result.scalar_one_or_none()
+            usage = await self.usage_repo.get_by_user_and_resource(subscription.user_id, "AI_REQUEST")
             
             if usage is None:
-                usage = Usage(
-                    user_id=subscription.user_id,
-                    resource_type="AI_REQUEST",
-                    used=0,
-                    limit_value=limit,
-                )
-                self.db.add(usage)
+                usage = await self.usage_repo.create({
+                    "user_id": subscription.user_id,
+                    "resource_type": "AI_REQUEST",
+                    "used": 0,
+                    "limit_value": limit,
+                }, auto_commit=False)
                 logger.info(f"Created usage record for user {subscription.user_id} with limit {limit}")
             else:
-                usage.limit_value = limit
+                await self.usage_repo.update(usage, {"limit_value": limit}, auto_commit=False)
                 logger.info(f"Updated usage limit for user {subscription.user_id} to {limit}")
 
             if auto_commit:
@@ -168,7 +169,8 @@ class SubscriptionService(BaseService):
 
     async def get_subscription(self, id: UUID) -> Optional[Subscription]:
         """Retrieve a single subscription by its unique ID."""
-        return await self.db.get(Subscription, id)
+        return await self.repo.get(id)
+
 
     async def get_subscriptions(
         self,
@@ -177,22 +179,13 @@ class SubscriptionService(BaseService):
         user_id: Optional[UUID] = None,
     ) -> List[Subscription]:
         """Retrieve subscriptions with pagination and optional user filtering."""
-        stmt = select(Subscription)
-        if user_id is not None:
-            stmt = stmt.where(Subscription.user_id == user_id)
-        stmt = (
-            stmt.order_by(Subscription.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-        )
-        result = await self.db.execute(stmt)
-        return list(result.scalars().all())
+        if user_id:
+            return await self.repo.get_for_user(user_id)
+        return await self.repo.get_all(skip=skip, limit=limit)
 
     async def get_active_subscription(self, user_id: UUID) -> Optional[Subscription]:
         """Retrieve the currently active subscription for a user."""
-        stmt = select(Subscription).where(Subscription.user_id == user_id, Subscription.status == SubscriptionStatus.ACTIVE)
-        result = await self.db.execute(stmt)
-        return result.scalar_one_or_none()
+        return await self.repo.get_active_for_user(user_id)
 
     async def create_subscription(self, obj_in: Any) -> Subscription:
         """Create a new subscription and synchronize plan usage limits."""
@@ -218,14 +211,12 @@ class SubscriptionService(BaseService):
                     details={"operation": "create_subscription"}
                 )
 
-            db_obj = Subscription(**data)
+            db_obj = await self.repo.create(data, auto_commit=False)
             if db_obj.status == SubscriptionStatus.ACTIVE:
                 await self._deactivate_other_active_subscriptions(
                     user_id=db_obj.user_id,
                     keep_subscription_id=db_obj.id,
                 )
-            self.db.add(db_obj)
-            await self.db.flush()
 
             await self._sync_plan_limits(db_obj, auto_commit=False)
             await self.db.commit()

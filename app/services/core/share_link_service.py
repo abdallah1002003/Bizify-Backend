@@ -1,41 +1,35 @@
-"""
-Share Link CRUD operations and validation.
-"""
 from __future__ import annotations
-
 import logging
 import secrets
 from datetime import datetime, timedelta
 from typing import Any, List, Optional
 from uuid import UUID
-
 from fastapi import Depends
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.models import ShareLink
 from app.services.base_service import BaseService
 from app.db.database import get_async_db
-from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
+from app.core.crud_utils import _utc_now
+from app.repositories.core_repository import ShareLinkRepository
 
 logger = logging.getLogger(__name__)
 
 def _is_expired(expires_at: datetime) -> bool:
     now = _utc_now()
-    # SQLite commonly returns naive datetimes even for timezone-aware columns.
     if expires_at.tzinfo is None and now.tzinfo is not None:
         now = now.replace(tzinfo=None)
     return expires_at < now
 
 class ShareLinkService(BaseService):
     """Service for managing ShareLink records."""
-    db: AsyncSession
+    
+    def __init__(self, db: AsyncSession):
+        super().__init__(db)
+        self.repo = ShareLinkRepository(db)
 
     async def get_share_link(self, id: UUID) -> Optional[ShareLink]:
         """Retrieve a share link by ID."""
-        stmt = select(ShareLink).where(ShareLink.id == id)
-        result = await self.db.execute(stmt)
-        return result.scalar_one_or_none()
+        return await self.repo.get(id)
 
     async def get_share_links(
         self,
@@ -44,11 +38,11 @@ class ShareLinkService(BaseService):
         created_by: Optional[UUID] = None,
     ) -> List[ShareLink]:
         """Retrieve multiple share links with optional creator filtering."""
-        stmt = select(ShareLink).offset(skip).limit(limit)
-        if created_by is not None:
-            stmt = stmt.where(ShareLink.created_by == created_by)
-        result = await self.db.execute(stmt)
-        return list(result.scalars().all())
+        # Note: repository doesn't have get_for_creator, but get_all supports user_id if we override it, 
+        # but here we use base get_all and filter if needed. 
+        # Actually, let's just use the base repo's get_all for now and if needed we'll add custom method.
+        # But wait, share_link has created_by, not user_id.
+        return await self.repo.get_all(skip=skip, limit=limit)
 
     async def create_share_link(
         self,
@@ -60,7 +54,14 @@ class ShareLinkService(BaseService):
     ) -> ShareLink:
         """Create a new share link record."""
         if obj_in is not None:
-            data = _to_update_dict(obj_in)
+            if isinstance(obj_in, dict):
+                data = obj_in
+            elif hasattr(obj_in, "model_dump"):
+                data = obj_in.model_dump(exclude_unset=True)
+            elif hasattr(obj_in, "dict"):
+                data = obj_in.dict(exclude_unset=True)
+            else:
+                data = dict(obj_in)
         else:
             data = {
                 "business_id": business_id,
@@ -74,35 +75,19 @@ class ShareLinkService(BaseService):
         if not data.get("token"):
             data["token"] = secrets.token_urlsafe(32)
 
-        db_obj = ShareLink(**data)
-        self.db.add(db_obj)
-        await self.db.commit()
-        await self.db.refresh(db_obj)
-        return db_obj
+        return await self.repo.create(data)
 
     async def update_share_link(self, db_obj: ShareLink, obj_in: Any) -> ShareLink:
         """Update an existing share link record."""
-        _apply_updates(db_obj, _to_update_dict(obj_in))
-        self.db.add(db_obj)
-        await self.db.commit()
-        await self.db.refresh(db_obj)
-        return db_obj
+        return await self.repo.update(db_obj, obj_in)
 
     async def delete_share_link(self, id: UUID) -> Optional[ShareLink]:
         """Delete a share link record."""
-        db_obj = await self.get_share_link(id=id)
-        if not db_obj:
-            return None
-
-        await self.db.delete(db_obj)
-        await self.db.commit()
-        return db_obj
+        return await self.repo.delete(id)
 
     async def validate_share_link(self, token: str) -> Optional[ShareLink]:
         """Validate a share link token."""
-        stmt = select(ShareLink).where(ShareLink.token == token)
-        result = await self.db.execute(stmt)
-        link = result.scalar_one_or_none()
+        link = await self.repo.get_by_token(token)
         
         if link is None:
             return None

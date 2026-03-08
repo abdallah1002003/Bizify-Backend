@@ -13,26 +13,109 @@ from sqlalchemy import select
 from app.models import PaymentMethod
 from app.services.base_service import BaseService
 from app.core.crud_utils import _to_update_dict, _apply_updates
-from app.core.exceptions import ValidationError
+from app.core.exceptions import ValidationError, ResourceNotFoundError
+from app.repositories.billing_repository import PaymentMethodRepository
 
 logger = logging.getLogger(__name__)
 
 class PaymentMethodService(BaseService):
     """Refactored class-based access to payment methods."""
-    async def get_payment_method(self, id: UUID) -> Optional[PaymentMethod]:
-        return await get_payment_method(self.db, id)
+    def __init__(self, db: AsyncSession):
+        super().__init__(db)
+        self.repo = PaymentMethodRepository(db)
 
-    async def get_payment_methods(self, skip: int = 0, limit: int = 100, user_id: Optional[UUID] = None) -> List[PaymentMethod]:
-        return await get_payment_methods(self.db, skip, limit, user_id)
+    async def get_payment_method(self, id: UUID) -> Optional[PaymentMethod]:
+        """Return a single payment method by id."""
+        return await self.repo.get(id)
+
+    async def get_payment_methods(
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        user_id: Optional[UUID] = None,
+    ) -> List[PaymentMethod]:
+        """Return paginated payment methods, optionally filtered by user."""
+        if user_id:
+            return await self.repo.get_for_user(user_id)
+        return await self.repo.get_all(skip=skip, limit=limit)
 
     async def create_payment_method(self, obj_in: Any) -> PaymentMethod:
-        return await create_payment_method(self.db, obj_in)
+        """Create a payment method record and enforce single-default semantics."""
+        data = _to_update_dict(obj_in)
+        data["provider"] = _normalize_provider(data.get("provider"))
+        if "user_id" not in data or data["user_id"] is None:
+            raise ValidationError(
+                message="user_id is required for payment method",
+                field="user_id",
+            )
+
+        user_id = data["user_id"]
+        # Check if first method
+        first_method = await self.repo.get_first_for_user(user_id)
+        if not first_method:
+            data["is_default"] = True
+        else:
+            data["is_default"] = bool(data.get("is_default", False))
+
+        db_obj = await self.repo.create(data, auto_commit=False)
+        
+        if db_obj.is_default:
+            await self._unset_other_defaults(user_id, db_obj.id)
+
+        await self.repo.commit()
+        await self.repo.refresh(db_obj)
+        return db_obj
 
     async def update_payment_method(self, db_obj: PaymentMethod, obj_in: Any) -> PaymentMethod:
-        return await update_payment_method(self.db, db_obj, obj_in)
+        """Update mutable fields and preserve default-payment-method invariants."""
+        update_data = _to_update_dict(obj_in)
+        if "provider" in update_data:
+            update_data["provider"] = _normalize_provider(update_data.get("provider"))
+
+        if "is_default" in update_data:
+            update_data["is_default"] = bool(update_data["is_default"])
+
+        db_obj = await self.repo.update(db_obj, update_data, auto_commit=False)
+
+        if db_obj.is_default:
+            await self._unset_other_defaults(db_obj.user_id, db_obj.id)
+        else:
+            # Check if it was the only one or something
+            first_method = await self.repo.get_first_for_user(db_obj.user_id)
+            if first_method and first_method.id == db_obj.id:
+                # Keep at least one default
+                await self.repo.update(db_obj, {"is_default": True}, auto_commit=False)
+
+        await self.repo.commit()
+        await self.repo.refresh(db_obj)
+        return db_obj
 
     async def delete_payment_method(self, id: UUID) -> Optional[PaymentMethod]:
-        return await delete_payment_method(self.db, id)
+        """Delete a payment method by id and preserve default fallback."""
+        db_obj = await self.repo.get(id)
+        if not db_obj:
+            return None
+
+        user_id = db_obj.user_id
+        was_default = db_obj.is_default
+
+        await self.repo.delete(id)
+        
+        if was_default:
+            new_default = await self.repo.get_first_for_user(user_id)
+            if new_default:
+                await self.repo.update(new_default, {"is_default": True})
+
+        return db_obj
+
+    async def get_default_payment_method(self, user_id: UUID) -> Optional[PaymentMethod]:
+        return await self.repo.get_default_for_user(user_id)
+
+    async def _unset_other_defaults(self, user_id: UUID, keep_method_id: UUID) -> None:
+        methods = await self.repo.get_for_user(user_id)
+        for m in methods:
+            if m.id != keep_method_id and m.is_default:
+                await self.repo.update(m, {"is_default": False}, auto_commit=False)
 
 
 

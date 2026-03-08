@@ -13,6 +13,41 @@ from app.core.structured_logging import get_logger
 
 logger = get_logger(__name__)
 
+from app.services.base_service import BaseService
+
+
+class ChatMessageService(BaseService):
+    """Refactored class-based access to chat messages."""
+    def __init__(self, db: AsyncSession):
+        super().__init__(db)
+        from app.repositories.chat_repository import ChatMessageRepository
+        self.repo = ChatMessageRepository(db)
+
+    async def get_chat_message(self, id: UUID) -> Optional[ChatMessage]:
+        return await self.repo.get(id)
+
+    async def get_chat_messages(self, skip: int = 0, limit: int = 100, user_id: Optional[UUID] = None) -> List[ChatMessage]:
+        return await self.repo.get_all(skip=skip, limit=limit, user_id=user_id)
+
+    async def add_message(self, session_id: UUID, role: ChatRole, content: str) -> ChatMessage:
+        return await self.repo.create({"session_id": session_id, "role": role, "content": content})
+
+    async def update_chat_message(self, db_obj: ChatMessage, obj_in: Any) -> ChatMessage:
+        return await self.repo.update(db_obj, _to_update_dict(obj_in))
+
+    async def delete_chat_message(self, id: UUID) -> Optional[ChatMessage]:
+        return await self.repo.delete(id)
+
+    async def get_session_history(self, session_id: UUID, limit: int = 50) -> List[ChatMessage]:
+        return await self.repo.get_session_history(session_id, limit)
+
+    def get_detailed_status(self) -> Dict[str, Any]:
+        return {
+            "module": "chat_message_operations",
+            "status": "operational",
+            "timestamp": _utc_now().isoformat(),
+        }
+
 
 # ----------------------------
 # ChatMessage CRUD Operations
@@ -20,9 +55,8 @@ logger = get_logger(__name__)
 
 async def get_chat_message(db: AsyncSession, id: UUID) -> Optional[ChatMessage]:
     """Retrieve a single chat message by ID."""
-    stmt = select(ChatMessage).where(ChatMessage.id == id)
-    result = await db.execute(stmt)
-    return result.scalar_one_or_none()
+    from app.repositories.chat_repository import ChatMessageRepository
+    return await ChatMessageRepository(db).get(id)
 
 
 async def get_chat_messages(
@@ -32,16 +66,8 @@ async def get_chat_messages(
     user_id: Optional[UUID] = None,
 ) -> List[ChatMessage]:
     """Retrieve paginated chat messages with optional user filtering."""
-    stmt = select(ChatMessage)
-    if user_id is not None:
-        stmt = (
-            stmt
-            .join(ChatSession, ChatMessage.session_id == ChatSession.id)
-            .where(ChatSession.user_id == user_id)
-        )
-    stmt = stmt.offset(skip).limit(limit)
-    result = await db.execute(stmt)
-    return list(result.scalars().all())
+    from app.repositories.chat_repository import ChatMessageRepository
+    return await ChatMessageRepository(db).get_all(skip=skip, limit=limit, user_id=user_id)
 
 
 async def add_message(
@@ -51,12 +77,8 @@ async def add_message(
     content: str,
 ) -> ChatMessage:
     """Add a message to a chat session."""
-    db_obj = ChatMessage(session_id=session_id, role=role, content=content)
-    db.add(db_obj)
-    await db.commit()
-    await db.refresh(db_obj)
-    logger.info(f"Added message {db_obj.id} to session {session_id}, role={role}")
-    return db_obj
+    from app.repositories.chat_repository import ChatMessageRepository
+    return await ChatMessageRepository(db).create({"session_id": session_id, "role": role, "content": content})
 
 
 async def update_chat_message(
@@ -65,29 +87,15 @@ async def update_chat_message(
     obj_in: Any,
 ) -> ChatMessage:
     """Update an existing chat message."""
-    _apply_updates(db_obj, _to_update_dict(obj_in))
-    db.add(db_obj)
-    await db.commit()
-    await db.refresh(db_obj)
-    logger.info(f"Updated chat message {db_obj.id}")
-    return db_obj
+    from app.repositories.chat_repository import ChatMessageRepository
+    return await ChatMessageRepository(db).update(db_obj, obj_in)
 
 
 async def delete_chat_message(db: AsyncSession, id: UUID) -> Optional[ChatMessage]:
     """Delete a chat message from a session."""
-    db_obj = await get_chat_message(db, id=id)
-    if not db_obj:
-        return None
+    from app.repositories.chat_repository import ChatMessageRepository
+    return await ChatMessageRepository(db).delete(id)
 
-    await db.delete(db_obj)
-    await db.commit()
-    logger.info(f"Deleted chat message {id}")
-    return db_obj
-
-
-# ----------------------------
-# Session History Operations
-# ----------------------------
 
 async def get_session_history(
     db: AsyncSession,
@@ -95,14 +103,8 @@ async def get_session_history(
     limit: int = 50,
 ) -> List[ChatMessage]:
     """Retrieve the message history for a chat session."""
-    stmt = (
-        select(ChatMessage)
-        .where(ChatMessage.session_id == session_id)
-        .order_by(ChatMessage.created_at.asc())
-        .limit(limit)
-    )
-    result = await db.execute(stmt)
-    return list(result.scalars().all())
+    from app.repositories.chat_repository import ChatMessageRepository
+    return await ChatMessageRepository(db).get_session_history(session_id, limit)
 
 
 async def get_detailed_status() -> Dict[str, Any]:

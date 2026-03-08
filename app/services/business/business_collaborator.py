@@ -15,29 +15,31 @@ from app.core.events import dispatcher
 
 logger = logging.getLogger(__name__)
 
+from app.repositories.business_repository import BusinessCollaboratorRepository
+from app.repositories.user_repository import UserRepository
+from app.models.users.user import User
+
+
 class BusinessCollaboratorService(BaseService):
     """Service for managing Business Collaborators."""
-    db: AsyncSession
+    def __init__(self, db: AsyncSession):
+        super().__init__(db)
+        self.repo = BusinessCollaboratorRepository(db)
+        self.user_repo = UserRepository(db)
 
     async def get_collaborator(self, id: UUID) -> Optional[BusinessCollaborator]:
-        stmt = select(BusinessCollaborator).where(BusinessCollaborator.id == id)
-        result = await self.db.execute(stmt)
-        return result.scalar_one_or_none()
+        return await self.repo.get(id)
 
 
     async def get_business_collaborator(self, id: UUID) -> Optional[BusinessCollaborator]:
         return await self.get_collaborator(id=id)
 
     async def get_collaborators(self, business_id: UUID) -> List[BusinessCollaborator]:
-        stmt = select(BusinessCollaborator).where(BusinessCollaborator.business_id == business_id)
-        result = await self.db.execute(stmt)
-        return list(result.scalars().all())
+        return await self.repo.get_for_business(business_id)
 
 
     async def get_business_collaborators(self, skip: int = 0, limit: int = 100) -> List[BusinessCollaborator]:
-        stmt = select(BusinessCollaborator).offset(skip).limit(limit)
-        result = await self.db.execute(stmt)
-        return list(result.scalars().all())
+        return await self.repo.get_all(skip=skip, limit=limit)
 
     async def add_collaborator(
         self,
@@ -45,26 +47,7 @@ class BusinessCollaboratorService(BaseService):
         user_id: UUID,
         role: CollaboratorRole,
     ) -> BusinessCollaborator:
-        stmt = select(BusinessCollaborator).where(
-            and_(
-                BusinessCollaborator.business_id == business_id,
-                BusinessCollaborator.user_id == user_id,
-            )
-        )
-        result = await self.db.execute(stmt)
-        existing = result.scalar_one_or_none()
-        
-        if existing is not None:
-            existing.role = role
-            await self.db.commit()
-            await self.db.refresh(existing)
-            return existing
-
-        db_obj = BusinessCollaborator(business_id=business_id, user_id=user_id, role=role)
-        self.db.add(db_obj)
-        await self.db.commit()
-        await self.db.refresh(db_obj)
-        return db_obj
+        return await self.repo.upsert(business_id, user_id, role)
 
     async def create_business_collaborator(self, obj_in: Any) -> BusinessCollaborator:
         data = _to_update_dict(obj_in)
@@ -75,41 +58,27 @@ class BusinessCollaboratorService(BaseService):
         )
 
     async def update_business_collaborator(self, db_obj: BusinessCollaborator, obj_in: Any) -> BusinessCollaborator:
-        _apply_updates(db_obj, _to_update_dict(obj_in))
-        self.db.add(db_obj)
-        await self.db.commit()
-        await self.db.refresh(db_obj)
-        return db_obj
+        return await self.repo.update(db_obj, obj_in)
 
     async def remove_collaborator(self, business_id: UUID, user_id: UUID) -> None:
-        stmt = select(BusinessCollaborator).where(
-            and_(
-                BusinessCollaborator.business_id == business_id,
-                BusinessCollaborator.user_id == user_id,
-            )
-        )
-        result = await self.db.execute(stmt)
-        db_obj = result.scalar_one_or_none()
-        
+        db_obj = await self.repo.get_by_business_and_user(business_id, user_id)
         if db_obj is None:
             return
 
         if db_obj.role == CollaboratorRole.OWNER:
             raise PermissionError("Cannot remove owner collaborator")
 
-        await self.db.delete(db_obj)
-        await self.db.commit()
+        await self.repo.delete(db_obj.id)
 
     async def delete_business_collaborator(self, id: UUID) -> Optional[BusinessCollaborator]:
-        db_obj = await self.get_business_collaborator(id=id)
+        db_obj = await self.repo.get(id)
         if not db_obj:
             return None
 
         if db_obj.role == CollaboratorRole.OWNER:
             raise PermissionError("Cannot remove owner collaborator")
 
-        await self.db.delete(db_obj)
-        await self.db.commit()
+        await self.repo.delete(id)
         return db_obj
 
     @staticmethod

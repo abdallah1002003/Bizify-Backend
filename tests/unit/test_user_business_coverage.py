@@ -68,6 +68,7 @@ class TestUserServicesCoverage:
         
         # Test get_user_profile (by user_id)
         mock_res = MagicMock()
+        mock_res.scalar_one_or_none.return_value = profile
         mock_res.scalars().first.return_value = profile
         db.execute.return_value = mock_res
         res = await user_profile.get_user_profile(db, user_id=user_id)
@@ -91,12 +92,16 @@ class TestUserServicesCoverage:
         db.commit.assert_called()
         
         # Test update_by_user_id (existing)
-        db.execute.return_value.scalars().first.return_value = profile
+        mock_update_res = MagicMock()
+        mock_update_res.scalar_one_or_none.return_value = profile
+        db.execute.return_value = mock_update_res
         await user_profile.update_user_profile_by_user_id(db, user_id, {"bio": "Updated Again"}, performer_id=admin_id)
         assert profile.bio == "Updated Again"
         
         # Test update_by_user_id (create new if missing)
-        db.execute.return_value.scalars().first.return_value = None
+        mock_missing_res = MagicMock()
+        mock_missing_res.scalar_one_or_none.return_value = None
+        db.execute.return_value = mock_missing_res
         await user_profile.update_user_profile_by_user_id(db, uuid.uuid4(), {"bio": "Created on update"})
         db.add.assert_called()
 
@@ -114,7 +119,7 @@ class TestUserServicesCoverage:
         with pytest.raises(ValueError):
             await user_profile._record_admin_action(db, admin_id=admin_id, action_type="TEST", target_id=None)
             
-        # Test get_user_profile with no args (line 58)
+        # Test get_user_profile with no args
         assert await user_profile.get_user_profile(db) is None
 
 @pytest.mark.asyncio
@@ -126,7 +131,7 @@ class TestBusinessServicesCoverage:
         db.add = MagicMock()
         roadmap_svc = AsyncMock() # Must be AsyncMock for await
         collab_svc = AsyncMock()
-        svc = business_service.BusinessService(db, roadmap_svc, collab_svc)
+        svc = business_service.BusinessService(db, roadmap_service=roadmap_svc, collaborator_service=collab_svc)
         
         biz_id = uuid.uuid4()
         owner_id = uuid.uuid4()
@@ -251,7 +256,8 @@ class TestBusinessServicesCoverage:
         token = "secret"
         
         # Test create
-        invite = await business_invite.create_invite(db, biz_id, email, uuid.uuid4())
+        svc = business_invite.BusinessInviteService(db)
+        invite = await svc.create_invite(biz_id, email, uuid.uuid4())
         assert invite.email == email
         db.add.assert_called()
         
@@ -266,7 +272,8 @@ class TestBusinessServicesCoverage:
         )
         db.execute.return_value = MagicMock(scalar_one_or_none=lambda: invite_obj)
         
-        success = await business_invite.accept_invite(db, token, user_id)
+        svc = business_invite.BusinessInviteService(db)
+        success = await svc.accept_invite(token, user_id)
         assert success is True
         assert invite_obj.status == InviteStatus.ACCEPTED
         

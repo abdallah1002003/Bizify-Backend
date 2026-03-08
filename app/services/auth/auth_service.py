@@ -18,6 +18,11 @@ from app.core.events import dispatcher
 from app.core.metrics import active_sessions
 from config.settings import settings
 
+from app.repositories.auth_repository import RefreshTokenRepository, EmailVerificationTokenRepository, PasswordResetTokenRepository
+from app.repositories.user_repository import UserRepository
+from app.core.exceptions import AuthenticationError, BadRequestError, ResourceNotFoundError
+from app.core.token_blacklist import is_token_blacklisted, blacklist_token
+
 logger = logging.getLogger(__name__)
 
 
@@ -28,6 +33,9 @@ class AuthService(BaseService):
     def __init__(self, db: AsyncSession, user_service: IUserService):
         super().__init__(db)
         self.users = user_service
+        self.refresh_token_repo = RefreshTokenRepository(db)
+        self.email_verification_repo = EmailVerificationTokenRepository(db)
+        self.password_reset_repo = PasswordResetTokenRepository(db)
 
     async def _persist_refresh_token(self, user_id: UUID, refresh_token: str) -> None:
         """Persists a refresh token in the database."""
@@ -37,16 +45,14 @@ class AuthService(BaseService):
                 settings.jwt_verify_key,
                 algorithms=[settings.jwt_algorithm],
             )
-            db_token = models.RefreshToken(
-                user_id=user_id,
-                jti=token_data["jti"],
-                expires_at=datetime.fromtimestamp(token_data["exp"], tz=timezone.utc),
-            )
-            self.db.add(db_token)
-            await self.db.commit()
+            await self.refresh_token_repo.create({
+                "user_id": user_id,
+                "jti": token_data["jti"],
+                "expires_at": datetime.fromtimestamp(token_data["exp"], tz=timezone.utc),
+            })
         except jwt.PyJWTError as e:
-            logger.error(f"Failed to persist refresh token: {e}")
-            raise HTTPException(status_code=401, detail="Invalid refresh token") from e
+            logger.error(f"Failed to decode refresh token: {e}")
+            raise AuthenticationError("Invalid refresh token") from e
 
     async def authenticate_user(self, email: str, password: str) -> Optional[models.User]:
         """Authenticates a user by email and password."""
@@ -74,30 +80,29 @@ class AuthService(BaseService):
                 algorithms=[settings.jwt_algorithm],
             )
             if token_data.get("type") != "refresh":
-                raise HTTPException(status_code=401, detail="Invalid token type")
+                raise AuthenticationError("Invalid token type")
             user_id_str = token_data.get("sub")
             if not user_id_str:
-                raise HTTPException(status_code=401, detail="Invalid token payload")
+                raise AuthenticationError("Invalid token payload")
             user_id = UUID(user_id_str)
         except (jwt.PyJWTError, ValueError) as e:
-            raise HTTPException(status_code=401, detail="Could not validate refresh token") from e
+            raise AuthenticationError("Could not validate refresh token") from e
 
         user = await self.users.get_user(id=user_id)
         if not user or not user.is_active:
-            raise HTTPException(status_code=401, detail="Inactive or non-existent user")
+            raise AuthenticationError("Inactive or non-existent user")
 
         jti = token_data.get("jti")
-        stmt = select(models.RefreshToken).where(models.RefreshToken.jti == jti)
-        result = await self.db.execute(stmt)
-        stored_token = result.scalar_one_or_none()
+        if not jti:
+            raise AuthenticationError("Invalid token payload")
+            
+        stored_token = await self.refresh_token_repo.get_by_jti(jti)
         
         if not stored_token or stored_token.revoked:
-            raise HTTPException(status_code=401, detail="Token has been revoked")
+            raise AuthenticationError("Token has been revoked")
 
         # Invalidate old token
-        stored_token.revoked = True
-        self.db.add(stored_token)
-        await self.db.commit()
+        await self.refresh_token_repo.update(stored_token, {"revoked": True})
 
         # Create new tokens
         return await self.create_tokens(user.id)
@@ -111,12 +116,9 @@ class AuthService(BaseService):
                 algorithms=[settings.jwt_algorithm],
             )
             jti = token_data.get("jti")
-            stmt = select(models.RefreshToken).where(models.RefreshToken.jti == jti)
-            result = await self.db.execute(stmt)
-            stored = result.scalar_one_or_none()
+            stored = await self.refresh_token_repo.get_by_jti(jti)
             if stored:
-                stored.revoked = True
-                await self.db.commit()
+                await self.refresh_token_repo.update(stored, {"revoked": True})
                 active_sessions.dec() # Metrics: Decrease active session count
         except jwt.PyJWTError:
             pass  # Silent fail for invalid tokens
@@ -129,13 +131,11 @@ class AuthService(BaseService):
             settings.jwt_verify_key,
             algorithms=[settings.jwt_algorithm],
         )
-        db_token = models.EmailVerificationToken(
-            user_id=user_id,
-            jti=token_data["jti"],
-            expires_at=datetime.fromtimestamp(token_data["exp"], tz=timezone.utc),
-        )
-        self.db.add(db_token)
-        await self.db.commit()
+        await self.email_verification_repo.create({
+            "user_id": user_id,
+            "jti": token_data["jti"],
+            "expires_at": datetime.fromtimestamp(token_data["exp"], tz=timezone.utc),
+        })
         
         # Emit event for email delivery or other side effects
         await dispatcher.emit("auth.user_registered", {"email": email, "token": token, "user_id": user_id})
@@ -146,38 +146,33 @@ class AuthService(BaseService):
         """Verifies an email using a token."""
         token_payload = security.verify_email_verification_token(token)
         if not token_payload:
-            raise HTTPException(status_code=400, detail="Invalid or expired verification token")
+            raise BadRequestError("Invalid or expired verification token")
 
         email_raw = token_payload.get("sub")
         if not email_raw:
-            raise HTTPException(status_code=400, detail="Invalid token payload")
+            raise BadRequestError("Invalid token payload")
         email = str(email_raw)
         jti = token_payload.get("jti")
+        if not jti:
+            raise BadRequestError("Invalid token payload")
 
         # JTI Blacklist check
-        from app.core.token_blacklist import is_token_blacklisted, blacklist_token
         if jti and await is_token_blacklisted(jti):
-            raise HTTPException(status_code=400, detail="Verification link has already been used")
+            raise BadRequestError("Verification link has already been used")
 
-        stmt = select(models.EmailVerificationToken).where(models.EmailVerificationToken.jti == jti)
-        result = await self.db.execute(stmt)
-        stored_token = result.scalar_one_or_none()
+        jti = token_payload.get("jti")
+        stored_token = await self.email_verification_repo.get_by_jti(jti)
         
         if not stored_token or stored_token.used:
-            raise HTTPException(
-                status_code=400, detail="Verification link has already been used or is invalid"
-            )
+            raise BadRequestError("Verification link has already been used or is invalid")
 
         user = await self.users.get_user_by_email(email)
         if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise ResourceNotFoundError("User", email)
 
         if not user.is_verified:
-            user.is_verified = True
-            stored_token.used = True
-            self.db.add(user)
-            self.db.add(stored_token)
-            await self.db.commit()
+            await self.users.update_user(user, {"is_verified": True})
+            await self.email_verification_repo.update(stored_token, {"used": True})
 
         # Blacklist the token after successful use
         exp = token_payload.get("exp")
@@ -200,16 +195,64 @@ class AuthService(BaseService):
             algorithms=[settings.jwt_algorithm],
         )
         
-        db_token = models.PasswordResetToken(
-            user_id=user.id,
-            jti=token_data["jti"],
-            expires_at=datetime.fromtimestamp(token_data["exp"], tz=timezone.utc),
-        )
-        self.db.add(db_token)
-        await self.db.commit()
+        await self.password_reset_repo.create({
+            "user_id": user.id,
+            "jti": token_data["jti"],
+            "expires_at": datetime.fromtimestamp(token_data["exp"], tz=timezone.utc),
+        })
 
         # Emit event for email delivery
         await dispatcher.emit("auth.password_reset_requested", {"email": email, "token": token, "user_id": user.id})
+
+    async def bootstrap_admin(self, full_name: str, email: str, password: str) -> models.User:
+        """Bootstraps the initial administrator account."""
+        if await self.users.has_admin_user():
+            from app.core.exceptions import ConflictError
+            raise ConflictError("Admin account already exists")
+
+        existing_user = await self.users.get_user_by_email(email)
+        if existing_user:
+            from app.core.exceptions import ConflictError
+            raise ConflictError("Email already registered")
+
+        user_in = {
+            "email": email,
+            "password": password,
+            "full_name": full_name,
+            "role": models.enums.UserRole.ADMIN,
+            "is_verified": True,
+            "is_active": True,
+        }
+        return await self.users.create_user(user_in)
+
+    async def reset_password(self, token: str, new_password: str) -> models.User:
+        """Resets a user password using a valid token."""
+        token_payload = security.verify_password_reset_token(token)
+        if not token_payload:
+            raise BadRequestError("Invalid or expired password reset token")
+
+        email = token_payload.get("sub")
+        if not email:
+            raise BadRequestError("Invalid reset token subject")
+            
+        jti = token_payload.get("jti")
+        if not jti:
+            raise BadRequestError("Invalid reset token identifier")
+            
+        stored_token = await self.password_reset_repo.get_by_jti(jti)
+        
+        if not stored_token or stored_token.used:
+            raise BadRequestError("Password reset token has already been used")
+
+        user = await self.users.get_user_by_email(email)
+        if not user:
+            raise ResourceNotFoundError("User", email)
+
+        hashed_password = security.get_password_hash(new_password)
+        await self.users.update_user(user, {"password_hash": hashed_password})
+        await self.password_reset_repo.update(stored_token, {"used": True})
+        
+        return user
 
 
 async def get_auth_service(

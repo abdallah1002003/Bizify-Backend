@@ -16,14 +16,18 @@ from app.core.events import dispatcher
 logger = logging.getLogger(__name__)
 
 
+from app.repositories.business_repository import BusinessRoadmapRepository, RoadmapStageRepository
+
+
 class BusinessRoadmapService(BaseService):
     """Service for managing Business Roadmaps and their Stages."""
-    db: AsyncSession
+    def __init__(self, db: AsyncSession):
+        super().__init__(db)
+        self.roadmap_repo = BusinessRoadmapRepository(db)
+        self.stage_repo = RoadmapStageRepository(db)
 
     async def _recalculate_roadmap_completion(self, roadmap_id: UUID) -> None:
-        stage_stmt = select(RoadmapStage).where(RoadmapStage.roadmap_id == roadmap_id)
-        result = await self.db.execute(stage_stmt)
-        stages = list(result.scalars().all())
+        stages = await self.stage_repo.get_all_for_roadmap_unordered(roadmap_id)
         
         if not stages:
             return
@@ -31,72 +35,50 @@ class BusinessRoadmapService(BaseService):
         completed = sum(1 for stage in stages if stage.status == RoadmapStageStatus.COMPLETED)
         completion = (completed / len(stages)) * 100.0
 
-        roadmap_stmt = select(BusinessRoadmap).where(BusinessRoadmap.id == roadmap_id)
-        result = await self.db.execute(roadmap_stmt)
-        roadmap = cast(Optional[BusinessRoadmap], result.scalar_one_or_none())
-        
+        roadmap = await self.roadmap_repo.get(roadmap_id)
         if roadmap is None:
             return
 
-        roadmap.completion_percentage = completion
-        await self.db.commit()
+        await self.roadmap_repo.update(roadmap, {"completion_percentage": completion})
 
     # ----------------------------
     # BusinessRoadmap
     # ----------------------------
 
     async def get_roadmap(self, business_id: UUID) -> Optional[BusinessRoadmap]:
-        stmt = select(BusinessRoadmap).where(BusinessRoadmap.business_id == business_id)
-        result = await self.db.execute(stmt)
-        return cast(Optional[BusinessRoadmap], result.scalar_one_or_none())
+        return await self.roadmap_repo.get_by_business(business_id)
 
 
     async def get_business_roadmap(self, id: UUID) -> Optional[BusinessRoadmap]:
-        stmt = select(BusinessRoadmap).where(BusinessRoadmap.id == id)
-        result = await self.db.execute(stmt)
-        return cast(Optional[BusinessRoadmap], result.scalar_one_or_none())
+        return await self.roadmap_repo.get(id)
 
 
     async def get_business_roadmaps(self, skip: int = 0, limit: int = 100) -> List[BusinessRoadmap]:
-        stmt = select(BusinessRoadmap).offset(skip).limit(limit)
-        result = await self.db.execute(stmt)
-        return list(result.scalars().all())
+        return await self.roadmap_repo.get_all(skip=skip, limit=limit)
 
     async def init_default_roadmap(self, business_id: UUID) -> BusinessRoadmap:
         existing = await self.get_roadmap(business_id=business_id)
         if existing is not None:
             return existing
 
-        db_obj = BusinessRoadmap(business_id=business_id, completion_percentage=0.0)
-        self.db.add(db_obj)
-        await self.db.commit()
-        await self.db.refresh(db_obj)
+        db_obj = await self.roadmap_repo.create({"business_id": business_id, "completion_percentage": 0.0})
 
         # Default first stage.
         await self.add_roadmap_stage(db_obj.id, StageType.READINESS, 0)
         return db_obj
 
     async def create_business_roadmap(self, obj_in: Any) -> BusinessRoadmap:
-        db_obj = BusinessRoadmap(**_to_update_dict(obj_in))
-        self.db.add(db_obj)
-        await self.db.commit()
-        await self.db.refresh(db_obj)
-        return db_obj
+        return await self.roadmap_repo.create(obj_in)
 
     async def update_business_roadmap(self, db_obj: BusinessRoadmap, obj_in: Any) -> BusinessRoadmap:
-        _apply_updates(db_obj, _to_update_dict(obj_in))
-        self.db.add(db_obj)
-        await self.db.commit()
-        await self.db.refresh(db_obj)
-        return db_obj
+        return await self.roadmap_repo.update(db_obj, obj_in)
 
     async def delete_business_roadmap(self, id: UUID) -> Optional[BusinessRoadmap]:
         db_obj = await self.get_business_roadmap(id=id)
         if not db_obj:
             return None
 
-        await self.db.delete(db_obj)
-        await self.db.commit()
+        await self.roadmap_repo.delete(id)
         return db_obj
 
     # ----------------------------
@@ -104,17 +86,7 @@ class BusinessRoadmapService(BaseService):
     # ----------------------------
 
     async def get_roadmap_stage(self, id: UUID) -> Optional[RoadmapStage]:
-        from sqlalchemy.orm import joinedload
-        from app.models import BusinessRoadmap
-        stmt = (
-            select(RoadmapStage)
-            .options(
-                joinedload(RoadmapStage.roadmap).joinedload(BusinessRoadmap.business)
-            )
-            .where(RoadmapStage.id == id)
-        )
-        result = await self.db.execute(stmt)
-        return cast(Optional[RoadmapStage], result.scalar_one_or_none())
+        return await self.stage_repo.get_with_relations(id)
 
     async def get_roadmap_stages(
         self,
@@ -122,51 +94,36 @@ class BusinessRoadmapService(BaseService):
         skip: int = 0,
         limit: int = 100,
     ) -> List[RoadmapStage]:
-        stmt = select(RoadmapStage)
         if roadmap_id is not None:
-            stmt = stmt.where(RoadmapStage.roadmap_id == roadmap_id)
-        stmt = stmt.order_by(RoadmapStage.order_index.asc()).offset(skip).limit(limit)
-        result = await self.db.execute(stmt)
-        return list(result.scalars().all())
+            return await self.stage_repo.get_for_roadmap(roadmap_id, skip, limit)
+        return await self.stage_repo.get_all(skip, limit)
 
     async def add_roadmap_stage(self, roadmap_id: UUID, stage_type: StageType, order_index: int) -> RoadmapStage:
-        db_stage = RoadmapStage(
-            roadmap_id=roadmap_id,
-            stage_type=stage_type,
-            order_index=order_index,
-            status=RoadmapStageStatus.PLANNED,
-        )
-        self.db.add(db_stage)
-        await self.db.commit()
-        await self.db.refresh(db_stage)
-        return db_stage
+        return await self.stage_repo.create({
+            "roadmap_id": roadmap_id,
+            "stage_type": stage_type,
+            "order_index": order_index,
+            "status": RoadmapStageStatus.PLANNED,
+        })
 
     async def create_roadmap_stage(self, obj_in: Any) -> RoadmapStage:
-        db_obj = RoadmapStage(**_to_update_dict(obj_in))
-        self.db.add(db_obj)
-        await self.db.commit()
-        await self.db.refresh(db_obj)
-        return db_obj
+        return await self.stage_repo.create(obj_in)
 
     async def update_roadmap_stage(self, db_obj: RoadmapStage, obj_in: Any) -> RoadmapStage:
-        _apply_updates(db_obj, _to_update_dict(obj_in))
-        self.db.add(db_obj)
-        await self.db.commit()
-        await self.db.refresh(db_obj)
+        updated = await self.stage_repo.update(db_obj, obj_in)
 
-        if db_obj.status == RoadmapStageStatus.COMPLETED:
-            await self._recalculate_roadmap_completion(db_obj.roadmap_id)
+        if updated.status == RoadmapStageStatus.COMPLETED:
+            await self._recalculate_roadmap_completion(updated.roadmap_id)
 
-        return db_obj
+        return updated
 
     async def delete_roadmap_stage(self, id: UUID) -> Optional[RoadmapStage]:
-        db_obj = await self.get_roadmap_stage(id=id)
+        db_obj = await self.stage_repo.get(id)
         if not db_obj:
             return None
 
         roadmap_id = db_obj.roadmap_id
-        await self.db.delete(db_obj)
-        await self.db.commit()
+        await self.stage_repo.delete(id)
         await self._recalculate_roadmap_completion(roadmap_id)
         return db_obj
 
@@ -176,29 +133,21 @@ class BusinessRoadmapService(BaseService):
             return None
 
         if new_status == RoadmapStageStatus.ACTIVE and db_stage.order_index > 0:
-            stmt = select(RoadmapStage).where(
-                and_(
-                    RoadmapStage.roadmap_id == db_stage.roadmap_id,
-                    RoadmapStage.order_index == db_stage.order_index - 1,
-                )
-            )
-            result = await self.db.execute(stmt)
-            prev_stage = cast(Optional[RoadmapStage], result.scalar_one_or_none())
+            prev_stage = await self.stage_repo.get_by_order_index(db_stage.roadmap_id, db_stage.order_index - 1)
             
             if prev_stage and prev_stage.status != RoadmapStageStatus.COMPLETED:
                 raise ValueError("Prerequisite stage not completed")
 
-        db_stage.status = new_status
+        update_data: Dict[str, Any] = {"status": new_status}
         if new_status == RoadmapStageStatus.COMPLETED:
-            db_stage.completed_at = _utc_now()
+            update_data["completed_at"] = _utc_now()
 
-        await self.db.commit()
-        await self.db.refresh(db_stage)
+        updated = await self.stage_repo.update(db_stage, update_data)
 
         if new_status == RoadmapStageStatus.COMPLETED:
-            await self._recalculate_roadmap_completion(db_stage.roadmap_id)
+            await self._recalculate_roadmap_completion(updated.roadmap_id)
 
-        return db_stage
+        return updated
 
     @staticmethod
     async def handle_business_event(event_type: str, payload: Dict[str, Any]):

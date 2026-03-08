@@ -17,12 +17,16 @@ from app.db.database import get_async_db
 from app.services.base_service import BaseService
 from app.core.crud_utils import _to_update_dict, _apply_updates
 from app.core.exceptions import ValidationError
+from app.repositories.billing_repository import PlanRepository
 
 logger = logging.getLogger(__name__)
 
 
 class PlanService(BaseService):
     """Service for managing Billing Plans."""
+    def __init__(self, db: AsyncSession):
+        super().__init__(db)
+        self.repo = PlanRepository(db)
 
     _DEFAULT_LIMITS_BY_PLAN = {
         "FREE": 10,
@@ -113,74 +117,46 @@ class PlanService(BaseService):
 
     async def get_plan(self, id: UUID) -> Optional[Plan]:
         """Return a single plan by id."""
-        return await self.db.get(Plan, id)
+        return await self.repo.get(id)
 
     async def get_plans(self, skip: int = 0, limit: int = 100) -> List[Plan]:
         """Return paginated plan records in business-friendly display order."""
-        stmt = (
-            select(Plan)
-            .order_by(Plan.is_active.desc(), Plan.price.asc(), Plan.name.asc())
-            .offset(skip)
-            .limit(limit)
-        )
-        result = await self.db.execute(stmt)
-        return list(result.scalars().all())
+        return await self.repo.get_ordered(skip=skip, limit=limit)
 
     async def count_plans(self) -> int:
         """Return total count of plans."""
-        stmt = select(func.count()).select_from(Plan)
-        result = await self.db.execute(stmt)
-        return int(result.scalar() or 0)
+        return await self.repo.count()
 
     async def create_plan(self, obj_in: Any) -> Plan:
         """Create a new billing plan with normalized commercial rules."""
         data = self._normalize_payload(_to_update_dict(obj_in), is_update=False)
 
-        existing_stmt = select(Plan).where(func.lower(Plan.name) == data["name"].lower())
-        existing_result = await self.db.execute(existing_stmt)
-        if existing_result.scalar_one_or_none() is not None:
+        existing = await self.repo.get_by_name(data["name"])
+        if existing is not None:
             raise ValidationError(
                 message=f"Plan with name '{data['name']}' already exists",
                 field="name",
             )
 
-        db_obj = Plan(**data)
-        self.db.add(db_obj)
-        await self.db.commit()
-        await self.db.refresh(db_obj)
-        return db_obj
+        return await self.repo.create(data)
 
     async def update_plan(self, db_obj: Plan, obj_in: Any) -> Plan:
         """Update mutable fields on an existing plan with validation."""
         update_data = self._normalize_payload(_to_update_dict(obj_in), is_update=True)
 
         if "name" in update_data:
-            existing_stmt = select(Plan).where(
-                func.lower(Plan.name) == update_data["name"].lower(),
-                Plan.id != db_obj.id,
-            )
-            existing_result = await self.db.execute(existing_stmt)
-            if existing_result.scalar_one_or_none() is not None:
+            existing = await self.repo.get_by_name_excluding(update_data["name"], db_obj.id)
+            if existing is not None:
                 raise ValidationError(
                     message=f"Plan with name '{update_data['name']}' already exists",
                     field="name",
                 )
 
-        _apply_updates(db_obj, update_data)
-        self.db.add(db_obj)
-        await self.db.commit()
-        await self.db.refresh(db_obj)
-        return db_obj
+        return await self.repo.update(db_obj, update_data)
 
     async def delete_plan(self, id: UUID) -> Optional[Plan]:
         """Delete a plan by id and return the deleted record."""
-        db_obj = await self.get_plan(id=id)
-        if not db_obj:
-            return None
-
-        await self.db.delete(db_obj)
-        await self.db.commit()
-        return db_obj
+        return await self.repo.delete(id)
 
 
 async def get_plan_service(db: AsyncSession = Depends(get_async_db)) -> PlanService:

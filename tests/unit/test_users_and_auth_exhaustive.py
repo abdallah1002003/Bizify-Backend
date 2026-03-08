@@ -1,6 +1,6 @@
 """Tests covering the exhaustiveness of UserService and AuthService missing branches."""
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch, MagicMock, ANY
 import uuid
 import jwt
 from datetime import datetime, timezone
@@ -18,7 +18,7 @@ async def test_user_service_exhaustive():
     svc = UserService(db)
     svc.user_repo = AsyncMock()
     svc.profile_repo = AsyncMock()
-    svc.admin_log_service = AsyncMock()
+    svc.admin_log_repo = AsyncMock()
     uid = uuid.uuid4()
     admin_id = uuid.uuid4()
 
@@ -65,10 +65,11 @@ async def test_user_service_exhaustive():
 
     # delete_user
     with patch.object(svc, "get_user", return_value=None):
+        svc.user_repo.delete.return_value = None
         assert await svc.delete_user(uid) is None
     with patch.object(svc, "get_user", return_value=db_obj):
         await svc.delete_user(uid)
-        svc.admin_log_service.create_admin_action_log.assert_called()
+        svc.admin_log_repo.create.assert_called()
         svc.user_repo.delete.assert_called_with(uid)
 
     # get_user_profile
@@ -86,7 +87,7 @@ async def test_user_service_exhaustive():
     prof_obj = MagicMock(user_id=uid)
     await svc.update_user_profile(prof_obj, {"bio": "test"})
     await svc.update_user_profile(prof_obj, {"bio": "test"}, performer_id=admin_id)
-    svc.admin_log_service.create_admin_action_log.assert_called()
+    svc.admin_log_repo.create.assert_called()
 
     # update_user_profile_by_user_id
     with patch.object(svc, "get_user_profile", return_value=None):
@@ -98,16 +99,19 @@ async def test_user_service_exhaustive():
 
     # delete_user_profile
     with patch.object(svc, "get_user_profile", return_value=None):
+        svc.profile_repo.delete.return_value = None
         assert await svc.delete_user_profile(uid) is None
     with patch.object(svc, "get_user_profile", return_value=prof_obj):
         await svc.delete_user_profile(uid)
-        svc.profile_repo.delete.assert_called_with(prof_obj)
+        svc.profile_repo.delete.assert_called_with(uid)
 
     # admin action log crud
+    svc.admin_log_repo.get.return_value = None
     await svc.get_admin_action_log(uid)
     await svc.get_admin_action_logs()
     await svc.create_admin_action_log({"action": "TEST"})
     await svc.update_admin_action_log(MagicMock(), {"action": "T2"})
+    svc.admin_log_repo.delete.return_value = None
     await svc.delete_admin_action_log(uid)
 
     # dependency
@@ -266,7 +270,7 @@ async def test_auth_service_exhaustive():
 
     # reset_password
     with patch("app.services.auth.auth_service.security.verify_password_reset_token", return_value=None):
-        with pytest.raises(BadRequestError, match="Invalid or expired reset token"):
+        with pytest.raises(BadRequestError, match="Invalid or expired password reset token"):
             await svc.reset_password("tok", "new")
     
     with patch("app.services.auth.auth_service.security.verify_password_reset_token", return_value={"jti": "j"}):
@@ -280,12 +284,12 @@ async def test_auth_service_exhaustive():
     payload = {"sub": "o@t.com", "jti": "j", "exp": int(datetime.now(timezone.utc).timestamp()) + 3600}
     with patch("app.services.auth.auth_service.security.verify_password_reset_token", return_value=payload):
         with patch("app.services.auth.auth_service.is_token_blacklisted", new_callable=AsyncMock, return_value=True):
-            with pytest.raises(BadRequestError, match="Token has already been used"):
+            with pytest.raises(BadRequestError, match="Password reset token has already been used"):
                 await svc.reset_password("tok", "new")
                 
         with patch("app.services.auth.auth_service.is_token_blacklisted", new_callable=AsyncMock, return_value=False):
             svc.password_reset_repo.get_by_jti.return_value = None
-            with pytest.raises(BadRequestError, match="already been used or is invalid"):
+            with pytest.raises(BadRequestError, match="Password reset token has already been used"):
                 await svc.reset_password("tok", "new")
                 
             svc.password_reset_repo.get_by_jti.return_value = MagicMock(used=False)
@@ -297,7 +301,7 @@ async def test_auth_service_exhaustive():
             user_svc.get_user_by_email.return_value = mock_user
             with patch("app.services.auth.auth_service.blacklist_token", new_callable=AsyncMock):
                 await svc.reset_password("tok", "new")
-                user_svc.update_user.assert_called_with(mock_user, {"password": "new"})
+                user_svc.update_user.assert_called_with(mock_user, {"password_hash": ANY})
                 
     # dependency
     await get_auth_service(db)

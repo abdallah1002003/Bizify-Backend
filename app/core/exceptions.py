@@ -106,6 +106,29 @@ class ResourceNotFoundError(AppException):
         )
 
 
+class AuthenticationError(AppException):
+    """Raised when authentication fails."""
+    def __init__(self, message: str = "Authentication failed", details: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(
+            message=message,
+            code="AUTHENTICATION_ERROR",
+            details=details,
+            status_code=status.HTTP_401_UNAUTHORIZED
+        )
+
+
+class BadRequestError(AppException):
+    """Raised when the request is malformed or invalid."""
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(
+            message=message,
+            code="BAD_REQUEST",
+            details=details,
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+
+
+
 class AccessDeniedError(AppException):
     """Raised when user lacks required permissions.
     

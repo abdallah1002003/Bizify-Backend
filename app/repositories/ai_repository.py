@@ -146,3 +146,11 @@ class EmbeddingRepository(GenericRepository[Embedding]):
         )
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
+
+class AIRepository:
+    """Facade for all AI repositories."""
+    def __init__(self, db: AsyncSession) -> None:
+        self.agent = AgentRepository(db)
+        self.run = AgentRunRepository(db)
+        self.validation = ValidationLogRepository(db)
+        self.embedding = EmbeddingRepository(db)

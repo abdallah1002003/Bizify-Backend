@@ -70,9 +70,18 @@ class GenericRepository(Generic[ModelType]):
     # Write
     # ------------------------------------------------------------------
 
-    async def create(self, obj_in: Dict[str, Any], auto_commit: bool = True) -> ModelType:
+    async def create(self, obj_in: Union[Dict[str, Any], Any], auto_commit: bool = True) -> ModelType:
         """Create and persist a new record."""
-        db_obj = self.model(**obj_in)
+        if isinstance(obj_in, dict):
+            update_data = obj_in
+        elif hasattr(obj_in, "model_dump"):
+            update_data = obj_in.model_dump(exclude_unset=True)
+        elif hasattr(obj_in, "dict"):
+            update_data = obj_in.dict(exclude_unset=True)
+        else:
+            update_data = dict(obj_in)
+
+        db_obj = self.model(**update_data)
         self.db.add(db_obj)
         if auto_commit:
             await self.db.commit()
@@ -112,3 +121,19 @@ class GenericRepository(Generic[ModelType]):
             await self.db.delete(obj)
             await self.db.commit()
         return obj
+
+    async def commit(self) -> None:
+        """Commit the current transaction."""
+        await self.db.commit()
+
+    async def rollback(self) -> None:
+        """Roll back the current transaction."""
+        await self.db.rollback()
+
+    async def refresh(self, obj: Any) -> None:
+        """Refresh an object from the database."""
+        await self.db.refresh(obj)
+
+    async def flush(self) -> None:
+        """Flush the current session."""
+        await self.db.flush()

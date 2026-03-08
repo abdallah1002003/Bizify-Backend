@@ -2,6 +2,7 @@
 import asyncio
 import logging
 from sqlalchemy import select, or_
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from config.settings import settings
 from app.db.database import AsyncSessionLocal
@@ -9,6 +10,19 @@ from app.models.core.core import EmailMessage
 from app.core.crud_utils import _utc_now
 
 logger = logging.getLogger(__name__)
+
+
+from app.services.base_service import BaseService
+
+class EmailWorkerService(BaseService):
+    """Facade for email worker operations."""
+    def __init__(self, db: AsyncSession):
+        super().__init__(db)
+    async def process_email_queue(self, *args, **kwargs):
+        return await process_email_queue(*args, **kwargs)
+
+    async def run_email_worker(self, *args, **kwargs):
+        return await run_email_worker(*args, **kwargs)
 
 async def _send_fastapi_mail(to_email: str, subject: str, html_body: str) -> None:
     """Low-level async sender using fastapi-mail."""

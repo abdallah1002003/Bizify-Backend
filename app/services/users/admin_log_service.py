@@ -12,57 +12,55 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.models import AdminActionLog
-
-logger = logging.getLogger(__name__)
-
+from app.services.base_service import BaseService
+from app.repositories.user_repository import AdminActionLogRepository
 from app.core.crud_utils import _to_update_dict, _apply_updates
 
-# ----------------------------
-# AdminActionLog CRUD (Async)
-# ----------------------------
+class AdminLogService(BaseService):
+    """Refactored class-based access to admin logs."""
+    def __init__(self, db: AsyncSession):
+        super().__init__(db)
+        self.repo = AdminActionLogRepository(db)
+    async def get_admin_action_log(self, id: UUID) -> Optional[AdminActionLog]:
+        """Get admin action log by ID."""
+        return await self.repo.get(id)
 
+    async def get_admin_action_logs(self, skip: int = 0, limit: int = 100) -> List[AdminActionLog]:
+        """Get admin action logs with pagination."""
+        return await self.repo.get_all(skip=skip, limit=limit)
+
+    async def create_admin_action_log(self, obj_in: Any) -> AdminActionLog:
+        """Create a new admin action log."""
+        return await self.repo.create(_to_update_dict(obj_in))
+
+    async def update_admin_action_log(self, db_obj: AdminActionLog, obj_in: Any) -> AdminActionLog:
+        """Update an admin action log."""
+        return await self.repo.update(db_obj, _to_update_dict(obj_in))
+
+    async def delete_admin_action_log(self, id: UUID) -> Optional[AdminActionLog]:
+        """Delete an admin action log."""
+        return await self.repo.delete(id)
+
+
+def get_admin_log_service(db: AsyncSession) -> AdminLogService:
+    """Helper to return an instance of AdminLogService."""
+    return AdminLogService(db)
+
+# Backward-compatible aliases (Deprecated)
 async def get_admin_action_log(db: AsyncSession, id: UUID) -> Optional[AdminActionLog]:
-    """Get admin action log by ID."""
-    return await db.get(AdminActionLog, id)
-
+    return await AdminLogService(db).get_admin_action_log(id)
 
 async def get_admin_action_logs(db: AsyncSession, skip: int = 0, limit: int = 100) -> List[AdminActionLog]:
-    """Get admin action logs with pagination."""
-    stmt = select(AdminActionLog).order_by(AdminActionLog.created_at.desc()).offset(skip).limit(limit)
-    result = await db.execute(stmt)
-    return list(result.scalars().all())
-
+    return await AdminLogService(db).get_admin_action_logs(skip, limit)
 
 async def create_admin_action_log(db: AsyncSession, obj_in: Any) -> AdminActionLog:
-    """Create a new admin action log."""
-    data = _to_update_dict(obj_in)
-    db_obj = AdminActionLog(**data)
-    db.add(db_obj)
-    await db.commit()
-    await db.refresh(db_obj)
-    return db_obj
-
+    return await AdminLogService(db).create_admin_action_log(obj_in)
 
 async def update_admin_action_log(db: AsyncSession, db_obj: AdminActionLog, obj_in: Any) -> AdminActionLog:
-    """Update an admin action log."""
-    _apply_updates(db_obj, _to_update_dict(obj_in))
-    db.add(db_obj)
-    await db.commit()
-    await db.refresh(db_obj)
-    return db_obj
-
+    return await AdminLogService(db).update_admin_action_log(db_obj, obj_in)
 
 async def delete_admin_action_log(db: AsyncSession, id: UUID) -> Optional[AdminActionLog]:
-    """Delete an admin action log."""
-    db_obj = await get_admin_action_log(db, id=id)
-    if not db_obj:
-        return None
+    return await AdminLogService(db).delete_admin_action_log(id)
 
-    await db.delete(db_obj)
-    await db.commit()
-    return db_obj
-
-
-# Backward-compatible alias used by older code.
 async def get_admin_logs(db: AsyncSession, skip: int = 0, limit: int = 100) -> List[AdminActionLog]:
-    return await get_admin_action_logs(db, skip=skip, limit=limit)
+    return await AdminLogService(db).get_admin_action_logs(skip, limit)

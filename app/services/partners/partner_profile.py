@@ -21,26 +21,63 @@ logger = logging.getLogger(__name__)
 
 class PartnerProfileService(BaseService):
     """Refactored class-based access to partner profiles."""
+    def __init__(self, db: AsyncSession):
+        super().__init__(db)
+        from app.repositories.partner_repository import PartnerProfileRepository
+        self.repo = PartnerProfileRepository(db)
+
     async def get_partner_profile(self, id: UUID) -> Optional[PartnerProfile]:
-        return await get_partner_profile(self.db, id)
+        return await self.repo.get(id)
 
     async def get_partner_profiles(self, skip: int = 0, limit: int = 100) -> List[PartnerProfile]:
-        return await get_partner_profiles(self.db, skip, limit)
+        return await self.repo.get_all(skip=skip, limit=limit)
 
-    async def create_partner_profile(self, **kwargs) -> PartnerProfile:
-        return await create_partner_profile(self.db, **kwargs)
+    async def create_partner_profile(self, *args, **kwargs) -> PartnerProfile:
+        if args and not kwargs and not isinstance(args[0], (str, UUID)):
+             data = _to_update_dict(args[0])
+        else:
+             data = dict(kwargs)
+             if args: 
+                  # Legacy support for positional args if needed
+                  pass
+        
+        # Map bio -> description
+        if "bio" in data and "description" not in data:
+            data["description"] = data.pop("bio")
+        # Map details -> services_json
+        if "details" in data and "services_json" not in data:
+            data["services_json"] = data.pop("details")
+            
+        if not data.get("approval_status"):
+            data["approval_status"] = ApprovalStatus.PENDING
+            
+        return await self.repo.create(data)
 
     async def update_partner_profile(self, db_obj: PartnerProfile, obj_in: Any) -> PartnerProfile:
-        return await update_partner_profile(self.db, db_obj, obj_in)
+        return await self.repo.update(db_obj, _to_update_dict(obj_in))
 
     async def delete_partner_profile(self, id: UUID) -> Optional[PartnerProfile]:
-        return await delete_partner_profile(self.db, id)
+        return await self.repo.delete(id)
 
     async def approve_partner_profile(self, profile_id: UUID, approver_id: UUID) -> Optional[PartnerProfile]:
-        return await approve_partner_profile(self.db, profile_id, approver_id)
+        profile = await self.get_partner_profile(profile_id)
+        if profile is None:
+            return None
+
+        return await self.repo.update(profile, {
+            "approval_status": ApprovalStatus.APPROVED,
+            "approved_by": approver_id,
+            "approved_at": _utc_now()
+        })
 
     async def match_partners_by_capability(self, business_needs: Dict[str, Any]) -> List[PartnerProfile]:
-        return await match_partners_by_capability(self.db, business_needs)
+        # Delegate to repository specialized method
+        return await self.repo.get_approved_by_type(business_needs.get("required_type"))
+
+
+def get_partner_profile_service(db: AsyncSession) -> PartnerProfileService:
+    """Helper to return an instance of PartnerProfileService."""
+    return PartnerProfileService(db)
 
 
 from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
@@ -81,6 +118,13 @@ async def create_partner_profile(
             "services_json": details or {},
             "approval_status": ApprovalStatus.PENDING,
         }
+
+    # Map bio -> description if present in data (from obj_in)
+    if "bio" in data and "description" not in data:
+        data["description"] = data.pop("bio")
+    # Map details -> services_json if present in data
+    if "details" in data and "services_json" not in data:
+        data["services_json"] = data.pop("details")
 
     if not data.get("approval_status"):
         data["approval_status"] = ApprovalStatus.PENDING

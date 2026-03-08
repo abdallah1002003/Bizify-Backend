@@ -18,50 +18,106 @@ from app.services.base_service import BaseService
 logger = logging.getLogger(__name__)
 
 
+from app.repositories.business_repository import BusinessInviteRepository, BusinessInviteIdeaRepository
+from app.repositories.user_repository import UserRepository
+
+
 class BusinessInviteService(BaseService):
     """Refactored class-based access to business invites."""
+    def __init__(self, db: AsyncSession):
+        super().__init__(db)
+        from app.models.users.user import User
+        self.invite_repo = BusinessInviteRepository(db)
+        self.user_repo = UserRepository(db)
+        self.invite_idea_repo = BusinessInviteIdeaRepository(db)
+
     async def get_invite(self, id: UUID) -> Optional[BusinessInvite]:
-        return await get_invite(self.db, id)
+        return await self.invite_repo.get(id)
 
     async def get_business_invite(self, id: UUID) -> Optional[BusinessInvite]:
-        return await get_business_invite(self.db, id)
+        return await self.get_invite(id)
 
     async def get_invites(self, business_id: UUID) -> List[BusinessInvite]:
-        return await get_invites(self.db, business_id)
+        return await self.invite_repo.get_for_business(business_id)
 
     async def get_business_invites(self, skip: int = 0, limit: int = 100) -> List[BusinessInvite]:
-        return await get_business_invites(self.db, skip, limit)
+        return await self.invite_repo.get_all(skip, limit)
 
     async def create_invite(self, business_id: UUID, email: str, invited_by: UUID) -> BusinessInvite:
-        return await create_invite(self.db, business_id, email, invited_by)
+        return await self.invite_repo.create({
+            "business_id": business_id,
+            "email": email,
+            "token": secrets.token_urlsafe(32),
+            "status": InviteStatus.PENDING,
+            "invited_by": invited_by,
+            "expires_at": _utc_now() + timedelta(days=7),
+        })
 
     async def create_business_invite(self, obj_in: Any) -> BusinessInvite:
-        return await create_business_invite(self.db, obj_in)
+        data = _to_update_dict(obj_in)
+        data.setdefault("expires_at", _utc_now() + timedelta(days=7))
+        if "token" not in data:
+            data["token"] = secrets.token_urlsafe(32)
+        return await self.invite_repo.create(data)
 
     async def update_business_invite(self, db_obj: BusinessInvite, obj_in: Any) -> BusinessInvite:
-        return await update_business_invite(self.db, db_obj, obj_in)
+        before = db_obj.status
+        updated = await self.invite_repo.update(db_obj, obj_in)
+
+        if before != InviteStatus.ACCEPTED and updated.status == InviteStatus.ACCEPTED:
+            user = await self.user_repo.get_by_email(updated.email)
+            if user is not None:
+                from app.services.business.business_collaborator import BusinessCollaboratorService
+                collab_service = BusinessCollaboratorService(self.db)
+                await collab_service.add_collaborator(updated.business_id, user.id, CollaboratorRole.VIEWER)
+
+        return updated
 
     async def delete_business_invite(self, id: UUID) -> Optional[BusinessInvite]:
-        return await delete_business_invite(self.db, id)
+        db_obj = await self.get_business_invite(id)
+        if not db_obj:
+            return None
+
+        await self.invite_repo.delete(id)
+        return db_obj
 
     async def accept_invite(self, token: str, user_id: UUID) -> bool:
-        return await accept_invite(self.db, token, user_id)
+        invite = await self.invite_repo.get_by_token(token)
+        
+        if invite is None or invite.status != InviteStatus.PENDING:
+            return False
+
+        if invite.expires_at < _utc_now():
+            await self.invite_repo.update(invite, {"status": InviteStatus.EXPIRED})
+            return False
+
+        await self.invite_repo.update(invite, {"status": InviteStatus.ACCEPTED})
+        
+        from app.services.business.business_collaborator import BusinessCollaboratorService
+        collab_service = BusinessCollaboratorService(self.db)
+        await collab_service.add_collaborator(invite.business_id, user_id, CollaboratorRole.EDITOR)
+        return True
 
     # BusinessInviteIdea
     async def get_business_invite_idea(self, id: UUID) -> Optional[BusinessInviteIdea]:
-        return await get_business_invite_idea(self.db, id)
+        return await self.invite_idea_repo.get(id)
 
     async def get_business_invite_ideas(self, skip: int = 0, limit: int = 100) -> List[BusinessInviteIdea]:
-        return await get_business_invite_ideas(self.db, skip, limit)
+        return await self.invite_idea_repo.get_all(skip, limit)
 
     async def create_business_invite_idea(self, obj_in: Any) -> BusinessInviteIdea:
-        return await create_business_invite_idea(self.db, obj_in)
+        return await self.invite_idea_repo.create(obj_in)
 
     async def update_business_invite_idea(self, db_obj: BusinessInviteIdea, obj_in: Any) -> BusinessInviteIdea:
-        return await update_business_invite_idea(self.db, db_obj, obj_in)
+        return await self.invite_idea_repo.update(db_obj, obj_in)
 
     async def delete_business_invite_idea(self, id: UUID) -> Optional[BusinessInviteIdea]:
-        return await delete_business_invite_idea(self.db, id)
+        db_obj = await self.get_business_invite_idea(id)
+        if not db_obj:
+            return None
+
+        await self.invite_idea_repo.delete(id)
+        return db_obj
 
 
 # ----------------------------

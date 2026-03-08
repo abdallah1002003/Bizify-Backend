@@ -6,6 +6,7 @@ import logging
 from typing import Any, Dict, Optional
 
 import httpx
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from config.settings import settings
 from app.core.circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitBreakerOpenError
@@ -217,3 +218,26 @@ async def run_agent_execution(
     if output is not None:
         return output
     return _mock_agent_response(input_data, agent_name=agent_name, stage_type=stage_type)
+
+
+from app.services.base_service import BaseService
+
+class AIProviderService(BaseService):
+    """Facade for AI provider operations."""
+    def __init__(self, db: AsyncSession):
+        super().__init__(db)
+        from app.repositories.ai_repository import AIRepository
+        self.repo = AIRepository(db)
+    async def run_agent_execution(self, *args, **kwargs):
+        return await run_agent_execution(*args, **kwargs)
+
+    async def generate_embedding_vector(self, *args, **kwargs):
+        return await generate_embedding_vector(*args, **kwargs)
+
+
+from app.db.database import get_async_db
+from fastapi import Depends
+
+def get_ai_provider_service(db: AsyncSession = Depends(get_async_db)) -> AIProviderService:
+    """Helper to return an instance of AIProviderService."""
+    return AIProviderService(db)

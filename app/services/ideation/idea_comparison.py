@@ -18,19 +18,18 @@ logger = logging.getLogger(__name__)
 
 class IdeaComparisonService(BaseService):
     """Service for managing Idea Comparisons."""
-    db: AsyncSession
+    def __init__(self, db: AsyncSession):
+        super().__init__(db)
+        from app.repositories.idea_repository import IdeaComparisonRepository
+        self.repo = IdeaComparisonRepository(db)
 
     async def get_idea_comparison(self, id: UUID) -> Optional[IdeaComparison]:
         """Retrieve a single comparison record by ID."""
-        stmt = select(IdeaComparison).where(IdeaComparison.id == id)
-        result = await self.db.execute(stmt)
-        return result.scalar_one_or_none()
+        return await self.repo.get(id)
 
     async def get_idea_comparisons(self, skip: int = 0, limit: int = 100) -> List[IdeaComparison]:
         """Retrieve pagination comparison records."""
-        stmt = select(IdeaComparison).offset(skip).limit(limit)
-        result = await self.db.execute(stmt)
-        return list(result.scalars().all())
+        return await self.repo.get_multi(skip=skip, limit=limit)
 
     async def create_idea_comparison(self, obj_in: Any) -> IdeaComparison:
         """Create a new idea comparison."""
@@ -60,7 +59,7 @@ class IdeaComparisonService(BaseService):
 
     async def create_comparison(self, title: str, user_id: UUID) -> IdeaComparison:
         """Helper to create a comparison with a specific name/title."""
-        return await self.create_idea_comparison({"name": title, "user_id": user_id})
+        return await self.repo.create({"name": title, "user_id": user_id})
 
 
 async def get_idea_comparison_service(db: AsyncSession = Depends(get_async_db)) -> IdeaComparisonService:

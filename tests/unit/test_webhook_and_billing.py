@@ -36,7 +36,7 @@ async def test_payment_method_service_exhaustive():
     svc.repo.update.return_value = updated_obj
     
     first_method = PaymentMethod(id=uid, user_id=user_id, is_default=False)
-    with patch.object(svc, "_get_first_user_payment_method", return_value=first_method):
+    with patch.object(svc.repo, "get_first_for_user", return_value=first_method):
         # We change is_default to False. It's the first method, so it should be forced back to True
         updated_obj2 = PaymentMethod(id=uid, user_id=user_id, is_default=True)
         svc.repo.update.side_effect = [updated_obj, updated_obj2] # First for initial update, second for force True
@@ -63,16 +63,16 @@ async def test_payment_method_service_exhaustive():
     svc.repo.get.return_value = db_obj
     replacement = PaymentMethod(id=uuid.uuid4(), user_id=user_id, is_default=False)
     
-    with patch.object(svc, "_get_first_user_payment_method", return_value=replacement):
+    with patch.object(svc.repo, "get_first_for_user", return_value=replacement):
         await svc.delete_payment_method(uid)
-        svc.repo.delete.assert_called_with(db_obj)
+        svc.repo.delete.assert_called_with(uid)
         # Should have updated replacement
         svc.repo.update.assert_called_with(replacement, {"is_default": True})
 
     # delete_payment_method: was default but no replacement available
-    with patch.object(svc, "_get_first_user_payment_method", return_value=None):
+    with patch.object(svc.repo, "get_first_for_user", return_value=None):
         await svc.delete_payment_method(uid)
-        svc.repo.delete.assert_called_with(db_obj)
+        svc.repo.delete.assert_called_with(uid)
 
 
 # ── StripeWebhookService ───────────────────────────────────────────────────────
@@ -93,7 +93,7 @@ async def test_stripe_webhook_service_exhaustive():
     mock_payment = MagicMock(id=uuid.uuid4())
     svc.payment_repo.get_pending_by_payment_intent.return_value = mock_payment
     await svc.handle_payment_intent_succeeded({"id": "pi_123"})
-    svc.payment_repo.update.assert_called_with(mock_payment, {"status": PaymentStatus.COMPLETED})
+    svc.payment_repo.update.assert_called_with(mock_payment, {"status": PaymentStatus.COMPLETED}, auto_commit=False)
     
     # handle_payment_intent_failed
     svc.payment_repo.get_pending_by_payment_intent.return_value = None
@@ -101,7 +101,7 @@ async def test_stripe_webhook_service_exhaustive():
     
     svc.payment_repo.get_pending_by_payment_intent.return_value = mock_payment
     await svc.handle_payment_intent_failed({"id": "pi_123"})
-    svc.payment_repo.update.assert_called_with(mock_payment, {"status": PaymentStatus.FAILED})
+    svc.payment_repo.update.assert_called_with(mock_payment, {"status": PaymentStatus.FAILED}, auto_commit=False)
 
     # handle_subscription_deleted
     svc.sub_repo.get_by_stripe_id.return_value = None
@@ -110,7 +110,7 @@ async def test_stripe_webhook_service_exhaustive():
     mock_sub = MagicMock(id=uuid.uuid4())
     svc.sub_repo.get_by_stripe_id.return_value = mock_sub
     await svc.handle_subscription_deleted({"id": "sub_123"})
-    svc.sub_repo.update.assert_called_with(mock_sub, {"status": SubscriptionStatus.CANCELED})
+    svc.sub_repo.update.assert_called_with(mock_sub, {"status": SubscriptionStatus.CANCELED}, auto_commit=False)
 
     # handle_subscription_updated
     svc.sub_repo.get_by_stripe_id.return_value = None

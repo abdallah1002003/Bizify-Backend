@@ -194,6 +194,12 @@ class IdeaComparisonRepository(GenericRepository[IdeaComparison]):
         )
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
+    async def get_multi(self, *, skip: int = 0, limit: int = 100) -> List[IdeaComparison]:
+        """Retrieve a paginated list of all comparisons."""
+        stmt = select(IdeaComparison).offset(skip).limit(limit)
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
 
 
 class ComparisonItemRepository(GenericRepository[ComparisonItem]):

@@ -4,47 +4,36 @@ from typing import Any, List, Optional
 from uuid import UUID
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from app.db.database import get_async_db
 from app.models import Embedding
 from app.services.base_service import BaseService
-from app.core.crud_utils import _to_update_dict
 from app.services.ai import provider_runtime
+from app.repositories.ai_repository import EmbeddingRepository
 
 logger = logging.getLogger(__name__)
 
 class EmbeddingService(BaseService):
     """Service for managing AI embeddings and vectorization."""
-    db: AsyncSession
+    
+    def __init__(self, db: AsyncSession):
+        super().__init__(db)
+        self.repo = EmbeddingRepository(db)
 
     async def get_embedding(self, id: UUID) -> Optional[Embedding]:
         """Retrieve a single embedding by ID."""
-        stmt = select(Embedding).where(Embedding.id == id)
-        result = await self.db.execute(stmt)
-        return result.scalar_one_or_none()
+        return await self.repo.get(id)
 
     async def get_embeddings(self, skip: int = 0, limit: int = 100) -> List[Embedding]:
         """Retrieve paginated embeddings."""
-        stmt = select(Embedding).offset(skip).limit(limit)
-        result = await self.db.execute(stmt)
-        return list(result.scalars().all())
+        return await self.repo.get_all(skip=skip, limit=limit)
 
     async def create_embedding(self, obj_in: Any) -> Embedding:
         """Create a new embedding record."""
-        db_obj = Embedding(**_to_update_dict(obj_in))
-        self.db.add(db_obj)
-        await self.db.commit()
-        await self.db.refresh(db_obj)
-        return db_obj
+        return await self.repo.create(obj_in)
 
     async def delete_embedding(self, id: UUID) -> Optional[Embedding]:
         """Delete an embedding by ID."""
-        db_obj = await self.get_embedding(id=id)
-        if not db_obj:
-            return None
-        await self.db.delete(db_obj)
-        await self.db.commit()
-        return db_obj
+        return await self.repo.delete(id)
 
     async def trigger_vectorization(
         self,

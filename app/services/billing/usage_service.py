@@ -13,12 +13,16 @@ from app.db.database import get_async_db
 from app.services.base_service import BaseService
 from app.core.crud_utils import _to_update_dict, _apply_updates
 from app.core.exceptions import ValidationError, InvalidStateError
+from app.repositories.billing_repository import UsageRepository
 
 logger = logging.getLogger(__name__)
 
 
 class UsageService(BaseService):
     """Service for managing resource usage tracking and enforcement."""
+    def __init__(self, db: AsyncSession):
+        super().__init__(db)
+        self.repo = UsageRepository(db)
 
     @staticmethod
     def _normalize_resource_type(resource_type: str) -> str:
@@ -46,14 +50,7 @@ class UsageService(BaseService):
         resource_type: str,
         for_update: bool = False,
     ) -> Optional[Usage]:
-        stmt = select(Usage).where(
-            Usage.user_id == user_id,
-            Usage.resource_type == resource_type,
-        )
-        if for_update:
-            stmt = stmt.with_for_update()
-        result = await self.db.execute(stmt)
-        return result.scalar_one_or_none()
+        return await self.repo.get_by_resource(user_id, resource_type, for_update=for_update)
 
     async def check_usage_limit(self, user_id: UUID, resource_type: str) -> bool:
         """Return whether the user's usage remains below the configured limit."""

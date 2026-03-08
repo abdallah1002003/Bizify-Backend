@@ -46,6 +46,11 @@ class ChatSessionRepository(GenericRepository[ChatSession]):
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
+    async def get_all(self, skip: int = 0, limit: int = 100, user_id: Optional[UUID] = None) -> List[ChatSession]:
+        if user_id:
+            return await self.get_for_user(user_id, skip, limit)
+        return await super().get_all(skip=skip, limit=limit)
+
     async def get_for_business(
         self, business_id: UUID, skip: int = 0, limit: int = 100
     ) -> List[ChatSession]:
@@ -102,21 +107,25 @@ class ChatMessageRepository(GenericRepository[ChatMessage]):
         result = await self.db.execute(stmt)
         return result.scalars().first()
 
-    async def get_for_session(
+    async def get_session_history(
         self,
         session_id: UUID,
-        skip: int = 0,
-        limit: int = 100,
+        limit: int = 50,
     ) -> List[ChatMessage]:
         """Retrieve all messages in a session, ordered by creation time."""
         stmt = (
             select(ChatMessage)
             .where(ChatMessage.session_id == session_id)
             .order_by(ChatMessage.created_at.asc())
-            .offset(skip)
+            .limit(limit)
         )
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
+
+    async def get_all(self, skip: int = 0, limit: int = 100, user_id: Optional[UUID] = None) -> List[ChatMessage]:
+        if user_id:
+            return await self.get_all_filtered(user_id, skip, limit)
+        return await super().get_all(skip=skip, limit=limit)
 
     async def get_all_filtered(self, user_id: UUID, skip: int = 0, limit: int = 100) -> List[ChatMessage]:
         stmt = (

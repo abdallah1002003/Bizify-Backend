@@ -21,23 +21,45 @@ logger = logging.getLogger(__name__)
 
 class PartnerRequestService(BaseService):
     """Refactored class-based access to partner requests."""
+    def __init__(self, db: AsyncSession):
+        super().__init__(db)
+        from app.repositories.partner_repository import PartnerRequestRepository
+        self.repo = PartnerRequestRepository(db)
+
     async def get_partner_request(self, id: UUID) -> Optional[PartnerRequest]:
-        return await get_partner_request(self.db, id)
+        return await self.repo.get(id)
 
     async def get_partner_requests(self, skip: int = 0, limit: int = 100) -> List[PartnerRequest]:
-        return await get_partner_requests(self.db, skip, limit)
+        return await self.repo.get_all(skip=skip, limit=limit)
 
     async def submit_partner_request(self, **kwargs) -> PartnerRequest:
-        return await submit_partner_request(self.db, **kwargs)
+        data = dict(kwargs)
+        if not data.get("status"):
+            data["status"] = RequestStatus.PENDING
+        return await self.repo.create(data)
 
     async def create_partner_request(self, obj_in: Any) -> PartnerRequest:
-        return await create_partner_request(self.db, obj_in)
+        return await self.repo.create(_to_update_dict(obj_in))
 
     async def update_partner_request(self, db_obj: PartnerRequest, obj_in: Any) -> PartnerRequest:
-        return await update_partner_request(self.db, db_obj, obj_in)
+        return await self.repo.update(db_obj, _to_update_dict(obj_in))
 
     async def delete_partner_request(self, id: UUID) -> Optional[PartnerRequest]:
-        return await delete_partner_request(self.db, id)
+        return await self.repo.delete(id)
+
+    async def transition_request_status(self, request_id: UUID, new_status: RequestStatus, performer_id: Optional[UUID] = None) -> Optional[PartnerRequest]:
+        request = await self.get_partner_request(request_id)
+        if not request:
+            return None
+        return await self.repo.update(request, {"status": new_status})
+
+    async def accept_partner_request(self, request_id: UUID) -> Optional[PartnerRequest]:
+        return await self.transition_request_status(request_id, RequestStatus.ACCEPTED)
+
+
+def get_partner_request_service(db: AsyncSession) -> PartnerRequestService:
+    """Helper to return an instance of PartnerRequestService."""
+    return PartnerRequestService(db)
 
     async def transition_request_status(self, **kwargs) -> Optional[PartnerRequest]:
         return await transition_request_status(self.db, **kwargs)

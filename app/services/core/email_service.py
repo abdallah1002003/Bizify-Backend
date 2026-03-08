@@ -23,8 +23,13 @@ from jinja2 import Environment, FileSystemLoader
 template_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "templates", "email")
 jinja_env = Environment(loader=FileSystemLoader(template_dir))
 
-class EmailService:
+from app.services.base_service import BaseService
+from sqlalchemy.ext.asyncio import AsyncSession
+
+class EmailService(BaseService):
     """Service for sending transactional emails."""
+    def __init__(self, db: AsyncSession):
+        super().__init__(db)
 
     def render_template(self, template_name: str, **context) -> str:
         """Helper to render a Jinja2 template."""
@@ -113,7 +118,11 @@ def register_email_handlers():
 # ---------------------------------------------------------------------------
 
 async def send_verification_email(email: str, token: str) -> None:
-    await EmailService().send_verification_email(email, token)
+    from app.db.database import AsyncSessionLocal
+    async with AsyncSessionLocal() as db:
+        await EmailService(db).send_verification_email(email, token)
 
 async def send_password_reset_email(email: str, token: str) -> None:
-    await EmailService().send_password_reset_email(email, token)
+    from app.db.database import AsyncSessionLocal
+    async with AsyncSessionLocal() as db:
+        await EmailService(db).send_password_reset_email(email, token)
