@@ -3,7 +3,6 @@ Integration tests for Business & Ideas API endpoints.
 Target: 25+ endpoint tests covering business creation, management, ideas, and collaboration.
 """
 
-import pytest
 from uuid import uuid4
 
 
@@ -158,7 +157,6 @@ class TestIdeasAPI:
         }
         response = client.post("/api/v1/ideas/", json=payload, headers=auth_headers)
         assert response.status_code in [200, 201]
-        idea_id = response.json().get("id") if response.status_code in [200, 201] else None
         
         # List
         response = client.get("/api/v1/ideas/", headers=auth_headers)

@@ -4,9 +4,7 @@ Targets: partner_profile.py (23%), email_service.py (37%), cleanup_service.py (3
 """
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
-from datetime import datetime
-from sqlalchemy.ext.asyncio import AsyncSession
+from unittest.mock import AsyncMock, MagicMock, patch
 
 # Test low coverage services directly with mocks
 class TestPartnerProfileService:
@@ -17,9 +15,9 @@ class TestPartnerProfileService:
         """Test error handling for missing partner"""
         with patch('app.services.partners.partner_profile.PartnerProfileService') as mock_service:
             service = mock_service.return_value
-            service.get.side_effect = Exception("Not found")
-            with pytest.raises(Exception):
-                result = await service.get("invalid-id")
+            service.get.side_effect = ValueError("Not found")
+            with pytest.raises(ValueError):
+                await service.get("invalid-id")
 
     @pytest.mark.asyncio
     async def test_partner_profile_list(self):
