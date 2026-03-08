@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bizify-worker
+  namespace: default
+  labels:
+    app: bizify-worker
+    version: v1
+    managed-by: kubernetes
+spec:
+  replicas: 1 # Typically 1 for background workers to avoid queue duplication unless worker is multi-instance safe (which it should be using Redis pops)
+  selector:
+    matchLabels:
+      app: bizify-worker
+  template:
+    metadata:
+      labels:
+        app: bizify-worker
+        version: v1
+    spec:
+      serviceAccountName: bizify-api # Reusing API service account if no specific worker permissions needed
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: bizify-worker
+        image: bizify-api:latest # Reusing API image but overriding command
+        imagePullPolicy: Always
+        command: ["python", "worker.py"]
+        env:
+        - name: APP_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: bizify-config
+              key: app.env
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: bizify-secrets
+              key: database-url
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: bizify-config
+              key: redis.host
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: bizify-config
+              key: redis.port
+        - name: REDIS_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: bizify-config
+              key: redis.enabled
+        - name: SENTRY_DSN
+          valueFrom:
+            secretKeyRef:
+              name: bizify-secrets
+              key: sentry-dsn
+              optional: true
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "250m"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: cache
+          mountPath: /app/.cache
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: cache
+        emptyDir: {}
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
