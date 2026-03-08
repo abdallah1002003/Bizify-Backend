@@ -6,7 +6,6 @@ from uuid import UUID
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
 from app.db.database import get_async_db
 from app.models import ComparisonItem
@@ -89,5 +88,5 @@ async def get_comparison_item_service(db: AsyncSession = Depends(get_async_db)) 
 # Legacy Aliases
 # ----------------------------
 
-async def get_comparison_item(db: AsyncSession, id: UUID) -> Optional[ComparisonItem]:
+async def get_comparison_item(db: AsyncSession, comp_id: UUID, idea_id: UUID) -> Optional[ComparisonItem]:
     return await ComparisonItemService(db).add_item_to_comparison(comp_id, idea_id)

@@ -1,13 +1,10 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
-from uuid import UUID
+from typing import Any, Dict
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import IntegrityError
 
-from app.models import Payment, Subscription
 from app.models.enums import PaymentStatus, SubscriptionStatus
 from app.services.base_service import BaseService
 
@@ -64,7 +61,7 @@ class StripeWebhookService(BaseService):
             try:
                 await self.event_repo.create_safe({"event_id": event_id, "source": "stripe"}, auto_commit=False)
                 await self.event_repo.flush()
-            except Exception as e:
+            except Exception:
                 logger.info("Stripe event %s already processed (caught via constraint). Ignoring duplicate.", event_id)
                 return True
 

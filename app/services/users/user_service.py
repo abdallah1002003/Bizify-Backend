@@ -2,17 +2,14 @@ import logging
 from typing import Any, Dict, List, Optional, Union, cast
 from uuid import UUID
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 from fastapi import Depends
 
 from app.db.database import get_async_db
 
 from app.core.security import get_password_hash
-from app.core.crud_utils import _to_update_dict, _apply_updates
+from app.core.crud_utils import _to_update_dict
 from app.models import AdminActionLog, User, UserProfile
-from app.models.enums import UserRole
 from app.services.base_service import BaseService
 from app.repositories.user_repository import UserRepository, UserProfileRepository, AdminActionLogRepository
 

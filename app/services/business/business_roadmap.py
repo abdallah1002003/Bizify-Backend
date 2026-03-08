@@ -1,22 +1,19 @@
 import logging
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import Depends
-from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_async_db
 from app.models import BusinessRoadmap, RoadmapStage
 from app.models.enums import RoadmapStageStatus, StageType
 from app.services.base_service import BaseService
-from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
+from app.core.crud_utils import _utc_now
 from app.core.events import dispatcher
+from app.repositories.business_repository import BusinessRoadmapRepository, RoadmapStageRepository
 
 logger = logging.getLogger(__name__)
-
-
-from app.repositories.business_repository import BusinessRoadmapRepository, RoadmapStageRepository
 
 
 class BusinessRoadmapService(BaseService):

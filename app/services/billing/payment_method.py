@@ -13,7 +13,7 @@ from sqlalchemy import select
 from app.models import PaymentMethod
 from app.services.base_service import BaseService
 from app.core.crud_utils import _to_update_dict, _apply_updates
-from app.core.exceptions import ValidationError, ResourceNotFoundError
+from app.core.exceptions import ValidationError
 from app.repositories.billing_repository import PaymentMethodRepository
 
 logger = logging.getLogger(__name__)

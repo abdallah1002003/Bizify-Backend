@@ -12,21 +12,17 @@ from sqlalchemy import select
 from app.models import BusinessInvite, BusinessInviteIdea, User
 from app.models.enums import CollaboratorRole, InviteStatus
 from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
-
 from app.services.base_service import BaseService
-
-logger = logging.getLogger(__name__)
-
-
 from app.repositories.business_repository import BusinessInviteRepository, BusinessInviteIdeaRepository
 from app.repositories.user_repository import UserRepository
+
+logger = logging.getLogger(__name__)
 
 
 class BusinessInviteService(BaseService):
     """Refactored class-based access to business invites."""
     def __init__(self, db: AsyncSession):
         super().__init__(db)
-        from app.models.users.user import User
         self.invite_repo = BusinessInviteRepository(db)
         self.user_repo = UserRepository(db)
         self.invite_idea_repo = BusinessInviteIdeaRepository(db)

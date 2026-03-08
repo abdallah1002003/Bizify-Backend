@@ -3,9 +3,28 @@ from unittest.mock import AsyncMock, patch, MagicMock
 import uuid
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
-# Enthusiastic restore of datetime extras and Decimal.
-from app.services.auth.auth_service import AuthService, get_auth_service
-from app.repositories.auth_repository import RefreshTokenRepository, EmailVerificationTokenRepository, PasswordResetTokenRepository
+
+from app.services.auth.auth_service import get_auth_service
+from app.services.billing.usage_service import UsageService, get_usage_service
+from app.services.billing.plan_service import PlanService, get_plan_service
+from app.services.billing.subscription_service import SubscriptionService, get_subscription_service
+from app.services.billing.payment_service import PaymentService, get_payment_service
+from app.services.chat.chat_session_operations import ChatSessionService
+from app.services.chat.chat_message_operations import ChatMessageService
+from app.services.ai.ai_service import AIService
+from app.services.ideation.idea_service import IdeaService
+from app.services.users.user_service import get_user_service
+from app.services.users.admin_log_service import AdminLogService, get_admin_log_service
+from app.services.users.user_profile import UserProfileService, get_user_profile_service
+from app.services.partners.partner_profile import PartnerProfileService, get_partner_profile_service
+from app.services.partners.partner_request import PartnerRequestService, get_partner_request_service
+from app.models.enums import ChatSessionType, ChatRole, SubscriptionStatus, PaymentStatus, UserRole, RequestStatus, PartnerType
+from app.core.exceptions import (
+    AppException, ValidationError, ResourceNotFoundError, 
+    InvalidStateError
+)
+from app.core import exceptions
+
 
 def mock_result(data=None, scalar=None):
     """Helper to mock a SQLAlchemy-like result object."""
@@ -22,28 +41,6 @@ def mock_result(data=None, scalar=None):
         res.scalar_one_or_none.return_value = scalar
         res.scalar.return_value = scalar
     return res
-from app.services.billing.usage_service import UsageService, get_usage_service
-from app.services.billing.plan_service import PlanService, get_plan_service
-from app.services.billing.subscription_service import SubscriptionService, get_subscription_service
-from app.services.billing.payment_service import PaymentService, get_payment_service
-from app.services.chat.chat_session_operations import ChatSessionService
-from app.services.chat.chat_message_operations import ChatMessageService
-from app.services.ai.ai_service import AIService
-from app.services.ideation.idea_service import IdeaService
-from app.services.users.user_service import UserService, get_user_service
-from app.services.users.admin_log_service import AdminLogService, get_admin_log_service
-from app.services.users.user_profile import UserProfileService, get_user_profile_service
-from app.services.partners.partner_profile import PartnerProfileService, get_partner_profile_service
-from app.services.partners.partner_request import PartnerRequestService, get_partner_request_service
-from app.models.enums import ChatSessionType, ChatRole, SubscriptionStatus, PaymentStatus, UserRole, RequestStatus, PartnerType
-from app.core.exceptions import (
-    AppException, ValidationError, ResourceNotFoundError, 
-    InvalidStateError
-)
-# Enthusiastic cleanup of AuthenticationError.
-# Enthusiastic complete restore of imports.
-from app.core import exceptions
-# Enthusiastic final cleanup.
 # ------------------------------------------------------------------------------
 # BILLING DOMAIN EXHAUSTIVE
 # ------------------------------------------------------------------------------
@@ -328,7 +325,7 @@ async def test_payment_service_exhaustive_absolute():
         
         # Exception branch
         service.sub_repo.get.side_effect = Exception("fail")
-        with pytest.raises(Exception):
+        with pytest.raises(Exception, match="fail"):
             await service.process_payment(subscription_id=sub_id, amount=Decimal("10"), method_id=method_id)
         service.sub_repo.get.side_effect = None
 

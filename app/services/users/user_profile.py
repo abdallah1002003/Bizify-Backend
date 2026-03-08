@@ -3,16 +3,14 @@ User Profile CRUD operations (Async).
 """
 from __future__ import annotations
 
-import logging
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from app.models import UserProfile, AdminActionLog
 from app.services.base_service import BaseService
 from app.repositories.user_repository import UserProfileRepository, AdminActionLogRepository
-from app.core.crud_utils import _to_update_dict, _apply_updates
+from app.core.crud_utils import _to_update_dict
 
 class UserProfileService(BaseService):
     """Refactored class-based access to user profiles."""

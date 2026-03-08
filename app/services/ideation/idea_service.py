@@ -2,13 +2,12 @@ from typing import Any, List, Optional
 from uuid import UUID
 
 from fastapi import Depends
-from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_async_db
-from app.models.ideation.idea import Idea, IdeaAccess
+from app.models.ideation.idea import Idea
 from app.services.base_service import BaseService
-from app.core.crud_utils import _to_update_dict, _apply_updates
+from app.core.crud_utils import _to_update_dict
 from app.services.ideation.idea_access import IdeaAccessService, get_idea_access_service
 from app.services.ideation.idea_version import IdeaVersionService, get_idea_version_service
 

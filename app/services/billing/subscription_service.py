@@ -6,16 +6,14 @@ from uuid import UUID
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
-from app.models import Subscription, Usage
+from app.models import Subscription
 from app.models.enums import SubscriptionStatus
 from app.db.database import get_async_db
 from app.services.base_service import BaseService
 from app.services.billing import plan_service
 from app.core.metrics import subscriptions_active
 from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
-from app.repositories.billing_repository import SubscriptionRepository, UsageRepository
 from app.core.exceptions import (
     ResourceNotFoundError,
     DatabaseError,

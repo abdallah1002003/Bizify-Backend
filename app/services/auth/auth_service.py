@@ -3,8 +3,7 @@ import logging
 from typing import Optional, Tuple
 from uuid import UUID
 
-from fastapi import Depends, HTTPException
-from sqlalchemy import select
+from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 import jwt
 
@@ -19,7 +18,6 @@ from app.core.metrics import active_sessions
 from config.settings import settings
 
 from app.repositories.auth_repository import RefreshTokenRepository, EmailVerificationTokenRepository, PasswordResetTokenRepository
-from app.repositories.user_repository import UserRepository
 from app.core.exceptions import AuthenticationError, BadRequestError, ResourceNotFoundError
 from app.core.token_blacklist import is_token_blacklisted, blacklist_token
 

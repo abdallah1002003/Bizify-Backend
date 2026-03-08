@@ -10,12 +10,11 @@ from uuid import UUID
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
 
 from app.models import Plan
 from app.db.database import get_async_db
 from app.services.base_service import BaseService
-from app.core.crud_utils import _to_update_dict, _apply_updates
+from app.core.crud_utils import _to_update_dict
 from app.core.exceptions import ValidationError
 from app.repositories.billing_repository import PlanRepository
 

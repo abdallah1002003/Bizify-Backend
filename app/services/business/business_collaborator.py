@@ -3,21 +3,18 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import Depends
-from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_async_db
 from app.models.business.business import BusinessCollaborator
 from app.models.enums import CollaboratorRole
 from app.services.base_service import BaseService
-from app.core.crud_utils import _to_update_dict, _apply_updates
+from app.core.crud_utils import _to_update_dict
 from app.core.events import dispatcher
-
-logger = logging.getLogger(__name__)
-
 from app.repositories.business_repository import BusinessCollaboratorRepository
 from app.repositories.user_repository import UserRepository
-from app.models.users.user import User
+
+logger = logging.getLogger(__name__)
 
 
 class BusinessCollaboratorService(BaseService):

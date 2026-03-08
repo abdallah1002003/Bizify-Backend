@@ -4,16 +4,14 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
-from app.models import ChatMessage, ChatSession
+from app.models import ChatMessage
 from app.models.enums import ChatRole
-from app.core.crud_utils import _utc_now, _to_update_dict, _apply_updates
+from app.core.crud_utils import _utc_now, _to_update_dict
 from app.core.structured_logging import get_logger
+from app.services.base_service import BaseService
 
 logger = get_logger(__name__)
-
-from app.services.base_service import BaseService
 
 
 class ChatMessageService(BaseService):
