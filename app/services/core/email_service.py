@@ -102,11 +102,13 @@ class EmailService(BaseService):
         if not email or not token:
             return
 
-        service = EmailService()
-        if event_type == "auth.user_registered":
-            await service.send_verification_email(email, token)
-        elif event_type == "auth.password_reset_requested":
-            await service.send_password_reset_email(email, token)
+        from app.db.database import AsyncSessionLocal
+        async with AsyncSessionLocal() as db:
+            service = EmailService(db)
+            if event_type == "auth.user_registered":
+                await service.send_verification_email(email, token)
+            elif event_type == "auth.password_reset_requested":
+                await service.send_password_reset_email(email, token)
 
 def register_email_handlers():
     """Register EmailService handlers with the dispatcher."""

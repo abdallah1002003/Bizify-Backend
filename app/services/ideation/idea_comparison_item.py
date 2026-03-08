@@ -28,7 +28,7 @@ class ComparisonItemService(BaseService):
 
     async def get_comparison_items(self, skip: int = 0, limit: int = 100) -> List[ComparisonItem]:
         """Retrieve pagination comparison items."""
-        return await self.repo.get_multi(skip=skip, limit=limit)
+        return await self.repo.get_all(skip=skip, limit=limit)
 
     async def create_comparison_item(self, obj_in: Any) -> ComparisonItem:
         """Create a new comparison item record."""

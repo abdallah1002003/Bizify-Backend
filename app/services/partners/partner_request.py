@@ -61,12 +61,6 @@ def get_partner_request_service(db: AsyncSession) -> PartnerRequestService:
     """Helper to return an instance of PartnerRequestService."""
     return PartnerRequestService(db)
 
-    async def transition_request_status(self, **kwargs) -> Optional[PartnerRequest]:
-        return await transition_request_status(self.db, **kwargs)
-
-    async def accept_partner_request(self, request_id: UUID) -> Optional[PartnerRequest]:
-        return await accept_partner_request(self.db, request_id)
-
 
 from app.core.crud_utils import _to_update_dict, _apply_updates
 

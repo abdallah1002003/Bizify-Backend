@@ -93,7 +93,7 @@ class BusinessRoadmapService(BaseService):
     ) -> List[RoadmapStage]:
         if roadmap_id is not None:
             return await self.stage_repo.get_for_roadmap(roadmap_id, skip, limit)
-        return await self.stage_repo.get_all(skip, limit)
+        return await self.stage_repo.get_all(skip=skip, limit=limit)
 
     async def add_roadmap_stage(self, roadmap_id: UUID, stage_type: StageType, order_index: int) -> RoadmapStage:
         return await self.stage_repo.create({

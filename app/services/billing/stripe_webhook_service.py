@@ -52,15 +52,14 @@ class StripeWebhookService(BaseService):
 
         if event_id:
             # Idempotency check
-            existing = await self.event_repo.get_by_event_id(event_id, source="stripe")
+            existing = await self.event_repo.get(event_id)
             if existing:
                 logger.info("Stripe event %s already processed. Ignoring duplicate.", event_id)
                 return True
 
             # Reserve the event ID
             try:
-                await self.event_repo.create_safe({"event_id": event_id, "source": "stripe"}, auto_commit=False)
-                await self.event_repo.flush()
+                await self.event_repo.create({"id": event_id, "event_id": event_id, "source": "stripe"})
             except Exception:
                 logger.info("Stripe event %s already processed (caught via constraint). Ignoring duplicate.", event_id)
                 return True
@@ -109,7 +108,7 @@ class StripeWebhookService(BaseService):
         if not sub:
             return
 
-        update_data = {}
+        update_data: Dict[str, Any] = {}
         stripe_status = data.get("status", "")
         status_map = {
             "active": SubscriptionStatus.ACTIVE,
@@ -124,7 +123,9 @@ class StripeWebhookService(BaseService):
         current_period_end = data.get("current_period_end")
         if current_period_end:
             from datetime import datetime, timezone
-            update_data["end_date"] = datetime.fromtimestamp(current_period_end, tz=timezone.utc)
+            # current_period_end is a Unix timestamp; convert to datetime
+            end_date = datetime.fromtimestamp(current_period_end, tz=timezone.utc)
+            update_data["end_date"] = end_date
 
         if update_data:
             await self.sub_repo.update(sub, update_data, auto_commit=False)

@@ -18,7 +18,7 @@ from fastapi import APIRouter, Header, HTTPException, Request, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_async_db
-from app.services.billing import stripe_webhook_service
+from app.services.billing.stripe_webhook_service import StripeWebhookService
 from config.settings import settings
 
 logger = logging.getLogger(__name__)
@@ -68,5 +68,6 @@ async def stripe_webhook(
         logger.error("Stripe webhook payload error: %s", exc)
         raise HTTPException(status_code=400, detail="Invalid webhook payload") from exc
 
-    await stripe_webhook_service.dispatch(db, event)
+    service = StripeWebhookService(db)
+    await service.dispatch(event)
     return {"status": "ok", "event_type": event.get("type")}

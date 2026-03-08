@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -49,16 +49,20 @@ class AIService(BaseService):
         return await self.agent_repo.delete(id)
 
     async def get_agent_run(self, id: UUID) -> Optional[AgentRun]:
-        return await self._agent_run_svc().get_agent_run(id)
+        result = await self._agent_run_svc().get_agent_run(id)
+        return cast(Optional[AgentRun], result)
 
     async def get_agent_runs(self, skip: int = 0, limit: int = 100, user_id: Optional[UUID] = None) -> List[AgentRun]:
-        return await self._agent_run_svc().get_agent_runs(skip=skip, limit=limit, user_id=user_id)
+        result = await self._agent_run_svc().get_agent_runs(skip=skip, limit=limit, user_id=user_id)
+        return cast(List[AgentRun], result)
 
     async def initiate_agent_run(self, *args, **kwargs) -> AgentRun:
-        return await self._agent_run_svc().initiate_agent_run(*args, **kwargs)
+        result = await self._agent_run_svc().initiate_agent_run(*args, **kwargs)
+        return cast(AgentRun, result)
 
     async def execute_agent_run_async(self, run_id: UUID) -> Optional[AgentRun]:
-        return await self._agent_run_svc().execute_agent_run_async(run_id)
+        result = await self._agent_run_svc().execute_agent_run_async(run_id)
+        return cast(Optional[AgentRun], result)
 
     async def delete_agent_run(self, id: UUID) -> Optional[AgentRun]:
         return await self.run_repo.delete(id)
@@ -70,10 +74,12 @@ class AIService(BaseService):
         return await self.validation_repo.get(id)
 
     async def get_validation_logs(self, skip: int = 0, limit: int = 100) -> List[ValidationLog]:
-        return await self.validation_repo.get_all(skip=skip, limit=limit)
+        result = await self.validation_repo.get_all(skip=skip, limit=limit)
+        return cast(List[ValidationLog], result)
 
     async def record_validation_log(self, agent_run_id: UUID, result: str, details: str) -> ValidationLog:
-        return await self._agent_run_svc().record_validation_log(agent_run_id, result, details)
+        res = await self._agent_run_svc().record_validation_log(agent_run_id, result, details)
+        return cast(ValidationLog, res)
 
     async def update_validation_log(self, db_obj: ValidationLog, obj_in: Any) -> ValidationLog:
         return await self.validation_repo.update(db_obj, obj_in)

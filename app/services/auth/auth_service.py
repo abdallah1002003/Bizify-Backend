@@ -114,6 +114,8 @@ class AuthService(BaseService):
                 algorithms=[settings.jwt_algorithm],
             )
             jti = token_data.get("jti")
+            if not jti:
+                return
             stored = await self.refresh_token_repo.get_by_jti(jti)
             if stored:
                 await self.refresh_token_repo.update(stored, {"revoked": True})

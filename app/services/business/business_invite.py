@@ -37,7 +37,7 @@ class BusinessInviteService(BaseService):
         return await self.invite_repo.get_for_business(business_id)
 
     async def get_business_invites(self, skip: int = 0, limit: int = 100) -> List[BusinessInvite]:
-        return await self.invite_repo.get_all(skip, limit)
+        return await self.invite_repo.get_all(skip=skip, limit=limit)
 
     async def create_invite(self, business_id: UUID, email: str, invited_by: UUID) -> BusinessInvite:
         return await self.invite_repo.create({
@@ -99,7 +99,7 @@ class BusinessInviteService(BaseService):
         return await self.invite_idea_repo.get(id)
 
     async def get_business_invite_ideas(self, skip: int = 0, limit: int = 100) -> List[BusinessInviteIdea]:
-        return await self.invite_idea_repo.get_all(skip, limit)
+        return await self.invite_idea_repo.get_all(skip=skip, limit=limit)
 
     async def create_business_invite_idea(self, obj_in: Any) -> BusinessInviteIdea:
         return await self.invite_idea_repo.create(obj_in)

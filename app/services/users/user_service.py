@@ -134,7 +134,7 @@ class UserService(BaseService):
 
     async def get_user_profiles(self, skip: int = 0, limit: int = 100) -> List[UserProfile]:
         """Retrieves multiple user profiles with pagination."""
-        return await self.profile_repo.get_multi(skip=skip, limit=limit)
+        return await self.profile_repo.get_all(skip=skip, limit=limit)
 
     async def create_user_profile(self, obj_in: Any) -> UserProfile:
         """Creates a new user profile manually."""
@@ -194,7 +194,7 @@ class UserService(BaseService):
 
     async def get_admin_action_logs(self, skip: int = 0, limit: int = 100) -> List[AdminActionLog]:
         """Retrieves admin action logs with pagination, newest first."""
-        return await self.admin_log_repo.get_multi(skip=skip, limit=limit)
+        return await self.admin_log_repo.get_all(skip=skip, limit=limit)
 
     async def create_admin_action_log(self, obj_in: Any) -> AdminActionLog:
         """Creates a new admin action log entry."""
