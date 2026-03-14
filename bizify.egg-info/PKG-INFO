@@ -1,0 +1,15 @@
+Metadata-Version: 2.4
+Name: bizify
+Version: 0.1.0
+Summary: A professional FastAPI project for AI-driven business strategy
+Author-email: Abdallah Abdelrhim <abdallah@example.com>
+Requires-Python: >=3.9
+Requires-Dist: fastapi
+Requires-Dist: uvicorn[standard]
+Requires-Dist: sqlalchemy
+Requires-Dist: alembic
+Requires-Dist: pydantic[email]
+Requires-Dist: pydantic-settings
+Requires-Dist: python-jose[cryptography]
+Requires-Dist: passlib[bcrypt]
+Requires-Dist: python-multipart

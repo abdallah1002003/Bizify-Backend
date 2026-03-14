@@ -1,0 +1,39 @@
+[project]
+name = "bizify"
+version = "0.1.0"
+description = "A professional FastAPI project for AI-driven business strategy"
+authors = [
+    {name = "Abdallah Abdelrhim", email = "abdallah@example.com"},
+]
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "sqlalchemy",
+    "alembic",
+    "pydantic[email]",
+    "pydantic-settings",
+    "python-jose[cryptography]",
+    "passlib[bcrypt]",
+    "python-multipart",
+]
+requires-python = ">=3.9"
+
+[tool.ruff]
+# Enable professional linting rules
+select = ["E", "F", "I", "B", "C4", "UP"]
+line-length = 88
+target-version = "py39"
+
+[tool.setuptools]
+packages = ["app"]
+
+[tool.ruff.isort]
+known-first-party = ["app"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
