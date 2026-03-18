@@ -15,6 +15,7 @@ from app.schemas.notification import (
     NotificationList,
     NotificationUpdateStatus,
     NotificationBulkUpdateStatus,
+    NotificationBulkDelete,
     NotificationSettingRead,
     NotificationSettingUpdate
 )
@@ -53,8 +54,9 @@ async def stream_notifications(
     async def event_generator() -> Any:
         queue = await manager.connect(current_user.id)
         try:
+            yield f"data: {json.dumps({'message': 'Stream connected'})}\n\n"
+            
             while True:
-                # Wait for a new notification
                 data = await queue.get()
                 yield f"data: {json.dumps(data)}\n\n"
         except asyncio.CancelledError:
@@ -137,3 +139,67 @@ def trigger_maintenance(
     """
     NotificationService.run_maintenance(db)
     return None
+
+
+@router.post("/test-notify", status_code = status.HTTP_201_CREATED)
+async def send_test_notification(
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> Dict[str, str]:
+    """
+    Sends a test notification to the current user to verify the real-time stream and list.
+    """
+    await NotificationService.notify_user(
+        db,
+        current_user.id,
+        title = "Test Notification",
+        content = "This is a real-time test notification from Bizify!",
+        notify_type = "general",
+        background_tasks = background_tasks
+    )
+    return {"message": "Test notification sent successfully"}
+
+
+@router.delete("/{notification_id}", status_code = status.HTTP_204_NO_CONTENT)
+def delete_notification(
+    notification_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> None:
+    """
+    Permanently delete a specific notification (IDOR protection).
+    """
+    success = NotificationService.delete_notification(db, current_user.id, notification_id)
+    if not success:
+        raise HTTPException(status_code = 404, detail = "Notification not found")
+    return None
+
+
+@router.post("/bulk-delete", status_code = status.HTTP_200_OK)
+def bulk_delete_notifications(
+    delete_data: NotificationBulkDelete,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> Dict[str, str]:
+    """
+    Permanently delete multiple notifications for the current user.
+    """
+    count = NotificationService.bulk_delete_notifications(
+        db,
+        current_user.id,
+        delete_data.notification_ids
+    )
+    return {"message": f"Successfully deleted {count} notifications"}
+
+
+@router.delete("/status/all", status_code = status.HTTP_200_OK)
+def delete_all_notifications(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> Dict[str, str]:
+    """
+    Permanently delete all notifications for the current user.
+    """
+    count = NotificationService.delete_all_notifications(db, current_user.id)
+    return {"message": f"Successfully deleted all {count} notifications"}

@@ -43,7 +43,8 @@ class Notification(Base):
     )
     
     title = Column(String, nullable = False)
-    content = Column(Text, nullable = False)
+    content = Column(Text, nullable = True)
+    message = Column(Text, nullable = False) # Required by DB schema
     type = Column(String, nullable = False)  # e.g., "TEAM_JOIN", "SYSTEM", "BILLING"
     
     status = Column(

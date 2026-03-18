@@ -70,3 +70,7 @@ class NotificationBulkUpdateStatus(BaseModel):
 class NotificationList(BaseModel):
     total: int
     items: List[NotificationRead]
+
+
+class NotificationBulkDelete(BaseModel):
+    notification_ids: List[UUID]

@@ -1,180 +1,19 @@
 INFO:     Will watch for changes in these directories: ['/Users/abdallahabdelrhimantar/Desktop/bizify']
-INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [72993] using WatchFiles
-INFO:     Started server process [72995]
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [91360] using WatchFiles
+INFO:     Started server process [91371]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     127.0.0.1:63095 - "POST /api/v1/users/register HTTP/1.1" 201 Created
-INFO:     127.0.0.1:63099 - "POST /api/v1/auth/verify-otp HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63101 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63103 - "POST /api/v1/ideas/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63107 - "GET /api/v1/guidance/stages HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63109 - "GET /api/v1/guidance/stages/af597f95-441c-47e1-a930-b0c92643aae6/concepts HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63111 - "POST /api/v1/guidance/progress/504277f0-7267-4c2f-a466-9c757ac47b96 HTTP/1.1" 500 Internal Server Error
-ERROR:    Exception in ASGI application
-Traceback (most recent call last):
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 416, in run_asgi
-    result = await app(  # type: ignore[func-returns-value]
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
-    return await self.app(scope, receive, send)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1160, in __call__
-    await super().__call__(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
-    raise exc
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
-    await self.app(scope, receive, _send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
-    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
-    await self.app(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
-    await route.handle(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
-    await self.app(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 130, in app
-    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 116, in app
-    response = await f(request)
-               ^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 691, in app
-    content = await serialize_response(
-              ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 296, in serialize_response
-    raise ResponseValidationError(
-fastapi.exceptions.ResponseValidationError: 1 validation error:
-  {'type': 'string_type', 'loc': ('response', 'updated_at'), 'msg': 'Input should be a valid string', 'input': datetime.datetime(2026, 3, 18, 13, 47, 39, 13559)}
-
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/api/v1/guidance.py", line 46, in update_progress
-    POST /api/v1/guidance/progress/{concept_id}
-INFO:     127.0.0.1:63113 - "GET /api/v1/guidance/progress HTTP/1.1" 500 Internal Server Error
-ERROR:    Exception in ASGI application
-Traceback (most recent call last):
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 416, in run_asgi
-    result = await app(  # type: ignore[func-returns-value]
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
-    return await self.app(scope, receive, send)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1160, in __call__
-    await super().__call__(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
-    raise exc
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
-    await self.app(scope, receive, _send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
-    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
-    await self.app(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
-    await route.handle(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
-    await self.app(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 130, in app
-    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 116, in app
-    response = await f(request)
-               ^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 691, in app
-    content = await serialize_response(
-              ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 296, in serialize_response
-    raise ResponseValidationError(
-fastapi.exceptions.ResponseValidationError: 1 validation error:
-  {'type': 'string_type', 'loc': ('response', 'updated_at'), 'msg': 'Input should be a valid string', 'input': datetime.datetime(2026, 3, 18, 13, 47, 39, 13559)}
-
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/api/v1/guidance.py", line 58, in read_progress
-    GET /api/v1/guidance/progress
-INFO:     127.0.0.1:63115 - "POST /api/v1/skills/update-profile HTTP/1.1" 500 Internal Server Error
-ERROR:    Exception in ASGI application
-Traceback (most recent call last):
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 416, in run_asgi
-    result = await app(  # type: ignore[func-returns-value]
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
-    return await self.app(scope, receive, send)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1160, in __call__
-    await super().__call__(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
-    raise exc
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
-    await self.app(scope, receive, _send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
-    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
-    await self.app(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
-    await route.handle(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
-    await self.app(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 130, in app
-    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 116, in app
-    response = await f(request)
-               ^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 691, in app
-    content = await serialize_response(
-              ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 302, in serialize_response
-    return serializer(
-           ^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/_compat/v2.py", line 218, in serialize_json
-    return self._type_adapter.dump_json(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/pydantic/type_adapter.py", line 672, in dump_json
-    return self.serializer.to_json(
-           ^^^^^^^^^^^^^^^^^^^^^^^^
-pydantic_core._pydantic_core.PydanticSerializationError: Unable to serialize unknown type: <class 'app.models.user_skill.UserSkill'>
-No benchmarks found for industry hierarchy. Using fallback model.
-INFO:     127.0.0.1:63117 - "POST /api/v1/skills/analyze HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63119 - "GET /api/v1/skills/report HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63121 - "POST /api/v1/export/ HTTP/1.1" 422 Unprocessable Entity
-INFO:     127.0.0.1:63123 - "POST /api/v1/import/upload HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:49257 - "POST /api/v1/notifications/test-notify HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:49276 - "GET /api/v1/notifications/stream HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49282 - "POST /api/v1/notifications/test-notify HTTP/1.1" 500 Internal Server Error
 ERROR:    Exception in ASGI application
 Traceback (most recent call last):
   File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
     self.dialect.do_execute(
   File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
     cursor.execute(statement, parameters)
-sqlite3.IntegrityError: NOT NULL constraint failed: documents.content_type
+sqlite3.IntegrityError: NOT NULL constraint failed: notifications.message
 
 The above exception was the direct cause of the following exception:
 
@@ -222,10 +61,9 @@ Traceback (most recent call last):
   File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 324, in run_endpoint_function
     return await dependant.call(**values)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/api/v1/imports.py", line 27, in upload_document
-    document = await import_service.process_and_save_document(
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/services/import_service.py", line 65, in process_and_save_document
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/api/v1/notifications.py", line 151, in send_test_notification
+    await NotificationService.notify_user(
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/services/notification_service.py", line 123, in notify_user
     db.commit()
   File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2030, in commit
     trans.commit(_to_root=True)
@@ -279,212 +117,21 @@ Traceback (most recent call last):
     self.dialect.do_execute(
   File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
     cursor.execute(statement, parameters)
-sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) NOT NULL constraint failed: documents.content_type
-[SQL: INSERT INTO documents (id, filename, content_type, extracted_text, user_id, created_at) VALUES (?, ?, ?, ?, ?, ?)]
-[parameters: ('44523436f82a4b4d80a553a9c7b9dce0', 'dummy.txt', None, 'This is a test document content for extraction.', '1b495b34dc5647a286bc77f27b2ce1a9', '2026-03-18 13:47:39.150645')]
+sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) NOT NULL constraint failed: notifications.message
+[SQL: INSERT INTO notifications (id, user_id, title, content, type, status, delivery_status, retry_count, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('611aac673290475dbe0b35a7f5469673', '062a50bfea48432bb0c7fe428d3ef082', 'Test Notification', 'This is a real-time test notification from Bizify!', 'general', 'UNREAD', 'PENDING', 0, None, '2026-03-18 16:16:20.633771')]
 (Background on this error at: https://sqlalche.me/e/20/gkpj)
-INFO:     127.0.0.1:63125 - "GET /api/v1/teams/join-requests?business_id=d8d9c902-7139-4164-8069-0bbab08274c3 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63127 - "POST /api/v1/teams/d8d9c902-7139-4164-8069-0bbab08274c3/invites HTTP/1.1" 422 Unprocessable Entity
-INFO:     127.0.0.1:63129 - "GET /api/v1/teams/d8d9c902-7139-4164-8069-0bbab08274c3/members HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63132 - "POST /api/v1/groups/businesses/d8d9c902-7139-4164-8069-0bbab08274c3/groups HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63134 - "GET /api/v1/groups/businesses/d8d9c902-7139-4164-8069-0bbab08274c3/groups HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63136 - "PUT /api/v1/groups/045d1dd2-fb12-495b-b668-efab867fe22d HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:63138 - "PATCH /api/v1/groups/045d1dd2-fb12-495b-b668-efab867fe22d/permissions HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:63140 - "DELETE /api/v1/groups/045d1dd2-fb12-495b-b668-efab867fe22d HTTP/1.1" 404 Not Found
-WARNING:  WatchFiles detected changes in 'app/schemas/guidance.py'. Reloading...
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [72995]
-INFO:     Started server process [73220]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-WARNING:  WatchFiles detected changes in 'app/schemas/guidance.py'. Reloading...
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [73220]
-INFO:     Started server process [73231]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-WARNING:  WatchFiles detected changes in 'app/services/import_service.py'. Reloading...
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [73231]
-INFO:     Started server process [73237]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-WARNING:  WatchFiles detected changes in 'app/api/v1/skills.py'. Reloading...
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [73237]
-Process SpawnProcess-5:
-Traceback (most recent call last):
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
-    self.run()
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/multiprocessing/process.py", line 108, in run
-    self._target(*self._args, **self._kwargs)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/_subprocess.py", line 80, in subprocess_started
-    target(sockets=sockets)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/server.py", line 75, in run
-    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 195, in run
-    return runner.run(main)
-           ^^^^^^^^^^^^^^^^
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 118, in run
-    return self._loop.run_until_complete(task)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "uvloop/loop.pyx", line 1518, in uvloop.loop.Loop.run_until_complete
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/server.py", line 79, in serve
-    await self._serve(sockets)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/server.py", line 86, in _serve
-    config.load()
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/config.py", line 441, in load
-    self.loaded_app = import_from_string(self.app)
-                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/importer.py", line 19, in import_from_string
-    module = importlib.import_module(module_str)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/importlib/__init__.py", line 90, in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/main.py", line 4, in <module>
-    from app.api.api import api_router
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/api/api.py", line 3, in <module>
-    from app.api.v1 import (
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/api/v1/skills.py", line 38, in <module>
-    @router.post("/update-profile", response_model = List[UserSkill], status_code = status.HTTP_200_OK)
-                                                     ^^^^
-NameError: name 'List' is not defined. Did you mean: 'list'?
-WARNING:  WatchFiles detected changes in 'app/api/v1/groups.py'. Reloading...
-Process SpawnProcess-6:
-Traceback (most recent call last):
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
-    self.run()
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/multiprocessing/process.py", line 108, in run
-    self._target(*self._args, **self._kwargs)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/_subprocess.py", line 80, in subprocess_started
-    target(sockets=sockets)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/server.py", line 75, in run
-    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 195, in run
-    return runner.run(main)
-           ^^^^^^^^^^^^^^^^
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 118, in run
-    return self._loop.run_until_complete(task)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "uvloop/loop.pyx", line 1518, in uvloop.loop.Loop.run_until_complete
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/server.py", line 79, in serve
-    await self._serve(sockets)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/server.py", line 86, in _serve
-    config.load()
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/config.py", line 441, in load
-    self.loaded_app = import_from_string(self.app)
-                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/importer.py", line 19, in import_from_string
-    module = importlib.import_module(module_str)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/importlib/__init__.py", line 90, in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/main.py", line 4, in <module>
-    from app.api.api import api_router
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/api/api.py", line 3, in <module>
-    from app.api.v1 import (
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/api/v1/skills.py", line 38, in <module>
-    @router.post("/update-profile", response_model = List[UserSkill], status_code = status.HTTP_200_OK)
-                                                     ^^^^
-NameError: name 'List' is not defined. Did you mean: 'list'?
-WARNING:  WatchFiles detected changes in 'app/api/v1/skills.py'. Reloading...
-INFO:     Started server process [73338]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-INFO:     127.0.0.1:63168 - "POST /api/v1/users/register HTTP/1.1" 201 Created
-INFO:     127.0.0.1:63207 - "POST /api/v1/auth/verify-otp HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63209 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63216 - "POST /api/v1/ideas/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63219 - "GET /api/v1/guidance/stages HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63221 - "GET /api/v1/guidance/stages/af597f95-441c-47e1-a930-b0c92643aae6/concepts HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63223 - "POST /api/v1/guidance/progress/504277f0-7267-4c2f-a466-9c757ac47b96 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63225 - "GET /api/v1/guidance/progress HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63227 - "POST /api/v1/skills/update-profile HTTP/1.1" 200 OK
-No benchmarks found for industry hierarchy. Using fallback model.
-INFO:     127.0.0.1:63229 - "POST /api/v1/skills/analyze HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63231 - "GET /api/v1/skills/report HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63233 - "POST /api/v1/export/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63238 - "GET /api/v1/export/da846270-d46b-4e98-8182-c9eea7a2a7dd HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63240 - "POST /api/v1/import/upload HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63242 - "GET /api/v1/import/cfe09e16-9d38-4a59-b71d-08c6cb38b221/export-ai HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63244 - "DELETE /api/v1/import/cfe09e16-9d38-4a59-b71d-08c6cb38b221 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63246 - "GET /api/v1/teams/join-requests?business_id=c448b9b3-84d0-4619-a510-338cc0f533ac HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63248 - "POST /api/v1/teams/c448b9b3-84d0-4619-a510-338cc0f533ac/invites HTTP/1.1" 422 Unprocessable Entity
-INFO:     127.0.0.1:63250 - "GET /api/v1/teams/c448b9b3-84d0-4619-a510-338cc0f533ac/members HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63253 - "POST /api/v1/groups/businesses/c448b9b3-84d0-4619-a510-338cc0f533ac/groups HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63255 - "GET /api/v1/groups/businesses/c448b9b3-84d0-4619-a510-338cc0f533ac/groups HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63257 - "PUT /api/v1/groups/d8631c9d-541f-478c-813a-9d696021edb7 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63259 - "PATCH /api/v1/groups/d8631c9d-541f-478c-813a-9d696021edb7/permissions HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63261 - "DELETE /api/v1/groups/d8631c9d-541f-478c-813a-9d696021edb7 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63214 - "POST /api/v1/users/register HTTP/1.1" 201 Created
-INFO:     127.0.0.1:63263 - "POST /api/v1/auth/verify-otp HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63265 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63267 - "POST /api/v1/ideas/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63269 - "GET /api/v1/guidance/stages HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63271 - "GET /api/v1/guidance/stages/af597f95-441c-47e1-a930-b0c92643aae6/concepts HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63273 - "POST /api/v1/guidance/progress/504277f0-7267-4c2f-a466-9c757ac47b96 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63275 - "GET /api/v1/guidance/progress HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63277 - "POST /api/v1/skills/update-profile HTTP/1.1" 200 OK
-No benchmarks found for industry hierarchy. Using fallback model.
-INFO:     127.0.0.1:63279 - "POST /api/v1/skills/analyze HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63281 - "GET /api/v1/skills/report HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63283 - "POST /api/v1/export/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63286 - "GET /api/v1/export/a4a3036b-04bf-4448-87a0-c68c32cc2dcd HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63288 - "POST /api/v1/import/upload HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63290 - "GET /api/v1/import/4520c56d-57ad-4e56-9145-bfb0a27331c5/export-ai HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63292 - "DELETE /api/v1/import/4520c56d-57ad-4e56-9145-bfb0a27331c5 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63294 - "GET /api/v1/teams/join-requests?business_id=01859efe-5bb3-416e-b550-197651279098 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63296 - "POST /api/v1/teams/01859efe-5bb3-416e-b550-197651279098/invites HTTP/1.1" 422 Unprocessable Entity
-INFO:     127.0.0.1:63298 - "GET /api/v1/teams/01859efe-5bb3-416e-b550-197651279098/members HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63300 - "POST /api/v1/groups/businesses/01859efe-5bb3-416e-b550-197651279098/groups HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63302 - "GET /api/v1/groups/businesses/01859efe-5bb3-416e-b550-197651279098/groups HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63304 - "PUT /api/v1/groups/a78e7a89-78e5-43fa-b6e4-8584945bf29c HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63306 - "PATCH /api/v1/groups/a78e7a89-78e5-43fa-b6e4-8584945bf29c/permissions HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63308 - "DELETE /api/v1/groups/a78e7a89-78e5-43fa-b6e4-8584945bf29c HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63313 - "POST /api/v1/users/register HTTP/1.1" 201 Created
-INFO:     127.0.0.1:63317 - "POST /api/v1/auth/verify-otp HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63319 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63321 - "POST /api/v1/ideas/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63323 - "GET /api/v1/guidance/stages HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63325 - "GET /api/v1/guidance/stages/af597f95-441c-47e1-a930-b0c92643aae6/concepts HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63327 - "POST /api/v1/guidance/progress/504277f0-7267-4c2f-a466-9c757ac47b96 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63329 - "GET /api/v1/guidance/progress HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63331 - "POST /api/v1/skills/update-profile HTTP/1.1" 200 OK
-No benchmarks found for industry hierarchy. Using fallback model.
-INFO:     127.0.0.1:63333 - "POST /api/v1/skills/analyze HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63335 - "GET /api/v1/skills/report HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63337 - "POST /api/v1/export/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63339 - "GET /api/v1/export/fd3d8fe7-8e21-4479-96fa-eda54f4f4b15 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63341 - "POST /api/v1/import/upload HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63343 - "GET /api/v1/import/f7d46db8-d266-4c8b-a63a-8ab0b094e939/export-ai HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63345 - "DELETE /api/v1/import/f7d46db8-d266-4c8b-a63a-8ab0b094e939 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63347 - "GET /api/v1/teams/join-requests?business_id=3f9a0b88-1da5-46be-ac89-aee99a4db56a HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63349 - "POST /api/v1/teams/3f9a0b88-1da5-46be-ac89-aee99a4db56a/invites?email=invitee_a7f683%40example.com&role=viewer&is_approval_required=True HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:49284 - "POST /api/v1/notifications/test-notify HTTP/1.1" 500 Internal Server Error
 ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.IntegrityError: NOT NULL constraint failed: notifications.message
+
+The above exception was the direct cause of the following exception:
+
 Traceback (most recent call last):
   File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 416, in run_asgi
     result = await app(  # type: ignore[func-returns-value]
@@ -526,252 +173,77 @@ Traceback (most recent call last):
   File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 670, in app
     raw_response = await run_endpoint_function(
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 326, in run_endpoint_function
-    return await run_in_threadpool(dependant.call, **values)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 32, in run_in_threadpool
-    return await anyio.to_thread.run_sync(func)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
-    return await get_async_backend().run_sync_in_worker_thread(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2502, in run_sync_in_worker_thread
-    return await future
-           ^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 986, in run
-    result = context.run(func, *args)
-             ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/api/v1/teams.py", line 132, in create_invite
-    return TeamService.create_share_link(
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 324, in run_endpoint_function
+    return await dependant.call(**values)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/services/team_service.py", line 499, in create_share_link
-    send_team_invite_email(email, business.name, inviter_name, invite_url)
-                                  ^^^^^^^^^^^^^
-AttributeError: 'Business' object has no attribute 'name'
-INFO:     127.0.0.1:63351 - "GET /api/v1/teams/3f9a0b88-1da5-46be-ac89-aee99a4db56a/members HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63353 - "POST /api/v1/groups/businesses/3f9a0b88-1da5-46be-ac89-aee99a4db56a/groups HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63355 - "GET /api/v1/groups/businesses/3f9a0b88-1da5-46be-ac89-aee99a4db56a/groups HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63357 - "PUT /api/v1/groups/509ce67a-4cb0-4b5d-a3cb-34e5ee0377bb HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63359 - "PATCH /api/v1/groups/509ce67a-4cb0-4b5d-a3cb-34e5ee0377bb/permissions HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63361 - "DELETE /api/v1/groups/509ce67a-4cb0-4b5d-a3cb-34e5ee0377bb HTTP/1.1" 200 OK
-WARNING:  WatchFiles detected changes in 'app/services/team_service.py'. Reloading...
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [73338]
-INFO:     Started server process [73631]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-INFO:     127.0.0.1:63388 - "POST /api/v1/users/register HTTP/1.1" 201 Created
-INFO:     127.0.0.1:63394 - "POST /api/v1/auth/verify-otp HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63396 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63398 - "POST /api/v1/ideas/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63400 - "GET /api/v1/guidance/stages HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63402 - "GET /api/v1/guidance/stages/af597f95-441c-47e1-a930-b0c92643aae6/concepts HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63404 - "POST /api/v1/guidance/progress/504277f0-7267-4c2f-a466-9c757ac47b96 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63406 - "GET /api/v1/guidance/progress HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63408 - "POST /api/v1/skills/update-profile HTTP/1.1" 200 OK
-No benchmarks found for industry hierarchy. Using fallback model.
-INFO:     127.0.0.1:63410 - "POST /api/v1/skills/analyze HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63412 - "GET /api/v1/skills/report HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63414 - "POST /api/v1/export/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63419 - "GET /api/v1/export/6499375b-1482-4ecc-80cc-b67959e3a71f HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63421 - "POST /api/v1/import/upload HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63423 - "GET /api/v1/import/b4188f98-aafa-4897-8360-4ebac08bf47f/export-ai HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63425 - "DELETE /api/v1/import/b4188f98-aafa-4897-8360-4ebac08bf47f HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63427 - "GET /api/v1/teams/join-requests?business_id=03d90382-8928-4d92-a948-5716216da80f HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63429 - "POST /api/v1/teams/03d90382-8928-4d92-a948-5716216da80f/invites?email=invitee_c23d85%40example.com&role=viewer&is_approval_required=True HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63432 - "GET /api/v1/teams/03d90382-8928-4d92-a948-5716216da80f/members HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63435 - "POST /api/v1/groups/businesses/03d90382-8928-4d92-a948-5716216da80f/groups HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63437 - "GET /api/v1/groups/businesses/03d90382-8928-4d92-a948-5716216da80f/groups HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63439 - "PUT /api/v1/groups/3eac4b0f-7c88-4286-8e18-8e78defe1493 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63441 - "PATCH /api/v1/groups/3eac4b0f-7c88-4286-8e18-8e78defe1493/permissions HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63443 - "DELETE /api/v1/groups/3eac4b0f-7c88-4286-8e18-8e78defe1493 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63504 - "GET /docs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63504 - "GET /openapi.json HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63505 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63514 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63515 - "GET /api/v1/admin/security-logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63524 - "GET /api/v1/admin/requests?status=pending HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63525 - "GET /api/v1/admin/users/search?email=abdallah.antar.mday%40gmail.com HTTP/1.1" 200 OK
-WARNING:  WatchFiles detected changes in 'app/api/v1/users.py'. Reloading...
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [73631]
-INFO:     Started server process [74044]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-INFO:     127.0.0.1:63564 - "GET /api/v1/notifications/?skip=0&limit=20 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63565 - "POST /api/v1/notifications/maintenance HTTP/1.1" 204 No Content
-INFO:     127.0.0.1:63573 - "GET /api/v1/settings/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63576 - "PATCH /api/v1/settings/profile HTTP/1.1" 422 Unprocessable Entity
-INFO:     127.0.0.1:63583 - "PATCH /api/v1/settings/profile HTTP/1.1" 500 Internal Server Error
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/api/v1/notifications.py", line 151, in send_test_notification
+    await NotificationService.notify_user(
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/services/notification_service.py", line 123, in notify_user
+    db.commit()
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+  File "<string>", line 2, in commit
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 1311, in commit
+    self._prepare_impl()
+  File "<string>", line 2, in _prepare_impl
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 1286, in _prepare_impl
+    self.session.flush()
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 4331, in flush
+    self._flush(objects)
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 4466, in _flush
+    with util.safe_reraise():
+         ^^^^^^^^^^^^^^^^^^^
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 4427, in _flush
+    flush_context.execute()
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py", line 466, in execute
+    rec.execute(self)
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+             ^^^^^^^^^^^^^^^^^^^
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) NOT NULL constraint failed: notifications.message
+[SQL: INSERT INTO notifications (id, user_id, title, content, type, status, delivery_status, retry_count, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('b6955e5d22954725aebf6abb4fcb251d', '062a50bfea48432bb0c7fe428d3ef082', 'Test Notification', 'This is a real-time test notification from Bizify!', 'general', 'UNREAD', 'PENDING', 0, None, '2026-03-18 16:16:23.785357')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+INFO:     127.0.0.1:49285 - "POST /api/v1/notifications/test-notify HTTP/1.1" 500 Internal Server Error
 ERROR:    Exception in ASGI application
 Traceback (most recent call last):
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 416, in run_asgi
-    result = await app(  # type: ignore[func-returns-value]
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
-    return await self.app(scope, receive, send)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1160, in __call__
-    await super().__call__(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
-    raise exc
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
-    await self.app(scope, receive, _send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
-    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
-    await self.app(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
-    await route.handle(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
-    await self.app(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 130, in app
-    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 116, in app
-    response = await f(request)
-               ^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 691, in app
-    content = await serialize_response(
-              ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 302, in serialize_response
-    return serializer(
-           ^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/_compat/v2.py", line 218, in serialize_json
-    return self._type_adapter.dump_json(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/pydantic/type_adapter.py", line 672, in dump_json
-    return self.serializer.to_json(
-           ^^^^^^^^^^^^^^^^^^^^^^^^
-pydantic_core._pydantic_core.PydanticSerializationError: Unable to serialize unknown type: <class 'app.models.user_profile.UserProfile'>
-INFO:     127.0.0.1:63584 - "PATCH /api/v1/settings/profile HTTP/1.1" 500 Internal Server Error
-ERROR:    Exception in ASGI application
-Traceback (most recent call last):
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 416, in run_asgi
-    result = await app(  # type: ignore[func-returns-value]
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
-    return await self.app(scope, receive, send)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1160, in __call__
-    await super().__call__(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
-    raise exc
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
-    await self.app(scope, receive, _send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
-    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
-    await self.app(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
-    await route.handle(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
-    await self.app(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 130, in app
-    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 116, in app
-    response = await f(request)
-               ^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 691, in app
-    content = await serialize_response(
-              ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 302, in serialize_response
-    return serializer(
-           ^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/_compat/v2.py", line 218, in serialize_json
-    return self._type_adapter.dump_json(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/pydantic/type_adapter.py", line 672, in dump_json
-    return self.serializer.to_json(
-           ^^^^^^^^^^^^^^^^^^^^^^^^
-pydantic_core._pydantic_core.PydanticSerializationError: Unable to serialize unknown type: <class 'app.models.user_profile.UserProfile'>
-INFO:     127.0.0.1:63585 - "PATCH /api/v1/settings/profile HTTP/1.1" 500 Internal Server Error
-ERROR:    Exception in ASGI application
-Traceback (most recent call last):
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 416, in run_asgi
-    result = await app(  # type: ignore[func-returns-value]
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
-    return await self.app(scope, receive, send)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1160, in __call__
-    await super().__call__(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
-    raise exc
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
-    await self.app(scope, receive, _send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
-    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
-    await self.app(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
-    await route.handle(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
-    await self.app(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 130, in app
-    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 116, in app
-    response = await f(request)
-               ^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 691, in app
-    content = await serialize_response(
-              ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 302, in serialize_response
-    return serializer(
-           ^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/_compat/v2.py", line 218, in serialize_json
-    return self._type_adapter.dump_json(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/pydantic/type_adapter.py", line 672, in dump_json
-    return self.serializer.to_json(
-           ^^^^^^^^^^^^^^^^^^^^^^^^
-pydantic_core._pydantic_core.PydanticSerializationError: Unable to serialize unknown type: <class 'app.models.user_profile.UserProfile'>
-INFO:     127.0.0.1:63623 - "PATCH /api/v1/settings/privacy HTTP/1.1" 500 Internal Server Error
-ERROR:    Exception in ASGI application
-Traceback (most recent call last):
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 3129, in refresh
-    state = attributes.instance_state(instance)
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AttributeError: 'InstrumentedList' object has no attribute '_sa_instance_state'
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.IntegrityError: NOT NULL constraint failed: notifications.message
 
 The above exception was the direct cause of the following exception:
 
@@ -816,223 +288,88 @@ Traceback (most recent call last):
   File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 670, in app
     raw_response = await run_endpoint_function(
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 326, in run_endpoint_function
-    return await run_in_threadpool(dependant.call, **values)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 32, in run_in_threadpool
-    return await anyio.to_thread.run_sync(func)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
-    return await get_async_backend().run_sync_in_worker_thread(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2502, in run_sync_in_worker_thread
-    return await future
-           ^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 986, in run
-    result = context.run(func, *args)
-             ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/api/v1/settings.py", line 88, in update_my_privacy
-    return SettingsService.update_privacy(db, current_user, data)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/services/settings_service.py", line 121, in update_privacy
-    db.refresh(privacy)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 3131, in refresh
-    raise exc.UnmappedInstanceError(instance) from err
-sqlalchemy.orm.exc.UnmappedInstanceError: Class 'sqlalchemy.orm.collections.InstrumentedList' is not mapped
-WARNING:  WatchFiles detected changes in 'app/services/partner_service.py'. Reloading...
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 324, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/api/v1/notifications.py", line 151, in send_test_notification
+    await NotificationService.notify_user(
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/services/notification_service.py", line 123, in notify_user
+    db.commit()
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+  File "<string>", line 2, in commit
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 1311, in commit
+    self._prepare_impl()
+  File "<string>", line 2, in _prepare_impl
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 1286, in _prepare_impl
+    self.session.flush()
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 4331, in flush
+    self._flush(objects)
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 4466, in _flush
+    with util.safe_reraise():
+         ^^^^^^^^^^^^^^^^^^^
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 4427, in _flush
+    flush_context.execute()
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py", line 466, in execute
+    rec.execute(self)
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+             ^^^^^^^^^^^^^^^^^^^
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) NOT NULL constraint failed: notifications.message
+[SQL: INSERT INTO notifications (id, user_id, title, content, type, status, delivery_status, retry_count, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('230df2edc1a84439a6f82550b18d5967', '062a50bfea48432bb0c7fe428d3ef082', 'Test Notification', 'This is a real-time test notification from Bizify!', 'general', 'UNREAD', 'PENDING', 0, None, '2026-03-18 16:16:24.164164')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+INFO:     127.0.0.1:49286 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49286 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49291 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'app/services/notification_service.py'. Reloading...
 INFO:     Shutting down
 INFO:     Waiting for application shutdown.
 INFO:     Application shutdown complete.
-INFO:     Finished server process [74044]
-INFO:     Started server process [74277]
+INFO:     Finished server process [91371]
+INFO:     Started server process [91913]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-WARNING:  WatchFiles detected changes in 'app/services/partner_service.py'. Reloading...
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [74277]
-INFO:     Started server process [74326]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-WARNING:  WatchFiles detected changes in 'app/services/partner_service.py'. Reloading...
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [74326]
-INFO:     Started server process [74336]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-INFO:     127.0.0.1:63692 - "POST /api/v1/users/partner-apply HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:63694 - "POST /api/v1/users/apply-partner HTTP/1.1" 401 Unauthorized
-INFO:     127.0.0.1:63705 - "PATCH /api/v1/settings/profile HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:49295 - "POST /api/v1/notifications/test-notify HTTP/1.1" 500 Internal Server Error
 ERROR:    Exception in ASGI application
 Traceback (most recent call last):
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 416, in run_asgi
-    result = await app(  # type: ignore[func-returns-value]
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
-    return await self.app(scope, receive, send)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1160, in __call__
-    await super().__call__(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
-    raise exc
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
-    await self.app(scope, receive, _send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
-    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_WARNING:  WatchFiles detected changes in 'app/services/settings_service.py'. Reloading...
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [74335]
-INFO:     Started server process [74584]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-WARNING:  WatchFiles detected changes in 'app/api/v1/settings.py'. Reloading...
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [74584]
-INFO:     Started server process [74897]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-WARNING:  WatchFiles detected changes in 'app/models/user.py'. Reloading...
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [74897]
-INFO:     Started server process [75134]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-WARNING:  WatchFiles detected changes in 'app/models/privacy_setting.py'. Reloading...
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [75134]
-INFO:     Started server process [75140]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-WARNING:  WatchFiles detected changes in 'app/schemas/settings.py'. Reloading...
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [75140]
-INFO:     Started server process [75329]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-WARNING:  WatchFiles detected changes in 'app/api/v1/settings.py'. Reloading...
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [75329]
-INFO:     Started server process [75337]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-WARNING:  WatchFiles detected changes in 'app/api/v1/users.py'. Reloading...
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [75337]
-Traceback (most recent call last):
-  File "<string>", line 1, in <module>
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/multiprocessing/spawn.py", line 122, in spawn_main
-    exitcode = _main(fd, parent_sentinel)
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/multiprocessing/spawn.py", line 131, in _main
-    prepare(preparation_data)
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/multiprocessing/spawn.py", line 244, in prepare
-    _fixup_main_from_name(data['init_main_from_name'])
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/multiprocessing/spawn.py", line 268, in _fixup_main_from_name
-    main_content = runpy.run_module(mod_name,
-                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen runpy>", line 226, in run_module
-  File "<frozen runpy>", line 98, in _run_module_code
-  File "<frozen runpy>", line 88, in _run_code
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/main.py", line 4, in <module>
-    from app.api.api import api_router
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/api/api.py", line 3, in <module>
-    from app.api.v1 import (
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/api/v1/users.py", line 41, in <module>
-    @router.post(
-     ^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1446, in decorator
-    self.add_api_route(
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1382, in add_api_route
-    route = route_class(
-            ^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 945, in __init__
-    self.dependant = get_dependant(
-                     ^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 309, in get_dependant
-    param_details = analyze_param(
-                    ^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 442, in analyze_param
-    field_info.default == Undefined or field_info.default == RequiredParam
-AssertionError: `Form` default value cannot be set in `Annotated` for 'company_name'. Set the default value with `=` instead.
-WARNING:  WatchFiles detected changes in 'app/api/v1/users.py'. Reloading...
-Traceback (most recent call last):
-  File "<string>", line 1, in <module>
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/multiprocessing/spawn.py", line 122, in spawn_main
-    exitcode = _main(fd, parent_sentinel)
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/multiprocessing/spawn.py", line 131, in _main
-    prepare(preparation_data)
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/multiprocessing/spawn.py", line 244, in prepare
-    _fixup_main_from_name(data['init_main_from_name'])
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/multiprocessing/spawn.py", line 268, in _fixup_main_from_name
-    main_content = runpy.run_module(mod_name,
-                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen runpy>", line 226, in run_module
-  File "<frozen runpy>", line 98, in _run_module_code
-  File "<frozen runpy>", line 88, in _run_code
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/main.py", line 4, in <module>
-    from app.api.api import api_router
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/api/api.py", line 3, in <module>
-    from app.api.v1 import (
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/api/v1/users.py", line 41, in <module>
-    @router.post(
-     ^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1446, in decorator
-    self.add_api_route(
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1382, in add_api_route
-    route = route_class(
-            ^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 945, in __init__
-    self.dependant = get_dependant(
-                     ^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 309, in get_dependant
-    param_details = analyze_param(
-                    ^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 442, in analyze_param
-    field_info.default == Undefined or field_info.default == RequiredParam
-AssertionError: `Form` default value cannot be set in `Annotated` for 'company_name'. Set the default value with `=` instead.
-nges in 'app/api/v1/settings.py'. Reloading...
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [74585]
-INFO:     Started server process [74898]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-INFO:     127.0.0.1:63806 - "POST /api/v1/users/register HTTP/1.1" 201 Created
-INFO:     127.0.0.1:63809 - "POST /api/v1/auth/verify-otp HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63811 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63813 - "PATCH /api/v1/settings/profile HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63815 - "GET /api/v1/settings/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63827 - "PATCH /api/v1/settings/profile HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63830 - "PATCH /api/v1/settings/privacy HTTP/1.1" 500 Internal Server Error
-ERROR:    Exception in ASGI application
-Traceback (most recent call last):
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 3129, in refresh
-    state = attributes.instance_state(instance)
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AttributeError: 'InstrumentedList' object has no attribute '_sa_instance_state'
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.IntegrityError: NOT NULL constraint failed: notifications.message
 
 The above exception was the direct cause of the following exception:
 
@@ -1077,317 +414,168 @@ Traceback (most recent call last):
   File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 670, in app
     raw_response = await run_endpoint_function(
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 326, in run_endpoint_function
-    return await run_in_threadpool(dependant.call, **values)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 32, in run_in_threadpool
-    return await anyio.to_thread.run_sync(func)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
-    return await get_async_backend().run_sync_in_worker_thread(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2502, in run_sync_in_worker_thread
-    return await future
-           ^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 986, in run
-    result = context.run(func, *args)
-             ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/api/v1/settings.py", line 89, in update_my_privacy
-    return SettingsService.update_privacy(db, current_user, data)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/services/settings_service.py", line 122, in update_privacy
-    db.refresh(privacy)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 3131, in refresh
-    raise exc.UnmappedInstanceError(instance) from err
-sqlalchemy.orm.exc.UnmappedInstanceError: Class 'sqlalchemy.orm.collections.InstrumentedList' is not mapped
-INFO:     127.0.0.1:63832 - "PATCH /api/v1/settings/privacy HTTP/1.1" 500 Internal Server Error
-ERROR:    Exception in ASGI application
-Traceback (most recent call last):
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 3129, in refresh
-    state = attributes.instance_state(instance)
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AttributeError: 'InstrumentedList' object has no attribute '_sa_instance_state'
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 416, in run_asgi
-    result = await app(  # type: ignore[func-returns-value]
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
-    return await self.app(scope, receive, send)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1160, in __call__
-    await super().__call__(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
-    raise exc
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
-    await self.app(scope, receive, _send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
-    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
-    await self.app(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
-    await route.handle(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
-    await self.app(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 130, in app
-    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 116, in app
-    response = await f(request)
-               ^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 670, in app
-    raw_response = await run_endpoint_function(
-                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 326, in run_endpoint_function
-    return await run_in_threadpool(dependant.call, **values)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 32, in run_in_threadpool
-    return await anyio.to_thread.run_sync(func)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
-    return await get_async_backend().run_sync_in_worker_thread(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2502, in run_sync_in_worker_thread
-    return await future
-           ^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 986, in run
-    result = context.run(func, *args)
-             ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/api/v1/settings.py", line 89, in update_my_privacy
-    return SettingsService.update_privacy(db, current_user, data)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/services/settings_service.py", line 122, in update_privacy
-    db.refresh(privacy)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 3131, in refresh
-    raise exc.UnmappedInstanceError(instance) from err
-sqlalchemy.orm.exc.UnmappedInstanceError: Class 'sqlalchemy.orm.collections.InstrumentedList' is not mapped
-WARNING:  WatchFiles detected changes in 'app/models/user.py'. Reloading...
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 324, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/api/v1/notifications.py", line 151, in send_test_notification
+    await NotificationService.notify_user(
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/services/notification_service.py", line 123, in notify_user
+    db.commit()
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+  File "<string>", line 2, in commit
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 1311, in commit
+    self._prepare_impl()
+  File "<string>", line 2, in _prepare_impl
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 1286, in _prepare_impl
+    self.session.flush()
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 4331, in flush
+    self._flush(objects)
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 4466, in _flush
+    with util.safe_reraise():
+         ^^^^^^^^^^^^^^^^^^^
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 4427, in _flush
+    flush_context.execute()
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py", line 466, in execute
+    rec.execute(self)
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+             ^^^^^^^^^^^^^^^^^^^
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) NOT NULL constraint failed: notifications.message
+[SQL: INSERT INTO notifications (id, user_id, title, content, type, status, delivery_status, retry_count, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('81d304a931d74c1b93a8c336d394b317', '062a50bfea48432bb0c7fe428d3ef082', 'Test Notification', 'This is a real-time test notification from Bizify!', 'general', 'UNREAD', 'PENDING', 0, None, '2026-03-18 16:16:54.168254')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+WARNING:  WatchFiles detected changes in 'app/schemas/notification.py'. Reloading...
 INFO:     Shutting down
 INFO:     Waiting for application shutdown.
 INFO:     Application shutdown complete.
-INFO:     Finished server process [74898]
-INFO:     Started server process [75133]
+INFO:     Finished server process [91913]
+INFO:     Started server process [91922]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-WARNING:  WatchFiles detected changes in 'app/models/privacy_setting.py'. Reloading...
+WARNING:  WatchFiles detected changes in 'app/api/v1/notifications.py'. Reloading...
 INFO:     Shutting down
 INFO:     Waiting for application shutdown.
 INFO:     Application shutdown complete.
-INFO:     Finished server process [75133]
-INFO:     Started server process [75141]
+INFO:     Finished server process [91922]
+INFO:     Started server process [91928]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     127.0.0.1:63869 - "POST /api/v1/users/register HTTP/1.1" 201 Created
-INFO:     127.0.0.1:63872 - "POST /api/v1/auth/verify-otp HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63874 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63876 - "PATCH /api/v1/settings/privacy HTTP/1.1" 500 Internal Server Error
-ERROR:    Exception in ASGI application
-Traceback (most recent call last):
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 416, in run_asgi
-    result = await app(  # type: ignore[func-returns-value]
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
-    return await self.app(scope, receive, send)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1160, in __call__
-    await super().__call__(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
-    raise exc
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
-    await self.app(scope, receive, _send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
-    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
-    await self.app(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
-    await route.handle(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
-    await self.app(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 130, in app
-    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 116, in app
-    response = await f(request)
-               ^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 691, in app
-    content = await serialize_response(
-              ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 302, in serialize_response
-    return serializer(
-           ^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/_compat/v2.py", line 218, in serialize_json
-    return self._type_adapter.dump_json(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/pydantic/type_adapter.py", line 672, in dump_json
-    return self.serializer.to_json(
-           ^^^^^^^^^^^^^^^^^^^^^^^^
-pydantic_core._pydantic_core.PydanticSerializationError: Unable to serialize unknown type: <class 'app.models.privacy_setting.PrivacySetting'>
-WARNING:  WatchFiles detected changes in 'app/schemas/settings.py'. Reloading...
+WARNING:  WatchFiles detected changes in 'app/api/v1/notifications.py'. Reloading...
 INFO:     Shutting down
 INFO:     Waiting for application shutdown.
 INFO:     Application shutdown complete.
-INFO:     Finished server process [75141]
-INFO:     Started server process [75330]
+INFO:     Finished server process [91928]
+INFO:     Started server process [91957]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-WARNING:  WatchFiles detected changes in 'app/api/v1/settings.py'. Reloading...
+INFO:     127.0.0.1:49337 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49337 - "GET /openapi.json HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'app/models/notification.py'. Reloading...
 INFO:     Shutting down
 INFO:     Waiting for application shutdown.
 INFO:     Application shutdown complete.
-INFO:     Finished server process [75330]
-INFO:     Started server process [75338]
+INFO:     Finished server process [91957]
+INFO:     Started server process [92170]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     127.0.0.1:63896 - "POST /api/v1/users/register HTTP/1.1" 201 Created
-INFO:     127.0.0.1:63899 - "POST /api/v1/auth/verify-otp HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63901 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63903 - "PATCH /api/v1/settings/privacy HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63917 - "PATCH /api/v1/settings/privacy HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63924 - "PATCH /api/v1/settings/privacy HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63925 - "PATCH /api/v1/settings/privacy HTTP/1.1" 422 Unprocessable Entity
-WARNING:  WatchFiles detected changes in 'app/api/v1/users.py'. Reloading...
+WARNING:  WatchFiles detected changes in 'app/services/notification_service.py'. Reloading...
 INFO:     Shutting down
 INFO:     Waiting for application shutdown.
 INFO:     Application shutdown complete.
-INFO:     Finished server process [75338]
-Process SpawnProcess-19:
-Traceback (most recent call last):
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
-    self.run()
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/multiprocessing/process.py", line 108, in run
-    self._target(*self._args, **self._kwargs)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/_subprocess.py", line 80, in subprocess_started
-    target(sockets=sockets)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/server.py", line 75, in run
-    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 195, in run
-    return runner.run(main)
-           ^^^^^^^^^^^^^^^^
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 118, in run
-    return self._loop.run_until_complete(task)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "uvloop/loop.pyx", line 1518, in uvloop.loop.Loop.run_until_complete
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/server.py", line 79, in serve
-    await self._serve(sockets)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/server.py", line 86, in _serve
-    config.load()
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/config.py", line 441, in load
-    self.loaded_app = import_from_string(self.app)
-                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/importer.py", line 19, in import_from_string
-    module = importlib.import_module(module_str)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/importlib/__init__.py", line 90, in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/main.py", line 4, in <module>
-    from app.api.api import api_router
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/api/api.py", line 3, in <module>
-    from app.api.v1 import (
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/api/v1/users.py", line 41, in <module>
-    @router.post(
-     ^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1446, in decorator
-    self.add_api_route(
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1382, in add_api_route
-    route = route_class(
-            ^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 945, in __init__
-    self.dependant = get_dependant(
-                     ^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 309, in get_dependant
-    param_details = analyze_param(
-                    ^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 442, in analyze_param
-    field_info.default == Undefined or field_info.default == RequiredParam
-AssertionError: `Form` default value cannot be set in `Annotated` for 'company_name'. Set the default value with `=` instead.
-WARNING:  WatchFiles detected changes in 'app/api/v1/users.py'. Reloading...
-Process SpawnProcess-20:
-Traceback (most recent call last):
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
-    self.run()
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/multiprocessing/process.py", line 108, in run
-    self._target(*self._args, **self._kwargs)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/_subprocess.py", line 80, in subprocess_started
-    target(sockets=sockets)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/server.py", line 75, in run
-    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 195, in run
-    return runner.run(main)
-           ^^^^^^^^^^^^^^^^
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 118, in run
-    return self._loop.run_until_complete(task)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "uvloop/loop.pyx", line 1518, in uvloop.loop.Loop.run_until_complete
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/server.py", line 79, in serve
-    await self._serve(sockets)
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/server.py", line 86, in _serve
-    config.load()
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/config.py", line 441, in load
-    self.loaded_app = import_from_string(self.app)
-                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/uvicorn/importer.py", line 19, in import_from_string
-    module = importlib.import_module(module_str)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/importlib/__init__.py", line 90, in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
-  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
-  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
-  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
-  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/main.py", line 4, in <module>
-    from app.api.api import api_router
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/api/api.py", line 3, in <module>
-    from app.api.v1 import (
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/app/api/v1/users.py", line 41, in <module>
-    @router.post(
-     ^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1446, in decorator
-    self.add_api_route(
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1382, in add_api_route
-    route = route_class(
-            ^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 945, in __init__
-    self.dependant = get_dependant(
-                     ^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 309, in get_dependant
-    param_details = analyze_param(
-                    ^^^^^^^^^^^^^^
-  File "/Users/abdallahabdelrhimantar/Desktop/bizify/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 442, in analyze_param
-    field_info.default == Undefined or field_info.default == RequiredParam
-AssertionError: `Form` default value cannot be set in `Annotated` for 'company_name'. Set the default value with `=` instead.
+INFO:     Finished server process [92170]
+INFO:     Started server process [92183]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/services/notification_service.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [92183]
+INFO:     Started server process [92266]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/api/v1/notifications.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [92266]
+INFO:     Started server process [92283]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:49370 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49370 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49371 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49371 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49380 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49389 - "POST /api/v1/notifications/test-notify HTTP/1.1" 201 Created
+INFO:     127.0.0.1:49391 - "GET /api/v1/notifications/?skip=0&limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49392 - "GET /api/v1/notifications/stream HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49393 - "POST /api/v1/notifications/test-notify HTTP/1.1" 201 Created
+INFO:     127.0.0.1:49393 - "POST /api/v1/notifications/test-notify HTTP/1.1" 201 Created
+INFO:     127.0.0.1:49393 - "POST /api/v1/notifications/test-notify HTTP/1.1" 201 Created
+INFO:     127.0.0.1:49394 - "POST /api/v1/notifications/test-notify HTTP/1.1" 201 Created
+INFO:     127.0.0.1:49395 - "GET /api/v1/notifications/?skip=0&limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49395 - "GET /api/v1/notifications/?skip=0&limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49402 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49402 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49408 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49409 - "GET /api/v1/notifications/stream HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49415 - "POST /api/v1/notifications/test-notify HTTP/1.1" 201 Created
+INFO:     127.0.0.1:49415 - "POST /api/v1/notifications/test-notify HTTP/1.1" 201 Created
+WARNING:  WatchFiles detected changes in 'app/api/v1/notifications.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for connections to close. (CTRL+C to force quit)
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [92283]
+WARNING:  WatchFiles detected changes in 'app/api/v1/notifications.py'. Reloading...
+INFO:     Started server process [92614]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:49444 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49468 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49468 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49469 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49469 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49470 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49472 - "GET /api/v1/notifications/stream HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49473 - "POST /api/v1/notifications/test-notify HTTP/1.1" 201 Created
+INFO:     127.0.0.1:49473 - "POST /api/v1/notifications/test-notify HTTP/1.1" 201 Created
+INFO:     127.0.0.1:49480 - "POST /api/v1/notifications/test-notify HTTP/1.1" 201 Created
+INFO:     127.0.0.1:49481 - "POST /api/v1/notifications/test-notify HTTP/1.1" 201 Created
+INFO:     127.0.0.1:49494 - "GET /api/v1/notifications/stream HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49495 - "POST /api/v1/notifications/test-notify HTTP/1.1" 201 Created
+INFO:     127.0.0.1:49495 - "POST /api/v1/notifications/test-notify HTTP/1.1" 201 Created

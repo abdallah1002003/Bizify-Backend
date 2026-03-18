@@ -115,6 +115,7 @@ class NotificationService:
             user_id = user_id,
             title = title,
             content = content,
+            message = content,
             type = notify_type,
             expires_at = expires_at,
             delivery_status = delivery_status
@@ -293,3 +294,54 @@ class NotificationService:
             )
         )
         db.commit()
+
+    @staticmethod
+    def delete_notification(db: Session, user_id: UUID, notification_id: UUID) -> bool:
+        """
+        Permanently deletes a single notification for a specific user (IDOR protection).
+        """
+        stmt = (
+            delete(Notification)
+            .where(
+                and_(
+                    Notification.id == notification_id,
+                    Notification.user_id == user_id
+                )
+            )
+        )
+        result = db.execute(stmt)
+        db.commit()
+        return result.rowcount > 0
+
+    @staticmethod
+    def bulk_delete_notifications(db: Session, user_id: UUID, notification_ids: List[UUID]) -> int:
+        """
+        Permanently deletes multiple notifications for a user (Bulk operation).
+        """
+        if not notification_ids:
+            return 0
+            
+        stmt = (
+            delete(Notification)
+            .where(
+                and_(
+                    Notification.id.in_(notification_ids),
+                    Notification.user_id == user_id
+                )
+            )
+        )
+        result = db.execute(stmt)
+        db.commit()
+        return result.rowcount
+    @staticmethod
+    def delete_all_notifications(db: Session, user_id: UUID) -> int:
+        """
+        Permanently deletes all notifications for a specific user.
+        """
+        stmt = (
+            delete(Notification)
+            .where(Notification.user_id == user_id)
+        )
+        result = db.execute(stmt)
+        db.commit()
+        return result.rowcount

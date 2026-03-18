@@ -81,10 +81,10 @@ async def apply_to_be_partner(
     partner_type: PartnerType = Form(...),
     user_id: str = Form(...),
     files: List[UploadFile] = File(..., description="Upload PDF or image files"),
-    company_name: Optional[str] = Form(default = None),
-    description: Optional[str] = Form(default = None),
-    services_json: Optional[str] = Form(default = None),
-    experience_json: Optional[str] = Form(default = None),
+    company_name: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    services_json: Optional[str] = Form(None),
+    experience_json: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ) -> PartnerProfileRead:
