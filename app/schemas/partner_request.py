@@ -1,22 +1,45 @@
-from pydantic import BaseModel, ConfigDict
-from uuid import UUID
+import uuid
 from datetime import datetime
 from typing import Optional
+
+from pydantic import BaseModel, ConfigDict
+
 from app.models.partner_request import RequestStatus
 
+
 class PartnerRequestBase(BaseModel):
-    business_id: UUID
-    partner_id: UUID
+    """
+    Base Pydantic model for Partner Request data.
+    """
+    
+    business_id: uuid.UUID
+    partner_id: uuid.UUID
     status: Optional[RequestStatus] = RequestStatus.PENDING
 
+
 class PartnerRequestCreate(PartnerRequestBase):
-    requested_by: UUID
+    """
+    Pydantic model for creating a Partner Request.
+    """
+    
+    requested_by: uuid.UUID
+
 
 class PartnerRequestUpdate(BaseModel):
+    """
+    Pydantic model for updating a Partner Request.
+    """
+    
     status: Optional[RequestStatus] = None
 
+
 class PartnerRequestRead(PartnerRequestBase):
-    id: UUID
-    requested_by: UUID
+    """
+    Pydantic model for reading Partner Request data.
+    """
+    
+    id: uuid.UUID
+    requested_by: uuid.UUID
     created_at: datetime
+    
     model_config = ConfigDict(from_attributes=True)

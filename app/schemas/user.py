@@ -1,23 +1,38 @@
-from pydantic import BaseModel, EmailStr, ConfigDict ,field_validator , ValidationInfo
-from uuid import UUID
+import uuid
 from datetime import datetime
 from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, EmailStr, ValidationInfo, field_validator
+
 from app.models.user import UserRole
 
+
 class UserBase(BaseModel):
+    """
+    Base Pydantic model for User data.
+    """
+    
     email: EmailStr
+    full_name: Optional[str] = None
     role: Optional[UserRole] = UserRole.USER
     is_active: Optional[bool] = True
     is_verified: Optional[bool] = False
 
+
 class UserCreate(UserBase):
+    """
+    Pydantic model for creating a new User.
+    """
+    
     password: str
     confirm_password: str
-    # role is set to 'user' by default in the registration endpoint
     
     @field_validator("password")
     @classmethod
     def password_strength(cls, v: str) -> str:
+        """
+        Validate password strength.
+        """
         if len(v) < 8:
             raise ValueError("Password must be at least 8 characters long")
         if not any(c.isdigit() for c in v):
@@ -31,31 +46,59 @@ class UserCreate(UserBase):
     @field_validator("confirm_password")
     @classmethod
     def confirm_password_match(cls, v: str, info: ValidationInfo) -> str:
+        """
+        Validate that passwords match.
+        """
         if "password" in info.data and v != info.data["password"]:
             raise ValueError("Passwords do not match")
         return v
 
+
 class UserUpdate(BaseModel):
+    """
+    Pydantic model for updating an existing User.
+    """
+    
     email: Optional[EmailStr] = None
     role: Optional[UserRole] = None
     is_active: Optional[bool] = None
     is_verified: Optional[bool] = None
     password: Optional[str] = None
 
+
 class UserRead(UserBase):
-    id: UUID
+    """
+    Pydantic model for reading User data.
+    """
+    
+    id: uuid.UUID
     created_at: datetime
     updated_at: datetime
+    
     model_config = ConfigDict(from_attributes=True)
 
+
 class Token(BaseModel):
+    """
+    Pydantic model for an authentication token.
+    """
+    
     access_token: str
     token_type: str
 
+
 class TokenData(BaseModel):
+    """
+    Pydantic model for token payload data.
+    """
+    
     email: Optional[str] = None
 
 
 class OTPVerify(BaseModel):
+    """
+    Pydantic model for OTP verification.
+    """
+    
     email: EmailStr
     otp_code: str

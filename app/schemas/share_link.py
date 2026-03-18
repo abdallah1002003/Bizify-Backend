@@ -1,17 +1,29 @@
-from pydantic import BaseModel, ConfigDict
-from uuid import UUID
+import uuid
 from datetime import datetime
 from typing import Optional
 
+from pydantic import BaseModel, ConfigDict
+
+
 class ShareLinkBase(BaseModel):
-    idea_id: Optional[UUID] = None
-    business_id: Optional[UUID] = None
-    created_by: UUID
+    """
+    Base Pydantic model for Share Link data.
+    """
+    
+    idea_id: Optional[uuid.UUID] = None
+    business_id: Optional[uuid.UUID] = None
+    created_by: uuid.UUID
     token: str
     is_public: Optional[bool] = False
     expires_at: Optional[datetime] = None
 
+
 class ShareLinkRead(ShareLinkBase):
-    id: UUID
+    """
+    Pydantic model for reading Share Link data.
+    """
+    
+    id: uuid.UUID
     created_at: datetime
+    
     model_config = ConfigDict(from_attributes=True)

@@ -1,12 +1,24 @@
-from pydantic import BaseModel, ConfigDict
-from uuid import UUID
+import uuid
 from typing import Optional
 
+from pydantic import BaseModel, ConfigDict
+
+
 class ComparisonMetricBase(BaseModel):
-    comparison_id: UUID
+    """
+    Base Pydantic model for Comparison Metric data.
+    """
+    
+    comparison_id: uuid.UUID
     metric_name: str
     value: Optional[float] = None
 
+
 class ComparisonMetricRead(ComparisonMetricBase):
-    id: UUID
+    """
+    Pydantic model for reading Comparison Metric data.
+    """
+    
+    id: uuid.UUID
+    
     model_config = ConfigDict(from_attributes=True)

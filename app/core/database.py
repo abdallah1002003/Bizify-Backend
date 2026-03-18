@@ -1,17 +1,35 @@
+from typing import Generator
+
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
+
 from app.core.config import settings
+
+
+# Determine database connectivity arguments based on the URL type (e.g., SQLite requires special handling)
+connect_args = (
+    {"check_same_thread": False} 
+    if settings.get_database_url().startswith("sqlite") 
+    else {}
+)
 
 engine = create_engine(
     settings.get_database_url(),
-    connect_args={"check_same_thread": False} if settings.get_database_url().startswith("sqlite") else {}
+    connect_args = connect_args
 )
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+SessionLocal = sessionmaker(autocommit = False, autoflush = False, bind = engine)
 
 Base = declarative_base()
 
-def get_db():
+
+def get_db() -> Generator[Session, None, None]:
+    """
+    Dependency to get a SQLAlchemy database session.
+    Ensures the session is closed after use.
+    """
     db = SessionLocal()
+    
     try:
         yield db
     finally:

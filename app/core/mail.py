@@ -1,7 +1,12 @@
+import logging
 import smtplib
 from email.message import EmailMessage
-from typing import Optional
+
 from app.core.config import settings
+
+
+logger = logging.getLogger(__name__)
+
 
 def send_email(
     email_to: str,
@@ -10,33 +15,38 @@ def send_email(
 ) -> None:
     """
     Generic function to send an email via SMTP.
+    If configuration is missing, it logs the content to stdout.
     """
     if not settings.SMTP_HOST or not settings.SMTP_USER or not settings.SMTP_PASSWORD:
-        print("WARNING: SMTP settings not configured. Email NOT sent.")
-        print(f"Content for {email_to}: \n{html_content}")
+        logger.warning("SMTP settings not configured. Email NOT sent.")
+        logger.info(f"Content for {email_to}: \n{html_content}")
         return
 
     message = EmailMessage()
     message["Subject"] = subject
     message["From"] = settings.EMAILS_FROM_EMAIL or settings.SMTP_USER
     message["To"] = email_to
-    message.set_content(html_content, subtype="html")
+    message.set_content(html_content, subtype = "html")
 
     try:
         with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
             if settings.SMTP_TLS:
                 server.starttls()
+            
             server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
             server.send_message(message)
-            print(f"Successfully sent email to {email_to}")
+            
+            logger.info(f"Successfully sent email to {email_to}")
     except Exception as e:
-        print(f"ERROR: Failed to send email to {email_to}: {e}")
+        logger.error(f"Failed to send email to {email_to}: {e}")
+
 
 def send_otp_email(email_to: str, otp: str) -> None:
     """
-    Send a formatted OTP verification email.
+    Sends a formatted OTP verification email with a 6-digit code.
     """
     subject = f"{settings.PROJECT_NAME} - Account Verification Code"
+    
     html_content = f"""
     <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -58,4 +68,73 @@ def send_otp_email(email_to: str, otp: str) -> None:
         </body>
     </html>
     """
+    
+    send_email(email_to, subject, html_content)
+
+
+def send_team_invite_email(email_to: str, business_name: str, inviter_name: str, invite_url: str) -> None:
+    """
+    Sends a formatted team invitation email.
+    """
+    subject = f"Invitation to join {business_name} on {settings.PROJECT_NAME}"
+    
+    html_content = f"""
+    <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+                <h2 style="color: #2196F3; text-align: center;">Team Invitation</h2>
+                <p>Hello,</p>
+                <p><strong>{inviter_name}</strong> has invited you to collaborate on the project <strong>{business_name}</strong> on {settings.PROJECT_NAME}.</p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{invite_url}" style="background-color: #2196F3; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+                        Accept Invitation
+                    </a>
+                </div>
+                <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
+                <p style="word-break: break-all; color: #888;">{invite_url}</p>
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                <p style="font-size: 12px; color: #888; text-align: center;">
+                    &copy; 2026 {settings.PROJECT_NAME}. All rights reserved.
+                </p>
+            </div>
+        </body>
+    </html>
+    """
+    
+    send_email(email_to, subject, html_content)
+
+
+def send_join_request_status_email(email_to: str, business_name: str, status: str) -> None:
+    """
+    Sends an email to the user informing them if their join request was approved or rejected.
+    """
+    is_approved = status.lower() == "approved"
+    subject = f"Update on your request to join {business_name}"
+    status_text = "Approved" if is_approved else "Rejected"
+    status_color = "#4CAF50" if is_approved else "#F44336"
+    
+    html_content = f"""
+    <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+                <h2 style="color: {status_color}; text-align: center;">Join Request {status_text}</h2>
+                <p>Hello,</p>
+                <p>We wanted to let you know that your request to join the project <strong>{business_name}</strong> has been <strong>{status_text.lower()}</strong>.</p>
+                
+                {"<p>You can now access the project dashboard and collaborate with your team.</p>" if is_approved else "<p>Unfortunately, the project owner has decided not to approve your request at this time.</p>"}
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="https://bizify.app/dashboard" style="background-color: {status_color}; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+                        Go to Dashboard
+                    </a>
+                </div>
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                <p style="font-size: 12px; color: #888; text-align: center;">
+                    &copy; 2026 {settings.PROJECT_NAME}. All rights reserved.
+                </p>
+            </div>
+        </body>
+    </html>
+    """
+    
     send_email(email_to, subject, html_content)

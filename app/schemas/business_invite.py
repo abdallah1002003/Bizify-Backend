@@ -1,25 +1,42 @@
-from pydantic import BaseModel, ConfigDict
-from uuid import UUID
+import uuid
 from datetime import datetime
 from typing import Optional
-from app.models.business_invite import InviteStatus
+
+from pydantic import BaseModel, ConfigDict
+
 from app.models.business_collaborator import CollaboratorRole
+from app.models.business_invite import InviteStatus
+
 
 class BusinessInviteBase(BaseModel):
-    business_id: UUID
+    """
+    Base Pydantic model for Business Invite data.
+    """
+    
+    business_id: uuid.UUID
     email: Optional[str] = None
     status: Optional[InviteStatus] = InviteStatus.PENDING
     role: CollaboratorRole = CollaboratorRole.VIEWER
 
 
 class BusinessInviteCreate(BusinessInviteBase):
-    invited_by: UUID
+    """
+    Pydantic model for creating a Business Invite.
+    """
+    
+    invited_by: uuid.UUID
     expires_at: datetime
 
+
 class BusinessInviteRead(BusinessInviteBase):
-    id: UUID
+    """
+    Pydantic model for reading Business Invite data.
+    """
+    
+    id: uuid.UUID
     token: str
-    invited_by: UUID
+    invited_by: uuid.UUID
     expires_at: datetime
     created_at: datetime
+    
     model_config = ConfigDict(from_attributes=True)

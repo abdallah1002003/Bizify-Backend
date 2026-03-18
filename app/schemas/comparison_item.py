@@ -1,12 +1,24 @@
-from pydantic import BaseModel, ConfigDict
-from uuid import UUID
+import uuid
 from typing import Optional
 
+from pydantic import BaseModel, ConfigDict
+
+
 class ComparisonItemBase(BaseModel):
-    comparison_id: UUID
-    idea_id: UUID
+    """
+    Base Pydantic model for Comparison Item data.
+    """
+    
+    comparison_id: uuid.UUID
+    idea_id: uuid.UUID
     rank_index: Optional[int] = None
 
+
 class ComparisonItemRead(ComparisonItemBase):
-    id: UUID
+    """
+    Pydantic model for reading Comparison Item data.
+    """
+    
+    id: uuid.UUID
+    
     model_config = ConfigDict(from_attributes=True)

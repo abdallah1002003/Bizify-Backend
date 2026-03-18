@@ -1,20 +1,23 @@
+import uuid
+
 from pydantic import BaseModel, ConfigDict
-from uuid import UUID
-from datetime import datetime
-from typing import Optional
+
 
 class IdeaMetricBase(BaseModel):
-    name: str
-    value: float
-    type: Optional[str] = None
+    """
+    Base Pydantic model for Idea Metric data.
+    """
 
-class IdeaMetricCreate(IdeaMetricBase):
-    idea_id: UUID
-    created_by: UUID
+    idea_id: uuid.UUID
+    metric_name: str
+    value: float
+
 
 class IdeaMetricRead(IdeaMetricBase):
-    id: UUID
-    idea_id: UUID
-    created_by: UUID
-    recorded_at: datetime
-    model_config = ConfigDict(from_attributes=True)
+    """
+    Pydantic model for reading Idea Metric data.
+    """
+
+    id: uuid.UUID
+
+    model_config = ConfigDict(from_attributes = True)
