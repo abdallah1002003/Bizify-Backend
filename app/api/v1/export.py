@@ -109,8 +109,17 @@ def download_export_file(
             detail = "File no longer exists or expired"
         )
 
+    format_type = getattr(job, "format", "pdf").lower()
+    media_types = {
+        "json": "application/json",
+        "pdf": "application/pdf",
+        "word": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    }
+
+    file_ext = "docx" if format_type == "word" else format_type
+
     return FileResponse(
         path = job.storage_path,
-        filename = f"bizify_export_{job.id}.json",
-        media_type = "application/json"
+        filename = f"bizify_export_{job.id}.{file_ext}",
+        media_type = media_types.get(format_type, "application/json")
     )

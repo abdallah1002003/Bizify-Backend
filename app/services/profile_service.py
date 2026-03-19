@@ -109,6 +109,19 @@ class ProfileService:
         )
 
     @staticmethod
+    def finalize_onboarding(db: Session, user_id: uuid.UUID) -> Dict[str, str]:
+        """
+        Finalizes the onboarding process and marks the profile as complete.
+        """
+        profile = ProfileService.get_or_create_profile(db, user_id)
+        
+        profile.onboarding_completed = True
+        profile.guide_status = GuideStatus.COMPLETED
+        
+        db.commit()
+        return {"status": "success", "message": "Onboarding finalized"}
+
+    @staticmethod
     def skip_questionnaire(db: Session, user_id: uuid.UUID) -> Dict[str, str]:
         """
         Skips the onboarding questionnaire and marks it as completed with default settings.
@@ -117,9 +130,7 @@ class ProfileService:
         
         profile.onboarding_completed = True
         profile.guide_status = GuideStatus.SKIPPED
-        # Wait, I should check the actual Enum name used in the file.
-        # Looking at profile_service.py, it doesn't import GuideStatus yet.
-        
+       
         db.commit()
         return {"status": "success", "message": "Onboarding skipped"}
 
