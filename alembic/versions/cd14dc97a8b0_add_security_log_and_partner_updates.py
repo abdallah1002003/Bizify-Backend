@@ -30,7 +30,7 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.drop_table('_alembic_tmp_account_verifications')
+
     with op.batch_alter_table('account_verifications', schema=None) as batch_op:
         batch_op.alter_column('id',
                existing_type=sa.NUMERIC(),

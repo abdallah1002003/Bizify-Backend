@@ -22,6 +22,12 @@ dependencies = [
     "python-docx>=1.2.0",
     "python-pptx>=1.0.2",
     "fpdf2>=2.8.4",
+    "psycopg2-binary>=2.9.11",
+    "fastapi-users>=12.1.3",
+    "fastapi-users-db-sqlalchemy>=7.0.0",
+    "requests>=2.32.5",
+    "imagekitio>=5.2.0",
+    "pyjwt>=2.8.0",
 ]
 requires-python = ">=3.9"
 

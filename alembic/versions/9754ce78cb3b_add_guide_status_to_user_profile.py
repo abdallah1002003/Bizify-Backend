@@ -20,10 +20,14 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # UC_07 BF_06: Marks guide as completed, postponed, or skipped
+    guide_status_enum = sa.Enum('NOT_STARTED', 'COMPLETED', 'POSTPONED', 'SKIPPED', name='guidestatus')
+    guide_status_enum.create(op.get_bind(), checkfirst=True)
     with op.batch_alter_table('user_profiles', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('guide_status', sa.Enum('NOT_STARTED', 'COMPLETED', 'POSTPONED', 'SKIPPED', name='guidestatus'), nullable=True))
+        batch_op.add_column(sa.Column('guide_status', guide_status_enum, nullable=True))
 
 
 def downgrade() -> None:
     with op.batch_alter_table('user_profiles', schema=None) as batch_op:
         batch_op.drop_column('guide_status')
+    guide_status_enum = sa.Enum('NOT_STARTED', 'COMPLETED', 'POSTPONED', 'SKIPPED', name='guidestatus')
+    guide_status_enum.drop(op.get_bind(), checkfirst=True)

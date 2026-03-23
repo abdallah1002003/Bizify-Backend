@@ -19,10 +19,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # Adding last_activity column to users table safely for SQLite
-    with op.batch_alter_table('users', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('last_activity', sa.DateTime(), nullable=True))
+    # Turned into a no-op because 750d4702483c already adds this column
+    pass
 
 
 def downgrade() -> None:
-    with op.batch_alter_table('users', schema=None) as batch_op:
-        batch_op.drop_column('last_activity')
+    pass
