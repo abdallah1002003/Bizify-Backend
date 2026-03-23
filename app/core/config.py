@@ -12,10 +12,10 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Bizify"
     API_V1_STR: str = "/api/v1"
     
-    POSTGRES_SERVER: str
-    POSTGRES_USER: str
-    POSTGRES_PASSWORD: str
-    POSTGRES_DB: str
+    POSTGRES_SERVER: Optional[str] = None
+    POSTGRES_USER: Optional[str] = None
+    POSTGRES_PASSWORD: Optional[str] = None
+    POSTGRES_DB: Optional[str] = None
     DATABASE_URL: Optional[str] = None
     
     REDIS_HOST: str = "localhost"
@@ -39,7 +39,11 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
 
-    model_config = SettingsConfigDict(env_file = ".env", case_sensitive = True, extra = "ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="ignore"
+    )
 
     def get_database_url(self) -> str:
         """
