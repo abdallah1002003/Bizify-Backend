@@ -58,11 +58,11 @@ class GroupMemberUpdate(BaseModel):
     @field_validator("idea_ids", mode = "before")
     @classmethod
     def normalize_idea_ids(cls, v):
-        if v in (None, "", []):
+        if v in (None, ""):
             return None
         if isinstance(v, list):
             cleaned = [item for item in v if item not in ("", None)]
-            return cleaned or None
+            return cleaned
         return v
 
 # ----------------- Invite Schemas -----------------
@@ -77,11 +77,11 @@ class GroupInviteCreate(BaseModel):
     @field_validator("idea_ids", mode = "before")
     @classmethod
     def normalize_idea_ids(cls, v):
-        if v in (None, "", []):
+        if v in (None, ""):
             return None
         if isinstance(v, list):
             cleaned = [item for item in v if item not in ("", None)]
-            return cleaned or None
+            return cleaned
         return v
 
     model_config = ConfigDict(
@@ -127,9 +127,9 @@ class HandleJoinRequest(BaseModel):
     @field_validator("idea_ids", mode = "before")
     @classmethod
     def normalize_idea_ids(cls, v):
-        if v in (None, "", []):
+        if v in (None, ""):
             return None
         if isinstance(v, list):
             cleaned = [item for item in v if item not in ("", None)]
-            return cleaned or None
+            return cleaned
         return v
