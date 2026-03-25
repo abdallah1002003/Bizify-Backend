@@ -14,8 +14,8 @@ class MessageRole(str, enum.Enum):
     Enumeration of participant roles within a chat message.
     """
     
-    USER = "user"
-    AI = "ai"
+    USER = "USER"
+    AI = "AI"
 
 
 class ChatMessage(Base):

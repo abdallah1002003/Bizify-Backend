@@ -14,9 +14,9 @@ class RequestStatus(str, enum.Enum):
     Enumeration of statuses for a partner request.
     """
 
-    PENDING = "pending"
-    ACCEPTED = "accepted"
-    REJECTED = "rejected"
+    PENDING = "PENDING"
+    ACCEPTED = "ACCEPTED"
+    REJECTED = "REJECTED"
 
 
 class PartnerRequest(Base):

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user, get_db, oauth2_scheme
 from app.core.config import settings
 from app.models.user import User
-from app.schemas.user import OTPVerify, Token
+from app.schemas.user import OTPResendRequest, OTPVerify, Token
 from app.services.auth_service import AuthService
 
 
@@ -46,6 +46,17 @@ def verify_otp(data: OTPVerify, db: Session = Depends(get_db)) -> Dict[str, str]
     Verifies the account using a 6-digit OTP code sent to email.
     """
     return AuthService.verify_otp(db, data)
+
+
+@router.post("/resend-verification-otp")
+def resend_verification_otp(
+    data: OTPResendRequest,
+    db: Session = Depends(get_db)
+) -> Dict[str, str]:
+    """
+    Resends the account verification OTP for users who have not verified yet.
+    """
+    return AuthService.resend_verification_otp(db, data)
     
 
 @router.post("/forgot-password")

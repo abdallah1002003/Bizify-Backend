@@ -14,9 +14,9 @@ class IdeaStatus(str, enum.Enum):
     Enumeration of statuses for a business idea.
     """
 
-    DRAFT = "draft"
-    VALIDATED = "validated"
-    CONVERTED = "converted"
+    DRAFT = "DRAFT"
+    VALIDATED = "VALIDATED"
+    CONVERTED = "CONVERTED"
 
 
 class Idea(Base):

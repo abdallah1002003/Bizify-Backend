@@ -6,7 +6,6 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models.idea import Idea
-from app.models.skill_gap_report import SkillGapReport
 from app.models.user_profile import UserProfile, GuideStatus
 from app.schemas.questionnaire import (
     GuideStatusUpdate,
@@ -146,7 +145,7 @@ class ProfileService:
         profile.personality_json = None
         profile.personalization_profile = None
         profile.onboarding_completed = False
-        profile.guide_status = "not_started"
+        profile.guide_status = GuideStatus.NOT_STARTED
         
         db.commit()
         return {"status": "success", "message": "Questionnaire reset successfully"}
@@ -214,10 +213,6 @@ class ProfileService:
         """
         Marks dependent records as outdated to trigger re-analysis.
         """
-        db.query(SkillGapReport).filter(SkillGapReport.user_id == user_id).update(
-            {"is_outdated": True}
-        )
-        
         db.query(Idea).filter(Idea.owner_id == user_id).update(
             {"is_score_outdated": True}
         )

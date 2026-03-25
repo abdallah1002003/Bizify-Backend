@@ -14,9 +14,9 @@ class BusinessStage(str, enum.Enum):
     Enumeration of different stages of a business life cycle.
     """
 
-    EARLY = "early"
-    BUILDING = "building"
-    SCALING = "scaling"
+    EARLY = "EARLY"
+    BUILDING = "BUILDING"
+    SCALING = "SCALING"
 
 
 class Business(Base):
@@ -52,9 +52,8 @@ class Business(Base):
 
     owner = relationship("User", back_populates = "businesses")
     converted_idea = relationship("Idea", foreign_keys = [idea_id])
-    
-    collaborators = relationship("BusinessCollaborator", back_populates = "business")
-    invites = relationship("BusinessInvite", back_populates = "business")
+    # A generic "groups" relationship that replaces previous direct collaborators
+    groups = relationship("Group", back_populates = "business", cascade="all, delete-orphan", uselist = False)
     roadmap = relationship("BusinessRoadmap", back_populates = "business", uselist = False)
     partner_requests = relationship("PartnerRequest", back_populates = "business")
     embeddings = relationship("Embedding", back_populates = "business")

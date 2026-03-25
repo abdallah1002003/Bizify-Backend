@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.models.subscription import SubscriptionStatus
 
@@ -15,6 +15,13 @@ class SubscriptionBase(BaseModel):
     user_id: uuid.UUID
     plan_id: uuid.UUID
     status: Optional[SubscriptionStatus] = SubscriptionStatus.ACTIVE
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def validate_status(cls, v):
+        if isinstance(v, str):
+            return v.upper()
+        return v
 
 
 class SubscriptionCreate(SubscriptionBase):

@@ -9,12 +9,7 @@ from app.models.idea_version import IdeaVersion
 from app.models.idea_metric import IdeaMetric
 from app.models.experiment import Experiment
 from app.models.business import Business, BusinessStage
-from app.models.business_collaborator import BusinessCollaborator, CollaboratorRole
-from app.models.collaborator_idea_access import CollaboratorIdeaAccess
-from app.models.invite_idea_access import InviteIdeaAccess
-from app.models.business_invite import BusinessInvite, InviteStatus
-from app.models.business_join_request import BusinessJoinRequest, JoinRequestStatus
-from app.models.join_request_idea_access import JoinRequestIdeaAccess
+
 from app.models.business_roadmap import BusinessRoadmap
 from app.models.roadmap_stage import RoadmapStage, StageType, StageStatus
 from app.models.agent import Agent
@@ -44,16 +39,17 @@ from app.models.user_concept_state import UserConceptState
 from app.models.feature_concept_mapping import FeatureConceptMapping
 from app.models.user_skill import UserSkill
 from app.models.skill_benchmark import SkillBenchmark
-from app.models.skill_gap_report import SkillGapReport
 from app.models.industry import Industry
 from app.models.export_job import ExportJob, ExportStatus
 from app.models.privacy_setting import PrivacySetting, ProfileVisibility
 from app.models.audit_log import AuditLog
 from app.models.document import Document
-from app.models.team import Team
-from app.models.team_member import TeamMember
-from app.models.team_idea_access import TeamIdeaAccess
-
+from app.models.group import Group
+from app.models.group_member import GroupMember, GroupRole, GroupMemberStatus
+from app.models.group_message import GroupMessage
+from app.models.group_associations import group_member_idea_access, group_invite_idea_access, group_request_idea_access
+from app.models.group_invite import GroupInvite, GroupInviteStatus
+from app.models.group_join_request import GroupJoinRequest, GroupJoinRequestStatus
 
 
 __all__ = [
@@ -74,15 +70,18 @@ __all__ = [
     "Experiment",
     "Business",
     "BusinessStage",
-    "BusinessCollaborator",
-    "CollaboratorRole",
-    "CollaboratorIdeaAccess",
-    "InviteIdeaAccess",
-    "BusinessInvite",
-    "InviteStatus",
-    "BusinessJoinRequest",
-    "JoinRequestStatus",
-    "JoinRequestIdeaAccess",
+    "Group",
+    "GroupMember",
+    "GroupRole",
+    "GroupMemberStatus",
+    "GroupMessage",
+    "group_member_idea_access",
+    "group_invite_idea_access",
+    "group_request_idea_access",
+    "GroupInvite",
+    "GroupInviteStatus",
+    "GroupJoinRequest",
+    "GroupJoinRequestStatus",
     "BusinessRoadmap",
     "RoadmapStage",
     "StageType",
@@ -120,7 +119,6 @@ __all__ = [
     "FeatureConceptMapping",
     "UserSkill",
     "SkillBenchmark",
-    "SkillGapReport",
     "Industry",
     "ExportJob",
     "ExportStatus",
@@ -128,7 +126,4 @@ __all__ = [
     "ProfileVisibility",
     "AuditLog",
     "Document",
-    "Team",
-    "TeamMember",
-    "TeamIdeaAccess",
 ]

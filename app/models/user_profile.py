@@ -35,7 +35,8 @@ class UserProfile(Base):
     skills_json = Column(JSON)
 
     guide_status = Column(
-        Enum(GuideStatus, values_callable = lambda x: [e.value for e in x]),
+        # Persist enum names to match the PostgreSQL enum created by Alembic.
+        Enum(GuideStatus, values_callable = lambda x: [e.name for e in x]),
         default = GuideStatus.NOT_STARTED
     )
 

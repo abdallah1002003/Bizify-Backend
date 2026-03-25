@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.models.business import BusinessStage
 
@@ -12,9 +12,15 @@ class BusinessBase(BaseModel):
     Base Pydantic model for Business data.
     """
     
-    stage: Optional[BusinessStage] = BusinessStage.EARLY
-    context_json: Optional[Any] = None
+    stage: BusinessStage = BusinessStage.EARLY
     is_archived: Optional[bool] = False
+
+    @field_validator("stage", mode="before")
+    @classmethod
+    def validate_stage(cls, v):
+        if isinstance(v, str):
+            return v.upper()
+        return v
 
 
 class BusinessCreate(BusinessBase):
@@ -32,8 +38,14 @@ class BusinessUpdate(BaseModel):
     """
     
     stage: Optional[BusinessStage] = None
-    context_json: Optional[Any] = None
     is_archived: Optional[bool] = None
+
+    @field_validator("stage", mode="before")
+    @classmethod
+    def validate_stage(cls, v):
+        if isinstance(v, str):
+            return v.upper()
+        return v
 
 
 class BusinessRead(BusinessBase):

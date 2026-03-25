@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.models.agent_run import RunStatus
 
@@ -17,8 +17,14 @@ class AgentRunBase(BaseModel):
     input_data: Optional[Any] = None
     output_data: Optional[Any] = None
     confidence_score: Optional[float] = None
-    status: Optional[RunStatus] = None
     execution_time_ms: Optional[int] = None
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def validate_status(cls, v):
+        if isinstance(v, str):
+            return v.upper()
+        return v
 
 
 class AgentRunCreate(AgentRunBase):

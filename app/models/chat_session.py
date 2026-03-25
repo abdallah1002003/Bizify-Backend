@@ -14,10 +14,10 @@ class SessionType(str, enum.Enum):
     Enumeration of context-specific chat session types.
     """
     
-    IDEA_CHAT = "idea_chat"
-    BUSINESS_CHAT = "business_chat"
-    STAGE_CHAT = "stage_chat"
-    GENERAL = "general"
+    IDEA_CHAT = "IDEA_CHAT"
+    BUSINESS_CHAT = "BUSINESS_CHAT"
+    STAGE_CHAT = "STAGE_CHAT"
+    GENERAL = "GENERAL"
 
 
 class ChatSession(Base):

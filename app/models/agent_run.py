@@ -14,9 +14,9 @@ class RunStatus(str, enum.Enum):
     Enumeration of statuses for an AI agent run.
     """
     
-    SUCCESS = "success"
-    FAILED = "failed"
-    WARNING = "warning"
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
+    WARNING = "WARNING"
 
 
 class AgentRun(Base):

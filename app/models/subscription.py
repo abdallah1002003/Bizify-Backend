@@ -14,8 +14,8 @@ class SubscriptionStatus(str, enum.Enum):
     Enumeration of subscription statuses.
     """
 
-    ACTIVE = "active"
-    CANCELED = "canceled"
+    ACTIVE = "ACTIVE"
+    CANCELED = "CANCELED"
 
 
 class Subscription(Base):

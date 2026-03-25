@@ -9,7 +9,7 @@ from app.core.config import settings
 from app.models.token_blacklist import TokenBlacklist
 from app.models.user import User
 from app.models.verification import VerificationType
-from app.schemas.user import OTPVerify
+from app.schemas.user import OTPResendRequest, OTPVerify
 from app.services.user_service import UserService
 
 
@@ -127,6 +127,26 @@ class AuthService:
             )
             
         return {"message": "Account verified successfully"}
+
+    @staticmethod
+    def resend_verification_otp(
+        db: Session,
+        data: OTPResendRequest
+    ) -> Dict[str, str]:
+        """
+        Resends the account verification OTP for an existing unverified user.
+        """
+        user = UserService.get_user_by_email(db, email = data.email)
+
+        if not user:
+            return {"message": "If this email exists, a verification code has been sent"}
+
+        if user.is_verified:
+            return {"message": "Account is already verified"}
+
+        UserService.create_otp(db, user.id, user.email)
+
+        return {"message": "Verification code sent to your email"}
 
     @staticmethod
     def forgot_password(db: Session, email: str) -> Dict[str, str]:

@@ -14,8 +14,9 @@ class VerificationType(str, enum.Enum):
     Enumeration of account verification types.
     """
 
-    ACCOUNT_VERIFICATION = "account_verification"
-    PASSWORD_RESET = "password_reset"
+    ACCOUNT_VERIFICATION = "ACCOUNT_VERIFICATION"
+    PASSWORD_RESET = "PASSWORD_RESET"
+    EMAIL_CHANGE = "EMAIL_CHANGE"
 
 
 class AccountVerification(Base):

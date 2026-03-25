@@ -18,6 +18,13 @@ class UserBase(BaseModel):
     is_active: Optional[bool] = True
     is_verified: Optional[bool] = False
 
+    @field_validator("role", mode="before")
+    @classmethod
+    def validate_role(cls, v):
+        if isinstance(v, str):
+            return v.upper()
+        return v
+
 
 class UserCreate(UserBase):
     """
@@ -54,16 +61,19 @@ class UserCreate(UserBase):
         return v
 
 
-class UserUpdate(BaseModel):
-    """
-    Pydantic model for updating an existing User.
-    """
-    
     email: Optional[EmailStr] = None
+    full_name: Optional[str] = None
     role: Optional[UserRole] = None
     is_active: Optional[bool] = None
     is_verified: Optional[bool] = None
     password: Optional[str] = None
+
+    @field_validator("role", mode="before")
+    @classmethod
+    def validate_role(cls, v):
+        if isinstance(v, str):
+            return v.upper()
+        return v
 
 
 class UserRead(UserBase):
@@ -102,3 +112,11 @@ class OTPVerify(BaseModel):
     
     email: EmailStr
     otp_code: str
+
+
+class OTPResendRequest(BaseModel):
+    """
+    Pydantic model for requesting a new account verification OTP.
+    """
+
+    email: EmailStr

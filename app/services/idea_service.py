@@ -3,17 +3,14 @@ from typing import Any, List, Optional
 
 from sqlalchemy.orm import Session
 
-from app.models.business_collaborator import BusinessCollaborator
+from app.models.group_member import GroupMember, GroupMemberStatus
 from app.models.idea import Idea, IdeaStatus
-from app.models.team_member import TeamMember
-
-
-
+from app.models.group_member import GroupRole
 
 class IdeaService:
     """
     Service class for managing business ideas and collaborations.
-    Handles idea lifecycles and provides granular access control for team members.
+    Handles idea lifecycles and provides granular access control for group members.
     """
 
     @staticmethod
@@ -23,30 +20,23 @@ class IdeaService:
         """
         owned_ideas = db.query(Idea).filter(Idea.owner_id == user_id).all()
         
-        collaborations = db.query(BusinessCollaborator).filter(
-            BusinessCollaborator.user_id == user_id
+        shared_ideas = []
+
+        collaborations = db.query(GroupMember).filter(
+            GroupMember.user_id == user_id,
+            GroupMember.status == GroupMemberStatus.ACTIVE
         ).all()
         
-        shared_ideas = []
-        
         for collab in collaborations:
+            # Add specifically assigned ideas
             if collab.accessible_ideas:
                 shared_ideas.extend(collab.accessible_ideas)
-            elif collab.idea_id:
-                legacy_idea = db.query(Idea).filter(Idea.id == collab.idea_id).first()
-                
-                if legacy_idea:
-                    shared_ideas.append(legacy_idea)
-            else:
-                business_ideas = db.query(Idea).filter(Idea.business_id == collab.business_id).all()
-                shared_ideas.extend(business_ideas)
-                
-        team_memberships = db.query(TeamMember).filter(TeamMember.user_id == user_id).all()
-        for membership in team_memberships:
-            if membership.team.accessible_ideas:
-                shared_ideas.extend(membership.team.accessible_ideas)
-            else:
-                business_ideas = db.query(Idea).filter(Idea.business_id == membership.team.business_id).all()
+            
+            # If their role is higher level, they might need access to all business ideas
+            if collab.role in [GroupRole.OWNER, GroupRole.EDITOR] and collab.group and collab.group.business_id:
+                business_ideas = db.query(Idea).filter(
+                    Idea.business_id == collab.group.business_id
+                ).all()
                 shared_ideas.extend(business_ideas)
                 
         unique_ideas = list({idea.id: idea for idea in (owned_ideas + shared_ideas)}.values())

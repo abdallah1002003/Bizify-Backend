@@ -14,17 +14,17 @@ class StageType(str, enum.Enum):
     Enumeration of different types of roadmap stages.
     """
 
-    READINESS = "readiness"
-    RESEARCH = "research"
-    STRATEGY = "strategy"
-    MARKET = "market"
-    FUNCTIONS = "functions"
-    ECONOMICS = "economics"
-    LEGAL = "legal"
-    MVP = "mvp"
-    BRANDING = "branding"
-    GTM = "gtm"
-    OPERATIONS = "operations"
+    READINESS = "READINESS"
+    RESEARCH = "RESEARCH"
+    STRATEGY = "STRATEGY"
+    MARKET = "MARKET"
+    FUNCTIONS = "FUNCTIONS"
+    ECONOMICS = "ECONOMICS"
+    LEGAL = "LEGAL"
+    MVP = "MVP"
+    BRANDING = "BRANDING"
+    GTM = "GTM"
+    OPERATIONS = "OPERATIONS"
 
 
 class StageStatus(str, enum.Enum):
@@ -32,9 +32,9 @@ class StageStatus(str, enum.Enum):
     Enumeration of readiness statuses for a roadmap stage.
     """
 
-    LOCKED = "locked"
-    ACTIVE = "active"
-    COMPLETED = "completed"
+    LOCKED = "LOCKED"
+    ACTIVE = "ACTIVE"
+    COMPLETED = "COMPLETED"
 
 
 class RoadmapStage(Base):

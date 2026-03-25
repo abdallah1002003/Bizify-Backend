@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.models.partner_profile import ApprovalStatus, PartnerType
 
@@ -13,6 +13,13 @@ class PartnerProfileBase(BaseModel):
     """
     
     partner_type: PartnerType
+
+    @field_validator("partner_type", mode="before")
+    @classmethod
+    def validate_partner_type(cls, v):
+        if isinstance(v, str):
+            return v.upper()
+        return v
     company_name: Optional[str] = None
     description: Optional[str] = None
     services_json: Optional[Any] = None
@@ -38,6 +45,13 @@ class PartnerProfileUpdate(BaseModel):
     services_json: Optional[Any] = None
     experience_json: Optional[Any] = None
     approval_status: Optional[ApprovalStatus] = None
+
+    @field_validator("partner_type", "approval_status", mode="before")
+    @classmethod
+    def validate_enums(cls, v):
+        if isinstance(v, str):
+            return v.upper()
+        return v
 
 
 class PartnerProfileRead(PartnerProfileBase):

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.models.chat_message import MessageRole
 
@@ -12,8 +12,14 @@ class ChatMessageBase(BaseModel):
     """
     
     session_id: uuid.UUID
-    role: MessageRole
     content: str
+
+    @field_validator("role", mode="before")
+    @classmethod
+    def validate_role(cls, v):
+        if isinstance(v, str):
+            return v.upper()
+        return v
 
 
 class ChatMessageCreate(ChatMessageBase):

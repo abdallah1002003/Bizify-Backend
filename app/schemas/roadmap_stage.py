@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.models.roadmap_stage import StageStatus, StageType
 
@@ -17,6 +17,13 @@ class RoadmapStageBase(BaseModel):
     stage_type: StageType
     status: Optional[StageStatus] = StageStatus.LOCKED
     output_json: Optional[Any] = None
+
+    @field_validator("stage_type", "status", mode="before")
+    @classmethod
+    def validate_enums(cls, v):
+        if isinstance(v, str):
+            return v.upper()
+        return v
 
 
 class RoadmapStageCreate(RoadmapStageBase):
@@ -37,6 +44,13 @@ class RoadmapStageUpdate(BaseModel):
     status: Optional[StageStatus] = None
     output_json: Optional[Any] = None
     completed_at: Optional[datetime] = None
+
+    @field_validator("stage_type", "status", mode="before")
+    @classmethod
+    def validate_enums(cls, v):
+        if isinstance(v, str):
+            return v.upper()
+        return v
 
 
 class RoadmapStageRead(RoadmapStageBase):

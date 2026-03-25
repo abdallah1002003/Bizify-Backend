@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends
+import uuid
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from typing import List
@@ -10,7 +11,10 @@ from app.schemas.questionnaire import (
     QuestionnaireAnswer,
     QuestionnaireResponse
 )
+from app.schemas.user_profile import UserProfileRead
 from app.services.profile_service import ProfileService
+from app.schemas.skill_gap import UserSkill, UserSkillCreate
+from app.services.skill_gap_service import SkillGapService
 
 
 router = APIRouter()
@@ -73,12 +77,61 @@ def update_guide_status(
     return ProfileService.update_guide_status(db, current_user.id, status_in)
 
 
-@router.get("/")
+@router.get("/", response_model = UserProfileRead)
 def get_my_profile(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
-):
+) -> UserProfileRead:
     """
     Retrieves the current user's profile, creating it if it doesn't exist.
     """
     return ProfileService.get_or_create_profile(db, current_user.id)
+
+
+@router.get("/skills", response_model=List[UserSkill])
+def get_user_skills(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Retrieves all skills for the current user.
+    """
+    return SkillGapService.get_user_skills(db, current_user.id)
+
+
+@router.post("/skills", response_model=UserSkill, status_code=status.HTTP_201_CREATED)
+def add_user_skill(
+    skill_in: UserSkillCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Adds a new skill to the user's profile.
+    """
+    return SkillGapService.add_user_skill(db, current_user.id, skill_in)
+
+
+@router.put("/skills/{skill_id}", response_model=UserSkill)
+def update_user_skill(
+    skill_id: uuid.UUID,
+    skill_in: UserSkillCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Updates an existing skill for the current user.
+    """
+    return SkillGapService.update_user_skill(db, current_user.id, skill_id, skill_in)
+
+
+@router.delete("/skills/{skill_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user_skill(
+    skill_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Deletes a specific skill from the user's profile.
+    """
+    SkillGapService.delete_user_skill(db, current_user.id, skill_id)
+    return None

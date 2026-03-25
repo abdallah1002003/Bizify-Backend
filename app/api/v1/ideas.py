@@ -1,7 +1,7 @@
 from typing import Any, List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, get_db
@@ -31,13 +31,6 @@ def create_idea(
     current_user: User = Depends(get_current_user)
 ) -> IdeaRead:
     """
-    Initializes a new business idea. Ensuring the user can only create ideas for themselves.
+    Initializes a new business idea for the authenticated user.
     """
-    if idea_in.owner_id != current_user.id:
-        raise HTTPException(
-            status_code = status.HTTP_403_FORBIDDEN, 
-            detail = "You can only create ideas for yourself"
-        )
-        
     return IdeaService.create_idea(db, current_user.id, idea_in.title, idea_in.description)
-

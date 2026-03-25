@@ -14,9 +14,9 @@ class PartnerType(str, enum.Enum):
     Enumeration of different types of partners.
     """
 
-    MENTOR = "mentor"
-    SUPPLIER = "supplier"
-    MANUFACTURER = "manufacturer"
+    MENTOR = "MENTOR"
+    SUPPLIER = "SUPPLIER"
+    MANUFACTURER = "MANUFACTURER"
 
 
 class ApprovalStatus(str, enum.Enum):
@@ -24,9 +24,9 @@ class ApprovalStatus(str, enum.Enum):
     Enumeration of approval statuses for partner applications.
     """
 
-    PENDING = "pending"
-    APPROVED = "approved"
-    REJECTED = "rejected"
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
 
 
 class PartnerProfile(Base):

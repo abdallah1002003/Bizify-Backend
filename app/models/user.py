@@ -14,12 +14,12 @@ class UserRole(str, enum.Enum):
     Enumeration of user roles within the system.
     """
 
-    ADMIN = "admin"
-    USER = "user" 
-    ENTREPRENEUR = "entrepreneur"
-    MENTOR = "mentor"
-    SUPPLIER = "supplier"
-    MANUFACTURER = "manufacturer"
+    ADMIN = "ADMIN"
+    USER = "USER" 
+    ENTREPRENEUR = "ENTREPRENEUR"
+    MENTOR = "MENTOR"
+    SUPPLIER = "SUPPLIER"
+    MANUFACTURER = "MANUFACTURER"
 
 
 class User(Base):
@@ -85,4 +85,5 @@ class User(Base):
     comparisons = relationship("IdeaComparison", back_populates = "user")
     share_links = relationship("ShareLink", back_populates = "creator")
     chat_sessions = relationship("ChatSession", back_populates = "user")
+    group_messages = relationship("GroupMessage", back_populates = "sender", cascade="all, delete-orphan")
     verification_codes = relationship("AccountVerification", back_populates = "user")

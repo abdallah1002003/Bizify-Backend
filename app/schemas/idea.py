@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.models.idea import IdeaStatus
 
@@ -14,17 +14,22 @@ class IdeaBase(BaseModel):
     
     title: str
     description: Optional[str] = None
-    status: Optional[IdeaStatus] = IdeaStatus.DRAFT
-    ai_score: Optional[float] = None
+    status: IdeaStatus = IdeaStatus.DRAFT
     is_archived: Optional[bool] = False
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def validate_status(cls, v):
+        if isinstance(v, str):
+            return v.upper()
+        return v
 
 
 class IdeaCreate(IdeaBase):
     """
     Pydantic model for creating a new Business Idea.
     """
-    
-    owner_id: uuid.UUID
+    pass
 
 
 class IdeaUpdate(BaseModel):
@@ -35,8 +40,14 @@ class IdeaUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     status: Optional[IdeaStatus] = None
-    ai_score: Optional[float] = None
     is_archived: Optional[bool] = None
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def validate_status(cls, v):
+        if isinstance(v, str):
+            return v.upper()
+        return v
     business_id: Optional[uuid.UUID] = None
 
 
