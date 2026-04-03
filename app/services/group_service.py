@@ -1,4 +1,3 @@
-import logging
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -8,18 +7,14 @@ from fastapi import BackgroundTasks, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.cache import cache
-from app.core.database import SessionLocal
-from app.models.business import Business
 from app.models.group import Group
 from app.models.group_member import GroupMember, GroupRole, GroupMemberStatus
 from app.models.group_invite import GroupInvite, GroupInviteStatus
 from app.models.group_join_request import GroupJoinRequest, GroupJoinRequestStatus
-from app.models.idea import Idea
-from app.models.user import User
-from app.services.notification_service import NotificationService
-from app.core.mail import send_team_invite_email, send_join_request_status_email
-
-logger = logging.getLogger(__name__)
+from app.core.mail import send_team_invite_email
+from app.repositories.group_repo import group_repo
+from app.repositories.idea_repo import idea_repo
+from app.repositories.user_repo import user_repo
 
 class GroupService:
     """
@@ -42,18 +37,21 @@ class GroupService:
         Creates a new team for the authenticated user without requiring a pre-existing business.
         A lightweight business container is created automatically to satisfy the current schema.
         """
-        business = Business(owner_id = creator_id)
-        db.add(business)
-        db.flush()
+        from app.repositories.business_repo import business_repo
+        business = business_repo.create(db, obj_in={"owner_id": creator_id}, commit=False, refresh=False)
 
-        group = Group(
-            business_id = business.id,
-            name = data.name,
-            description = data.description,
-            default_role = data.default_role,
-            is_chat_enabled = data.is_chat_enabled,
+        group = group_repo.create(
+            db,
+            obj_in={
+                "business_id": business.id,
+                "name": data.name,
+                "description": data.description,
+                "default_role": data.default_role,
+                "is_chat_enabled": data.is_chat_enabled,
+            },
+            commit=False,
+            refresh=False,
         )
-        db.add(group)
         db.commit()
         db.refresh(group)
 
@@ -63,63 +61,55 @@ class GroupService:
 
     @staticmethod
     def create_group(db: Session, business_id: uuid.UUID, creator_id: uuid.UUID, data: Any) -> Group:
-        business = db.query(Business).filter(Business.id == business_id).first()
+        from app.repositories.business_repo import business_repo
+        business = business_repo.get(db, business_id)
         if not business or business.owner_id != creator_id:
             raise HTTPException(status_code=403, detail="Only the business owner can create groups")
 
-        group = Group(
-            business_id = business_id,
-            name = data.name,
-            description = data.description,
-            default_role = data.default_role,
-            is_chat_enabled = data.is_chat_enabled,
-        )
-        db.add(group)
-        db.commit()
-        db.refresh(group)
-        
-        # Invalidate cache if needed
+        group = group_repo.create(db, obj_in={
+            "business_id": business_id,
+            "name": data.name,
+            "description": data.description,
+            "default_role": data.default_role,
+            "is_chat_enabled": data.is_chat_enabled,
+        })
         GroupService.invalidate_group_cache(business_id)
-        
         return group
 
     @staticmethod
     def update_group(db: Session, group_id: uuid.UUID, requester_id: uuid.UUID, data: Any) -> Group:
-        group = db.query(Group).filter(Group.id == group_id).first()
+        group = group_repo.get_by_id(db, group_id)
         if not group:
             raise HTTPException(status_code=404, detail="Group not found")
-            
+
         if not GroupService._is_group_admin(group, requester_id):
             raise HTTPException(status_code=403, detail="Only group admins can update the group")
-            
+
+        update_data = {}
         if data.name is not None:
-            group.name = data.name
+            update_data["name"] = data.name
         if data.description is not None:
-            group.description = data.description
+            update_data["description"] = data.description
         if data.default_role is not None:
-            group.default_role = data.default_role
+            update_data["default_role"] = data.default_role
         if data.is_chat_enabled is not None:
-            group.is_chat_enabled = data.is_chat_enabled
-            
-        db.commit()
-        db.refresh(group)
+            update_data["is_chat_enabled"] = data.is_chat_enabled
+
+        group = group_repo.update(db, db_obj=group, obj_in=update_data)
         GroupService.invalidate_group_cache(group.business_id)
         return group
 
     @staticmethod
     def delete_group(db: Session, group_id: uuid.UUID, requester_id: uuid.UUID) -> None:
-        group = db.query(Group).filter(Group.id == group_id).first()
+        group = group_repo.get_by_id(db, group_id)
         if not group:
             raise HTTPException(status_code=404, detail="Group not found")
-        
-        # Only the business owner or GroupRole.OWNER can delete a group
+
         if not GroupService._is_group_admin(group, requester_id):
             raise HTTPException(status_code=403, detail="Only group admins can delete the group")
-            
+
         business_id = group.business_id
-        db.delete(group)
-        db.commit()
-        
+        group_repo.remove(db, id=group_id)
         GroupService.invalidate_group_cache(business_id)
 
     @staticmethod
@@ -129,35 +119,41 @@ class GroupService:
 
     @staticmethod
     def get_groups(db: Session, business_id: uuid.UUID, requester_id: uuid.UUID) -> List[Group]:
-        business = db.query(Business).filter(Business.id == business_id).first()
+        from app.repositories.business_repo import business_repo
+        business = business_repo.get(db, business_id)
         if not business:
             raise HTTPException(status_code=404, detail="Business not found")
 
         is_owner = business.owner_id == requester_id
-        is_member = db.query(GroupMember).join(Group).filter(
-            Group.business_id == business_id,
-            GroupMember.user_id == requester_id,
-            GroupMember.status == GroupMemberStatus.ACTIVE
-        ).first()
+        is_member = group_repo.is_member_of_business(db, business_id, requester_id)
 
         if not is_owner and not is_member:
             raise HTTPException(status_code=403, detail="You do not have access to this business")
 
-        return db.query(Group).filter(Group.business_id == business_id).all()
+        return group_repo.get_by_business_id(db, business_id)
+
+    @staticmethod
+    def get_chat_group_for_user(db: Session, group_id: uuid.UUID, user_id: uuid.UUID) -> Group:
+        group = group_repo.get_by_id(db, group_id)
+        if not group:
+            raise HTTPException(status_code=404, detail="Group not found")
+        if not group.is_chat_enabled:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Chat is disabled for this group")
+
+        is_authorized = group.business.owner_id == user_id or group_repo.is_active_member(db, group_id, user_id)
+        if not is_authorized:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        return group
 
     @staticmethod
     def get_user_teams(db: Session, user_id: uuid.UUID) -> List[Group]:
         """
         Returns all teams the user owns or is an active member of.
         """
-        owned_groups = db.query(Group).join(Business).filter(Business.owner_id == user_id).all()
-        member_groups = db.query(Group).join(GroupMember).filter(
-            GroupMember.user_id == user_id,
-            GroupMember.status == GroupMemberStatus.ACTIVE
-        ).all()
-
+        owned_groups = group_repo.get_user_owned_groups(db, user_id)
+        member_groups = group_repo.get_user_member_groups(db, user_id)
         unique_groups = {group.id: group for group in owned_groups + member_groups}
-
         return list(unique_groups.values())
 
     @staticmethod
@@ -169,7 +165,7 @@ class GroupService:
         role: Optional[GroupRole] = None,
         idea_ids: Optional[List[uuid.UUID]] = None
     ) -> Dict[str, Any]:
-        group = db.query(Group).filter(Group.id == group_id).first()
+        group = group_repo.get_by_id(db, group_id)
         if not group:
             raise HTTPException(status_code=404, detail="Group not found")
             
@@ -187,81 +183,68 @@ class GroupService:
             expires_at=expires_at,
             role=role if role else group.default_role,
         )
-        
         if idea_ids:
-            ideas = db.query(Idea).filter(Idea.id.in_(idea_ids), Idea.business_id == group.business_id).all()
+            ideas = idea_repo.get_by_ids_in_business(db, idea_ids, group.business_id)
             invite.accessible_ideas.extend(ideas)
-            
-        db.add(invite)
-        db.commit()
-        
-        # Send Email
-        inviter = db.query(User).filter(User.id == invited_by).first()
+
+        group_repo.create_invite(db, invite)
+
+        inviter = user_repo.get(db, invited_by)
         send_team_invite_email(email, group.name, inviter.email, f"https://bizify.app/join-group?token={token}")
-        
+
         return {"message": "Invite generated successfully", "token": token, "email": email}
 
     @staticmethod
     async def process_invite(db: Session, token: str, user_id: uuid.UUID, background_tasks: BackgroundTasks) -> Dict[str, Any]:
-        invite = db.query(GroupInvite).filter(GroupInvite.token == token, GroupInvite.status == GroupInviteStatus.PENDING).first()
-        
+        invite = group_repo.get_pending_invite_by_token(db, token)
+
         if not invite or invite.expires_at < datetime.now(timezone.utc):
             if invite:
                 invite.status = GroupInviteStatus.EXPIRED
-                db.commit()
+                group_repo.save_invite(db, invite)
             raise HTTPException(status_code=400, detail="Invalid or expired invitation")
-            
-        # Check if already in group
-        existing = db.query(GroupMember).filter(GroupMember.group_id == invite.group_id, GroupMember.user_id == user_id).first()
+
+        existing = group_repo.get_member_by_user_and_group(db, invite.group_id, user_id)
         if existing:
             raise HTTPException(status_code=400, detail="User already in this group")
-            
-        member = GroupMember(
-            group_id=invite.group_id,
-            user_id=user_id,
-            role=invite.role,
-        )
-        
-        # Transfer ideas from invite
+
+        member = GroupMember(group_id=invite.group_id, user_id=user_id, role=invite.role)
         member.accessible_ideas.extend(invite.accessible_ideas)
-        
         invite.status = GroupInviteStatus.ACCEPTED
-        db.add(member)
+        group_repo.create_member(db, member, commit=False)
+        group_repo.save_invite(db, invite, commit=False)
         db.commit()
-        
+        db.refresh(member)
         GroupService.invalidate_group_cache(invite.group.business_id)
-        
         return {"message": "Successfully joined the group", "group_id": invite.group_id}
 
     @staticmethod
     def create_join_request(db: Session, group_id: uuid.UUID, user_id: uuid.UUID) -> Dict[str, Any]:
-        group = db.query(Group).filter(Group.id == group_id).first()
+        group = group_repo.get_by_id(db, group_id)
         if not group:
             raise HTTPException(status_code=404, detail="Group not found")
-            
-        existing = db.query(GroupMember).filter(GroupMember.group_id == group_id, GroupMember.user_id == user_id).first()
+
+        existing = group_repo.get_member_by_user_and_group(db, group_id, user_id)
         if existing:
             raise HTTPException(status_code=400, detail="Already a member")
-            
+
         req = GroupJoinRequest(group_id=group_id, user_id=user_id, status=GroupJoinRequestStatus.PENDING)
-        db.add(req)
-        db.commit()
-        
+        group_repo.create_join_request(db, req)
         return {"message": "Request sent successfully"}
 
     @staticmethod
     async def handle_join_request(
-        db: Session, request_id: uuid.UUID, owner_id: uuid.UUID, 
+        db: Session, request_id: uuid.UUID, owner_id: uuid.UUID,
         is_approved: bool, role: Optional[GroupRole] = None, idea_ids: Optional[List[uuid.UUID]] = None,
         background_tasks: BackgroundTasks = None
     ) -> Dict[str, Any]:
-        req = db.query(GroupJoinRequest).filter(GroupJoinRequest.id == request_id).first()
-        if not req or req.status != GroupJoinRequestStatus.PENDING:
+        req = group_repo.get_pending_join_request(db, request_id)
+        if not req:
             raise HTTPException(status_code=404, detail="Request not found or already processed")
-            
+
         if not GroupService._is_group_admin(req.group, owner_id):
             raise HTTPException(status_code=403, detail="Only group admins can handle requests")
-            
+
         if is_approved:
             req.status = GroupJoinRequestStatus.APPROVED
             member = GroupMember(
@@ -270,69 +253,66 @@ class GroupService:
                 role=role if role else req.group.default_role
             )
             if idea_ids:
-                ideas = db.query(Idea).filter(Idea.id.in_(idea_ids), Idea.business_id == req.group.business_id).all()
+                ideas = idea_repo.get_by_ids_in_business(db, idea_ids, req.group.business_id)
                 member.accessible_ideas.extend(ideas)
-            db.add(member)
+            group_repo.create_member(db, member, commit=False)
         else:
             req.status = GroupJoinRequestStatus.REJECTED
-            
+
+        group_repo.save_join_request(db, req, commit=False)
         db.commit()
         GroupService.invalidate_group_cache(req.group.business_id)
         return {"message": f"Request {req.status.value}", "status": req.status}
 
     @staticmethod
     def get_group_members(db: Session, group_id: uuid.UUID, requester_id: uuid.UUID) -> List[GroupMember]:
-        group = db.query(Group).filter(Group.id == group_id).first()
+        group = group_repo.get_by_id(db, group_id)
         if not group:
             raise HTTPException(status_code=404, detail="Group not found")
-            
-        # Optional: Auth check
+
         is_owner = group.business.owner_id == requester_id
-        is_member = db.query(GroupMember).filter(GroupMember.group_id == group_id, GroupMember.user_id == requester_id).first()
-        
+        is_member = group_repo.get_member_by_user_and_group(db, group_id, requester_id)
+
         if not is_owner and not is_member:
             raise HTTPException(status_code=403, detail="Access denied")
-            
-        return db.query(GroupMember).filter(GroupMember.group_id == group_id, GroupMember.status == GroupMemberStatus.ACTIVE).all()
+
+        return group_repo.get_active_members(db, group_id)
 
     @staticmethod
     def update_group_member(
-        db: Session, 
-        member_id: uuid.UUID, 
-        requester_id: uuid.UUID, 
-        role: Optional[GroupRole] = None, 
+        db: Session,
+        member_id: uuid.UUID,
+        requester_id: uuid.UUID,
+        role: Optional[GroupRole] = None,
         idea_ids: Optional[List[uuid.UUID]] = None
     ) -> GroupMember:
-        member = db.query(GroupMember).filter(GroupMember.id == member_id).first()
+        member = group_repo.get_member_by_id(db, member_id)
         if not member:
             raise HTTPException(status_code=404, detail="Member not found")
-            
+
         if not GroupService._is_group_admin(member.group, requester_id):
             raise HTTPException(status_code=403, detail="Only group admins can update member permissions")
-            
+
         if role is not None:
             member.role = role
-            
+
         if idea_ids is not None:
-            # Clear old and set new
-            ideas = db.query(Idea).filter(Idea.id.in_(idea_ids), Idea.business_id == member.group.business_id).all()
+            ideas = idea_repo.get_by_ids_in_business(db, idea_ids, member.group.business_id)
             member.accessible_ideas = ideas
-            
-        db.commit()
-        db.refresh(member)
+
+        group_repo.save_member(db, member)
         GroupService.invalidate_group_cache(member.group.business_id)
         return member
 
     @staticmethod
     def remove_group_member(db: Session, member_id: uuid.UUID, requester_id: uuid.UUID) -> None:
-        member = db.query(GroupMember).filter(GroupMember.id == member_id).first()
+        member = group_repo.get_member_by_id(db, member_id)
         if not member:
             raise HTTPException(status_code=404, detail="Member not found")
-            
+
         if not GroupService._is_group_admin(member.group, requester_id):
             raise HTTPException(status_code=403, detail="Only group admins can remove members")
-            
+
         member.status = GroupMemberStatus.REMOVAL_PENDING
-        db.delete(member)
-        db.commit()
+        group_repo.remove_member(db, member)
         GroupService.invalidate_group_cache(member.group.business_id)

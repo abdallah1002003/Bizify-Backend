@@ -1,13 +1,13 @@
 import os
 import uuid
-from typing import Any, List
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.api import dependencies as deps
-from app.models.export_job import ExportJob, ExportStatus
+from app.models.export_job import ExportStatus
 from app.models.user import User
 from app.schemas.export import ExportJobResponse, ExportRequest
 from app.services.export_service import ExportService
@@ -43,7 +43,11 @@ def cancel_export(
     """
     Cancel the export process and prevent Celery from completing it.
     """
-    is_cancelled = ExportService.cancel_export(db = db, job_id = job_id)
+    is_cancelled = ExportService.cancel_export(
+        db = db,
+        job_id = job_id,
+        user_id = current_user.id,
+    )
 
     if not is_cancelled:
         raise HTTPException(
@@ -63,10 +67,7 @@ def get_export_status(
     """
     Check the status of the export process.
     """
-    job = db.query(ExportJob).filter(
-        ExportJob.id == job_id,
-        ExportJob.user_id == current_user.id
-    ).first()
+    job = ExportService.get_job_for_user(db, job_id, current_user.id)
 
     if not job:
         raise HTTPException(
@@ -86,10 +87,7 @@ def download_export_file(
     """
     Download the file resulting from the export process.
     """
-    job = db.query(ExportJob).filter(
-        ExportJob.id == job_id,
-        ExportJob.user_id == current_user.id
-    ).first()
+    job = ExportService.get_job_for_user(db, job_id, current_user.id)
 
     if not job:
         raise HTTPException(

@@ -8,8 +8,10 @@ from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.models.partner_profile import ApprovalStatus, PartnerProfile
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.partner_profile import PartnerProfileCreate
+from app.repositories.partner_repo import partner_repo
+from app.repositories.user_repo import user_repo
 
 
 class PartnerService:
@@ -34,15 +36,11 @@ class PartnerService:
             path = PartnerService.save_id_document(user.id, file)
             file_paths.append(path)
             
-        profile = PartnerProfile(
-            user_id = user.id,
-            **profile_in.model_dump(exclude = {"user_id"}),
-            documents_json = file_paths
-        )
-        
-        db.add(profile)
-        db.commit()
-        db.refresh(profile)
+        profile = partner_repo.create(db, obj_in={
+            "user_id": user.id,
+            **profile_in.model_dump(exclude={"user_id"}),
+            "documents_json": file_paths
+        })
         
         return profile
 
@@ -51,46 +49,31 @@ class PartnerService:
         db: Session,
         user_id: uuid.UUID
     ) -> Optional[PartnerProfile]:
-        """
-        Retrieves the partner profile for a specific user.
-        """
-        return db.query(PartnerProfile).filter(PartnerProfile.user_id == user_id).first()
+        """Retrieves the partner profile for a specific user."""
+        return partner_repo.get_by_user_id(db, user_id)
 
     @staticmethod
     def list_requests(
         db: Session,
         status: Optional[ApprovalStatus] = None
     ) -> List[PartnerProfile]:
-        """
-        Lists partner profiles, optionally filtering by status.
-        """
-        query = db.query(PartnerProfile)
-        if status:
-            query = query.filter(PartnerProfile.approval_status == status)
-        return query.all()
+        """List partner profiles, optionally filtering by approval status."""
+        return partner_repo.get_filtered(db, status)
 
     @staticmethod
     def get_all_requests(db: Session) -> List[PartnerProfile]:
-        """
-        Retrieves all partner applications, regardless of status.
-        """
-        return PartnerService.list_requests(db)
+        """Return all partner applications regardless of status."""
+        return partner_repo.get_all(db)
 
     @staticmethod
     def get_pending_requests(db: Session) -> List[PartnerProfile]:
-        """
-        Retrieves all partner applications currently awaiting approval.
-        """
-        return PartnerService.list_requests(db, status = ApprovalStatus.PENDING)
+        """Return all pending partner applications."""
+        return partner_repo.get_pending(db)
 
     @staticmethod
     def get_active_partners(db: Session) -> List[PartnerProfile]:
-        """
-        Retrieves all currently approved and active partners.
-        """
-        return db.query(PartnerProfile).filter(
-            PartnerProfile.approval_status == ApprovalStatus.APPROVED
-        ).all()
+        """Return all approved and active partners."""
+        return partner_repo.get_approved(db)
 
     @staticmethod
     def save_id_document(
@@ -117,28 +100,27 @@ class PartnerService:
     ) -> PartnerProfile:
         """
         Approves a partner application and upgrades the user's role.
+        Business logic: validate existence, update approval fields, upgrade role.
         """
-        profile = db.query(PartnerProfile).filter(PartnerProfile.id == profile_id).first()
-        
+        profile = partner_repo.get_by_profile_id(db, profile_id)
         if not profile:
             raise HTTPException(
-                status_code = status.HTTP_404_NOT_FOUND,
-                detail = "Request not found"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Request not found",
             )
-        
-        # Update profile status
         profile.approval_status = ApprovalStatus.APPROVED
         profile.approved_by = admin_id
         profile.approved_at = datetime.now(timezone.utc)
-        
-        # Upgrade user role
-        user = db.query(User).filter(User.id == profile.user_id).first()
+
+        # Upgrade user role via user_repo
+        user = user_repo.get(db, profile.user_id)
         if user:
-            user.role = "partner"
-            
+            user.role = UserRole(profile.partner_type.value)
+            user_repo.save(db, db_obj=user, commit=False, refresh=False)
+
+        partner_repo.save(db, db_obj=profile, commit=False, refresh=False)
         db.commit()
         db.refresh(profile)
-        
         return profile
 
     @staticmethod
@@ -150,19 +132,15 @@ class PartnerService:
         """
         Rejects a partner application without changing the user's base role.
         """
-        profile = db.query(PartnerProfile).filter(PartnerProfile.id == profile_id).first()
-        
+        profile = partner_repo.get_by_profile_id(db, profile_id)
         if not profile:
             raise HTTPException(
-                status_code = status.HTTP_404_NOT_FOUND,
-                detail = "Request not found"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Request not found",
             )
-        
         profile.approval_status = ApprovalStatus.REJECTED
         profile.approved_by = admin_id
         profile.approved_at = datetime.now(timezone.utc)
-        
-        db.commit()
+        partner_repo.save(db, db_obj=profile)
         db.refresh(profile)
-        
         return profile

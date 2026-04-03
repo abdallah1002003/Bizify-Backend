@@ -1,5 +1,3 @@
-from datetime import datetime
-from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -31,7 +29,6 @@ class UserSkill(UserSkillBase):
     user_id: UUID
 
     model_config = ConfigDict(from_attributes = True)
-
 
 
 

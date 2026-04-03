@@ -1,16 +1,20 @@
 from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.security import get_password_hash, verify_password
-from app.models.audit_log import AuditLog
 from app.models.notification_setting import NotificationSetting
 from app.models.privacy_setting import PrivacySetting
 from app.models.user import User
 from app.models.user_profile import UserProfile
 from app.schemas.settings import NotificationUpdate, PasswordChange, ProfileUpdate, PrivacyUpdate
+from app.repositories.privacy_repo import privacy_repo
+from app.repositories.admin_repo import audit_repo
+from app.repositories.user_repo import user_repo
+from app.repositories.notification_repo import notification_repo
+from app.repositories.profile_repo import profile_repo
 
 
 class SettingsService:
@@ -24,13 +28,8 @@ class SettingsService:
         """
         Retrieves user settings, creating a default privacy record if one does not exist.
         """
-        if not user.privacy_settings:
-            privacy = PrivacySetting(user_id = user.id)
-            db.add(privacy)
-            db.commit()
-            db.refresh(user)
-
-        return user
+        privacy_repo.get_or_create(db, user.id)
+        return user_repo.get(db, user.id) or user
 
     @staticmethod
     def update_password(
@@ -56,10 +55,9 @@ class SettingsService:
 
         user.password_hash = get_password_hash(data.new_password)
         user.last_password_change = datetime.utcnow()
+        user_repo.save(db, db_obj=user)
 
-        log = AuditLog(user_id = user.id, action = "PASSWORD_CHANGE", ip_address = ip)
-        db.add(log)
-        db.commit()
+        audit_repo.log_action(db, user.id, "PASSWORD_CHANGE", ip)
 
         return {"message": "Password updated successfully. All other sessions revoked."}
 
@@ -69,10 +67,9 @@ class SettingsService:
         Deactivates the user account and logs the action for audit purposes.
         """
         user.is_active = False
+        user_repo.save(db, db_obj=user)
 
-        log = AuditLog(user_id = user.id, action = "ACCOUNT_DEACTIVATION", ip_address = ip)
-        db.add(log)
-        db.commit()
+        audit_repo.log_action(db, user.id, "ACCOUNT_DEACTIVATION", ip)
 
         return {"message": "Account deactivated and session terminated."}
 
@@ -81,45 +78,56 @@ class SettingsService:
         """
         Updates the basic profile fields for a user (name, bio, interests).
         """
-        # Full name is on the User model
-        if data.full_name is not None:
+        user_changed = False
+        if data.full_name is not None and data.full_name != user.full_name:
             user.full_name = data.full_name
+            user_changed = True
 
-        if not user.profile:
-            user.profile = UserProfile(user_id = user.id)
-            db.add(user.profile)
-
+        profile = profile_repo.get_or_create(db, user.id)
+        
+        update_data = {}
         if data.bio is not None:
-            user.profile.bio = data.bio
+            update_data["bio"] = data.bio
 
-        # Interests are stored as interests_json on UserProfile
         if data.interests is not None:
-            user.profile.interests_json = data.interests
+            update_data["interests_json"] = data.interests
+
+        if not user_changed and not update_data:
+            return profile
+
+        if user_changed:
+            user_repo.save(db, db_obj=user, commit=False, refresh=False)
+
+        if update_data:
+            profile = profile_repo.update(
+                db,
+                db_obj=profile,
+                obj_in=update_data,
+                commit=False,
+                refresh=False,
+            )
 
         db.commit()
-        db.refresh(user.profile)
-
-        return user.profile
+        db.refresh(user)
+        db.refresh(profile)
+        return profile
 
     @staticmethod
     def update_privacy(db: Session, user: User, data: PrivacyUpdate) -> PrivacySetting:
         """
         Updates the user's privacy visibility and contact info settings.
         """
-        if not user.privacy_settings:
-            privacy = PrivacySetting(user_id = user.id)
-            db.add(privacy)
-        else:
-            privacy = user.privacy_settings
+        privacy = privacy_repo.get_or_create(db, user.id)
 
+        update_data = {}
         if data.visibility is not None:
-            privacy.visibility = data.visibility
+            update_data["visibility"] = data.visibility
 
         if data.show_contact_info is not None:
-            privacy.show_contact_info = data.show_contact_info
+            update_data["show_contact_info"] = data.show_contact_info
 
-        db.commit()
-        db.refresh(privacy)
+        if update_data:
+            privacy = privacy_repo.update(db, db_obj=privacy, obj_in=update_data)
 
         return privacy
 
@@ -132,25 +140,17 @@ class SettingsService:
         """
         Updates the user's notification channel preferences.
         """
-        if not user.notification_settings:
-            settings = NotificationSetting(user_id = user.id)
-            db.add(settings)
-        else:
-            settings = user.notification_settings
-
+        update_data = {}
         if data.is_enabled is not None:
-            settings.is_enabled = data.is_enabled
+            update_data["is_enabled"] = data.is_enabled
 
         if data.email_enabled is not None:
-            settings.email_enabled = data.email_enabled
+            update_data["email_enabled"] = data.email_enabled
 
         if data.push_enabled is not None:
-            settings.push_enabled = data.push_enabled
+            update_data["push_enabled"] = data.push_enabled
 
-        db.commit()
-        db.refresh(settings)
-
-        return settings
+        return notification_repo.update_settings(db, user.id, update_data)
 
     @staticmethod
     def delete_account(db: Session, user: User, ip: Optional[str] = None) -> dict:
@@ -165,8 +165,8 @@ class SettingsService:
             user.profile.full_name = "Anonymous User"
             user.profile.bio = None
 
-        log = AuditLog(user_id = user.id, action = "ACCOUNT_DELETION", ip_address = ip)
-        db.add(log)
-        db.commit()
+        user_repo.save(db, db_obj=user)
+        
+        audit_repo.log_action(db, user.id, "ACCOUNT_DELETION", ip)
 
         return {"message": "Account data anonymized and permanently disabled."}

@@ -2,10 +2,8 @@ import logging
 import uuid
 from typing import Any, Dict, List, Optional
 
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.models.idea import Idea
 from app.models.user_profile import UserProfile, GuideStatus
 from app.schemas.questionnaire import (
     GuideStatusUpdate,
@@ -15,6 +13,8 @@ from app.schemas.questionnaire import (
     CareerProfileOutput
 )
 from app.schemas.user_profile import UserProfileUpdate
+from app.repositories.profile_repo import profile_repo
+from app.repositories.idea_repo import idea_repo
 
 
 logger = logging.getLogger(__name__)
@@ -29,16 +29,9 @@ class ProfileService:
     def get_or_create_profile(db: Session, user_id: uuid.UUID) -> UserProfile:
         """
         Retrieves an existing profile or creates a new one for the given user ID.
+        Delegates to profile_repo which implements lazy initialization.
         """
-        profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
-        
-        if not profile:
-            profile = UserProfile(user_id = user_id)
-            db.add(profile)
-            db.commit()
-            db.refresh(profile)
-            
-        return profile
+        return profile_repo.get_or_create(db, user_id)
 
     @staticmethod
     def submit_full_questionnaire(
@@ -99,8 +92,7 @@ class ProfileService:
         interests_text = ", ".join(profile.interests_json) if profile.interests_json else "various fields"
         exp_level = user_profile_data.get("experience_level", "N/A")
         profile.personalization_profile = f"User interested in {interests_text} with {exp_level} experience level."
-        
-        db.commit()
+        profile_repo.save(db, db_obj=profile)
         
         return QuestionnaireResponse(
             user_profile=UserProfileOutput(**user_profile_data),
@@ -116,22 +108,32 @@ class ProfileService:
         
         profile.onboarding_completed = True
         profile.guide_status = GuideStatus.COMPLETED
-        
-        db.commit()
+        profile_repo.save(db, db_obj=profile)
         return {"status": "success", "message": "Onboarding finalized"}
 
     @staticmethod
     def skip_questionnaire(db: Session, user_id: uuid.UUID) -> Dict[str, str]:
         """
-        Skips the onboarding questionnaire and marks it as completed with default settings.
+        Skips the onboarding questionnaire only and marks it as completed with default settings.
+        Does NOT affect the guide status (UC_06).
         """
         profile = ProfileService.get_or_create_profile(db, user_id)
         
         profile.onboarding_completed = True
+        profile_repo.save(db, db_obj=profile)
+        return {"status": "success", "message": "Onboarding questionnaire skipped"}
+
+    @staticmethod
+    def skip_guide(db: Session, user_id: uuid.UUID) -> Dict[str, str]:
+        """
+        Skips the beginner interactive guide only.
+        Does NOT affect the questionnaire completion status (UC_07).
+        """
+        profile = ProfileService.get_or_create_profile(db, user_id)
+        
         profile.guide_status = GuideStatus.SKIPPED
-       
-        db.commit()
-        return {"status": "success", "message": "Onboarding skipped"}
+        profile_repo.save(db, db_obj=profile)
+        return {"status": "success", "message": "Beginner guide skipped"}
 
     @staticmethod
     def restart_questionnaire(db: Session, user_id: uuid.UUID) -> Dict[str, str]:
@@ -146,8 +148,7 @@ class ProfileService:
         profile.personalization_profile = None
         profile.onboarding_completed = False
         profile.guide_status = GuideStatus.NOT_STARTED
-        
-        db.commit()
+        profile_repo.save(db, db_obj=profile)
         return {"status": "success", "message": "Questionnaire reset successfully"}
 
     @staticmethod
@@ -162,8 +163,7 @@ class ProfileService:
         profile = ProfileService.get_or_create_profile(db, user_id)
         
         profile.guide_status = status_in.status
-        
-        db.commit()
+        profile_repo.save(db, db_obj=profile)
         
         return {
             "message": "Guide status updated successfully",
@@ -198,9 +198,7 @@ class ProfileService:
                 setattr(profile, field, value)
             
             ProfileService.invalidate_dependencies(db, user_id, profile)
-            
-            db.commit()
-            db.refresh(profile)
+            profile_repo.save(db, db_obj=profile)
             
             return profile
         except Exception as e:
@@ -212,9 +210,7 @@ class ProfileService:
     def invalidate_dependencies(db: Session, user_id: uuid.UUID, profile: UserProfile) -> None:
         """
         Marks dependent records as outdated to trigger re-analysis.
+        Delegates the bulk update to idea_repo to keep DB logic centralized.
         """
-        db.query(Idea).filter(Idea.owner_id == user_id).update(
-            {"is_score_outdated": True}
-        )
-        
+        idea_repo.mark_scores_outdated(db, user_id, commit=False)
         profile.personalization_profile = None

@@ -1,5 +1,4 @@
 import enum
-import uuid
 
 from sqlalchemy import Boolean, Column, Enum, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID

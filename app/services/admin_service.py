@@ -2,6 +2,7 @@ from typing import List
 from sqlalchemy.orm import Session
 
 from app.models.security_log import SecurityLog
+from app.repositories.admin_repo import security_repo
 
 
 class AdminService:
@@ -15,4 +16,4 @@ class AdminService:
         """
         Retrieves all security logs ordered by creation date descending.
         """
-        return db.query(SecurityLog).order_by(SecurityLog.created_at.desc()).all()
+        return security_repo.get_recent_logs(db)

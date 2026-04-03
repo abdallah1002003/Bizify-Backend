@@ -1,6 +1,6 @@
-from typing import Any, Dict, List, Optional, Union
+from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from app.models.user_profile import GuideStatus
 

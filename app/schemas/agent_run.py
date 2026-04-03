@@ -4,8 +4,6 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
-from app.models.agent_run import RunStatus
-
 
 class AgentRunBase(BaseModel):
     """

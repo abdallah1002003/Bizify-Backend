@@ -38,9 +38,22 @@ def skip_questionnaire(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Skips the onboarding questionnaire.
+    Skips the onboarding questionnaire only (UC_06).
+    Does NOT affect the beginner guide status.
     """
     return ProfileService.skip_questionnaire(db, current_user.id)
+
+
+@router.post("/skip-guide")
+def skip_guide(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Skips the beginner interactive guide only (UC_07).
+    Does NOT affect the questionnaire completion status.
+    """
+    return ProfileService.skip_guide(db, current_user.id)
 
 
 @router.post("/restart")

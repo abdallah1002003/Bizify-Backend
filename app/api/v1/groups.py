@@ -1,35 +1,27 @@
-import logging
 import uuid
 from typing import Any, List
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
+from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, get_db
-from app.models.user import User
-from app.models.group_member import GroupMemberStatus, GroupMember
+from app.core.config import settings
 from app.schemas.group import (
     GroupCreate,
     GroupResponse,
     GroupUpdate,
     HandleJoinRequest,
     GroupInviteCreate,
-    GroupInviteResponse,
     GroupMemberResponse,
     GroupMemberUpdate,
 )
 from app.schemas.group_message import GroupMessageResponse, GroupMessageCreate
 from app.services.group_service import GroupService
 from app.services.group_message_service import GroupMessageService
+from app.services.user_service import UserService
+from app.models.user import User
 from app.sockets.group_manager import group_manager
-from app.services.user_service import UserService
-from app.models.group import Group
-from jose import jwt, JWTError
-from app.core.config import settings
-from app.services.user_service import UserService
-from fastapi import status
-
-logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.post("/groups", response_model=GroupResponse)
@@ -166,13 +158,7 @@ def get_group_messages(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ) -> Any:
-    group = db.query(Group).filter(Group.id == group_id).first()
-    if not group:
-        raise HTTPException(status_code=404, detail="Group not found")
-    if not group.is_chat_enabled:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Chat is disabled for this group")
-        
-    members = GroupService.get_group_members(db, group_id, current_user.id)
+    GroupService.get_chat_group_for_user(db, group_id, current_user.id)
     return GroupMessageService.get_group_messages(db, group_id, limit, offset)
 
 @router.post("/groups/{group_id}/messages", response_model=GroupMessageResponse, status_code=status.HTTP_201_CREATED)
@@ -182,13 +168,7 @@ async def create_group_message(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ) -> Any:
-    group = db.query(Group).filter(Group.id == group_id).first()
-    if not group:
-        raise HTTPException(status_code=404, detail="Group not found")
-    if not group.is_chat_enabled:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Chat is disabled for this group")
-
-    GroupService.get_group_members(db, group_id, current_user.id)
+    GroupService.get_chat_group_for_user(db, group_id, current_user.id)
 
     saved_msg = GroupMessageService.create_message(db, group_id, current_user.id, data.content)
 
@@ -227,25 +207,10 @@ async def group_chat_websocket(
         if not user:
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
-            
-        g = db.query(Group).filter(Group.id == group_id).first()
-        if not g or not g.is_chat_enabled:
-            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-            return
 
-        is_authorized = False
-        member_check = db.query(GroupMember).filter(
-            GroupMember.group_id == group_id, 
-            GroupMember.user_id == user.id,
-            GroupMember.status == GroupMemberStatus.ACTIVE
-        ).first()
-        
-        if member_check:
-            is_authorized = True
-        elif g.business.owner_id == user.id:
-            is_authorized = True
-                
-        if not is_authorized:
+        try:
+            GroupService.get_chat_group_for_user(db, group_id, user.id)
+        except HTTPException:
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
 

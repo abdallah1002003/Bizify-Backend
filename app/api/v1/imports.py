@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db, get_current_user
 from app.models.user import User
-from app.models.document import Document
 from app.services.import_service import import_service
 
 router = APIRouter()
@@ -46,19 +45,13 @@ async def delete_document(
     """
     Endpoint for users to delete their uploaded documents.
     """
-    document = db.query(Document).filter(
-        Document.id == document_id, 
-        Document.user_id == current_user.id
-    ).first()
+    document = import_service.delete_document_for_user(db, document_id, current_user.id)
     
     if not document:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Document not found or you don't have permission to delete it"
         )
-        
-    db.delete(document)
-    db.commit()
     
     return {"message": "Document deleted successfully"}
 
@@ -73,10 +66,7 @@ async def export_document_for_ai(
     Special endpoint to provide the document text in JSON format for the AI Engineer 
     to use in the AI Agent.
     """
-    document = db.query(Document).filter(
-        Document.id == document_id, 
-        Document.user_id == current_user.id
-    ).first()
+    document = import_service.get_document_for_user(db, document_id, current_user.id)
     
     if not document:
         raise HTTPException(

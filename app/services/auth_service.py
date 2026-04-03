@@ -1,16 +1,17 @@
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
+from typing import Dict
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core import security
 from app.core.config import settings
-from app.models.token_blacklist import TokenBlacklist
 from app.models.user import User
 from app.models.verification import VerificationType
+from app.repositories.user_repo import user_repo
 from app.schemas.user import OTPResendRequest, OTPVerify
 from app.services.user_service import UserService
+from app.repositories.auth_repo import auth_repo
 
 
 class AuthService:
@@ -45,8 +46,8 @@ class AuthService:
             if user.failed_login_attempts >= 5:
                 # Lock the account for 15 minutes after 5 consecutive failures
                 user.locked_until = datetime.now(timezone.utc) + timedelta(minutes = 15)
-                
-            db.commit()
+            
+            user_repo.save(db, db_obj=user)
             
             raise HTTPException(
                 status_code = status.HTTP_401_UNAUTHORIZED,
@@ -57,9 +58,7 @@ class AuthService:
         user.failed_login_attempts = 0
         user.locked_until = None
         user.last_activity = datetime.now(timezone.utc)
-        
-        db.commit()
-        db.refresh(user)
+        user_repo.save(db, db_obj=user)
         
         if not user.is_active:
             raise HTTPException(
@@ -100,13 +99,11 @@ class AuthService:
     def logout(db: Session, token: str) -> Dict[str, str]:
         """
         Invalidates a JWT by adding it to the server-side blacklist.
+        Delegates the blacklist check and insert to auth_repo.
         """
-        is_blacklisted = db.query(TokenBlacklist).filter(TokenBlacklist.token == token).first()
-        
-        if not is_blacklisted:
-            db.add(TokenBlacklist(token = token))
-            db.commit()
-            
+        if not auth_repo.is_token_blacklisted(db, token):
+            auth_repo.blacklist_token(db, token)
+
         return {"message": "Successfully logged out"}
     
     @staticmethod

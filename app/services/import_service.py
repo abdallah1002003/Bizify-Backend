@@ -8,6 +8,7 @@ from fastapi import UploadFile, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.models.document import Document
+from app.repositories.document_repo import document_repo
 
 class ImportService:
     
@@ -54,18 +55,34 @@ class ImportService:
                 detail=f"Error extracting text from document: {str(e)}"
             )
 
-        new_document = Document(
-            filename=file.filename,
-            content_type=file.content_type or "text/plain",
-            extracted_text=extracted_text.strip(),
-            user_id=current_user_id
-        )
-        
-        db.add(new_document)
-        db.commit()
-        db.refresh(new_document)
+        new_document = document_repo.create(db, obj_in={
+            "filename": file.filename,
+            "content_type": file.content_type or "text/plain",
+            "extracted_text": extracted_text.strip(),
+            "user_id": current_user_id
+        })
         
         return new_document
+
+    def get_document_for_user(
+        self,
+        db: Session,
+        document_id: uuid.UUID,
+        user_id: uuid.UUID,
+    ) -> Document | None:
+        return document_repo.get_for_user(db, document_id, user_id)
+
+    def delete_document_for_user(
+        self,
+        db: Session,
+        document_id: uuid.UUID,
+        user_id: uuid.UUID,
+    ) -> Document | None:
+        document = self.get_document_for_user(db, document_id, user_id)
+        if not document:
+            return None
+        document_repo.delete_instance(db, db_obj=document)
+        return document
 
     def _extract_text_from_pdf(self, file_bytes: bytes) -> str:
         """Helper method to extract text from a PDF file."""

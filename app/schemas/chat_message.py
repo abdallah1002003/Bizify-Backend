@@ -3,8 +3,6 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
-from app.models.chat_message import MessageRole
-
 
 class ChatMessageBase(BaseModel):
     """

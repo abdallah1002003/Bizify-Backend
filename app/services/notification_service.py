@@ -1,26 +1,22 @@
 import asyncio
-import json
 import logging
-from datetime import datetime, timedelta
-from typing import List, Optional, Dict
+from datetime import datetime
+from typing import Dict, List, Optional
 from uuid import UUID
 
 from fastapi import BackgroundTasks, HTTPException, status
-from sqlalchemy import select, update, delete, and_, or_
 from sqlalchemy.orm import Session
 
 from app.models.notification import Notification, NotificationStatus, DeliveryStatus
 from app.models.notification_setting import NotificationSetting
-from app.models.user import User
-from app.schemas.notification import NotificationCreate, NotificationUpdateStatus, NotificationBulkUpdateStatus
+from app.repositories.notification_repo import notification_repo
+from app.repositories.user_repo import user_repo
 
 
 logger = logging.getLogger(__name__)
 
 # Constants
 MAX_RETRIES = 3
-RETENTION_DAYS = 30
-ARCHIVE_RETENTION_DAYS = 7
 
 
 class ConnectionManager:
@@ -78,16 +74,9 @@ class NotificationService:
     async def get_or_create_settings(db: Session, user_id: UUID) -> NotificationSetting:
         """
         Fetches user-specific notification preferences or initializes defaults.
+        Delegates to notification_repo for lazy initialization logic.
         """
-        settings = db.query(NotificationSetting).filter(NotificationSetting.user_id == user_id).first()
-        
-        if not settings:
-            settings = NotificationSetting(user_id = user_id)
-            db.add(settings)
-            db.commit()
-            db.refresh(settings)
-            
-        return settings
+        return notification_repo.get_or_create_settings(db, user_id)
 
     @staticmethod
     async def notify_user(
@@ -111,18 +100,15 @@ class NotificationService:
         
         delivery_status = DeliveryStatus.PENDING
 
-        notification = Notification(
-            user_id = user_id,
-            title = title,
-            content = content,
-            message = content,
-            type = notify_type,
-            expires_at = expires_at,
-            delivery_status = delivery_status
-        )
-        db.add(notification)
-        db.commit()
-        db.refresh(notification)
+        notification = notification_repo.create(db, obj_in={
+            "user_id": user_id,
+            "title": title,
+            "content": content,
+            "message": content,
+            "type": notify_type,
+            "expires_at": expires_at,
+            "delivery_status": delivery_status
+        })
 
         if not should_force_email and settings.is_enabled and settings.push_enabled:
             payload = {
@@ -160,13 +146,13 @@ class NotificationService:
         """
         Handles async Email/SMS delivery with failure-aware retry logic.
         """
-        notification = db.query(Notification).filter(Notification.id == notification_id).first()
+        notification = notification_repo.get_by_id(db, notification_id)
         
         if not notification:
             return
 
-        user = db.query(User).filter(User.id == notification.user_id).first()
-        settings = db.query(NotificationSetting).filter(NotificationSetting.user_id == notification.user_id).first()
+        user = user_repo.get(db, notification.user_id)
+        settings = notification_repo.get_or_create_settings(db, notification.user_id)
 
         if not (settings.email_enabled or settings.sms_enabled):
             return
@@ -175,7 +161,7 @@ class NotificationService:
             logger.info(f"Delivering notification {notification.id} to user {user.email}")
             
             notification.delivery_status = DeliveryStatus.SENT
-            db.commit()
+            notification_repo.save(db, db_obj=notification)
         except Exception as e:
             logger.error(f"Failed to deliver notification {notification.id}: {str(e)}")
             
@@ -185,163 +171,82 @@ class NotificationService:
                 notification.delivery_status = DeliveryStatus.PENDING
             else:
                 notification.delivery_status = DeliveryStatus.FAILED
-                
-            db.commit()
+            notification_repo.save(db, db_obj=notification)
 
     @staticmethod
     def get_notifications(
-        db: Session, 
-        user_id: UUID, 
-        skip: int = 0, 
+        db: Session,
+        user_id: UUID,
+        skip: int = 0,
         limit: int = 20
     ) -> List[Notification]:
         """
-        Returns active notifications with pagination. 
-        Filters out expired ones based on expires_at (Idempotent GET).
+        Returns active notifications with pagination.
+        Delegates filtering logic to notification_repo.
         """
-        now = datetime.utcnow()
-        return db.query(Notification).filter(
-            and_(
-                Notification.user_id == user_id,
-                or_(
-                    Notification.expires_at == None,
-                    Notification.expires_at > now
-                ),
-                and_(
-                    Notification.status != NotificationStatus.ARCHIVED,
-                    Notification.status != NotificationStatus.DISMISSED
-                )
-            )
-        ).order_by(Notification.created_at.desc()).offset(skip).limit(limit).all()
+        return notification_repo.get_active_for_user(db, user_id, skip=skip, limit=limit)
+
+    @staticmethod
+    def count_notifications(db: Session, user_id: UUID) -> int:
+        return notification_repo.count_for_user(db, user_id)
 
     @staticmethod
     def update_status(db: Session, user_id: UUID, notification_id: UUID, status: NotificationStatus) -> Notification:
         """
         Updates a single notification status with IDOR protection.
         """
-        notification = db.query(Notification).filter(Notification.id == notification_id).first()
+        notification = notification_repo.get_by_id(db, notification_id)
         if not notification:
-            raise HTTPException(status_code = 404, detail = "Notification not found")
+            raise HTTPException(status_code=404, detail="Notification not found")
         
         # IDOR Protection
         if notification.user_id != user_id:
             raise HTTPException(
-                status_code = status.HTTP_403_FORBIDDEN, 
-                detail = "Access denied"
+                status_code=403, 
+                detail="Access denied"
             )
             
-        notification.status = status
-        db.commit()
-        db.refresh(notification)
-        return notification
+        return notification_repo.update(db, db_obj=notification, obj_in={"status": status})
 
     @staticmethod
     def bulk_update_status(
-        db: Session, 
-        user_id: UUID, 
-        notification_ids: List[UUID], 
-        status: NotificationStatus
+        db: Session,
+        user_id: UUID,
+        notification_ids: List[UUID],
+        status: NotificationStatus,
     ) -> int:
         """
         Updates multiple notifications for a user (Bulk operation).
+        Delegates to notification_repo which applies IDOR protection.
         """
-        stmt = (
-            update(Notification)
-            .where(
-                and_(
-                    Notification.id.in_(notification_ids),
-                    Notification.user_id == user_id
-                )
-            )
-            .values(status = status)
-        )
-        result = db.execute(stmt)
-        db.commit()
-        return result.rowcount
+        return notification_repo.bulk_update_status(db, user_id, notification_ids, status)
+
+    @staticmethod
+    def update_settings(
+        db: Session,
+        user_id: UUID,
+        update_data: Dict[str, Optional[bool]],
+    ) -> NotificationSetting:
+        return notification_repo.update_settings(db, user_id, update_data)
 
     @staticmethod
     def run_maintenance(db: Session) -> None:
         """
         Periodic cleanup to archive expired records and enforce hard-delete retention.
         """
-        now = datetime.utcnow()
-        
-        db.execute(
-            update(Notification)
-            .where(
-                and_(
-                    Notification.expires_at != None,
-                    Notification.expires_at < now,
-                    Notification.status != NotificationStatus.ARCHIVED
-                )
-            )
-            .values(status = NotificationStatus.ARCHIVED)
-        )
-
-        thirty_days_ago = now - timedelta(days = RETENTION_DAYS)
-        seven_days_ago = now - timedelta(days = ARCHIVE_RETENTION_DAYS)
-        
-        db.execute(
-            delete(Notification)
-            .where(
-                or_(
-                    Notification.created_at < thirty_days_ago,  # General retention
-                    and_(
-                        Notification.status == NotificationStatus.ARCHIVED,
-                        Notification.created_at < seven_days_ago  # Archive cleanup
-                    )
-                )
-            )
-        )
-        db.commit()
+        notification_repo.run_maintenance(db, now=datetime.utcnow())
 
     @staticmethod
     def delete_notification(db: Session, user_id: UUID, notification_id: UUID) -> bool:
-        """
-        Permanently deletes a single notification for a specific user (IDOR protection).
-        """
-        stmt = (
-            delete(Notification)
-            .where(
-                and_(
-                    Notification.id == notification_id,
-                    Notification.user_id == user_id
-                )
-            )
-        )
-        result = db.execute(stmt)
-        db.commit()
-        return result.rowcount > 0
+        """Permanently deletes a single notification (IDOR protection via notification_repo)."""
+        return notification_repo.delete_one(db, user_id, notification_id)
 
     @staticmethod
     def bulk_delete_notifications(db: Session, user_id: UUID, notification_ids: List[UUID]) -> int:
-        """
-        Permanently deletes multiple notifications for a user (Bulk operation).
-        """
-        if not notification_ids:
-            return 0
-            
-        stmt = (
-            delete(Notification)
-            .where(
-                and_(
-                    Notification.id.in_(notification_ids),
-                    Notification.user_id == user_id
-                )
-            )
-        )
-        result = db.execute(stmt)
-        db.commit()
-        return result.rowcount
+        """Permanently deletes multiple notifications for a user."""
+        return notification_repo.delete_bulk(db, user_id, notification_ids)
+
     @staticmethod
     def delete_all_notifications(db: Session, user_id: UUID) -> int:
-        """
-        Permanently deletes all notifications for a specific user.
-        """
-        stmt = (
-            delete(Notification)
-            .where(Notification.user_id == user_id)
-        )
-        result = db.execute(stmt)
-        db.commit()
-        return result.rowcount
+        """Permanently deletes all notifications for a specific user."""
+        return notification_repo.delete_all_for_user(db, user_id)

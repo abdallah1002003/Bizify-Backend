@@ -1,6 +1,6 @@
 import asyncio
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, BackgroundTasks
@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db, get_current_user, RoleChecker
 from app.models.user import User, UserRole
-from app.models.notification import Notification
 from app.schemas.notification import (
     NotificationRead,
     NotificationList,
@@ -36,7 +35,7 @@ def list_notifications(
     Retrieve a paginated list of active notifications for the current user.
     """
     notifications = NotificationService.get_notifications(db, current_user.id, skip, limit)
-    total = db.query(Notification).filter_by(user_id = current_user.id).count()
+    total = NotificationService.count_notifications(db, current_user.id)
     
     return {
         "total": total,
@@ -72,7 +71,7 @@ def update_notification_status(
     update_data: NotificationUpdateStatus,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
-) -> Notification:
+ ) -> Any:
     """
     Update the status of a specific notification (READ or DISMISSED) with IDOR protection.
     """
@@ -117,15 +116,8 @@ async def update_my_settings(
     """
     Update the user's notification preferences.
     """
-    settings = await NotificationService.get_or_create_settings(db, current_user.id)
-    
     update_dict = update_data.model_dump(exclude_unset = True)
-    for key, value in update_dict.items():
-        setattr(settings, key, value)
-    
-    db.commit()
-    db.refresh(settings)
-    return settings
+    return NotificationService.update_settings(db, current_user.id, update_dict)
 
 
 @router.post("/maintenance", status_code = status.HTTP_204_NO_CONTENT)

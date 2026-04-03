@@ -9,10 +9,12 @@ from sqlalchemy.orm import Session
 
 from app.core.mail import send_otp_email
 from app.core.security import get_password_hash
-from app.models.partner_profile import PartnerProfile
 from app.models.user import User, UserRole
-from app.models.verification import AccountVerification, VerificationType
+from app.models.verification import VerificationType
+from app.repositories.auth_repo import auth_repo
+from app.repositories.partner_repo import partner_repo
 from app.schemas.user import UserCreate
+from app.repositories.user_repo import user_repo
 
 
 class UserService:
@@ -24,25 +26,22 @@ class UserService:
     def create_user(db: Session, user_in: UserCreate) -> User:
         """
         Creates a new user and triggers OTP creation if not pre-verified.
+        Business logic: hash the password before delegating persistence to the repo.
         """
         hashed_password = get_password_hash(user_in.password)
-        
-        db_user = User(
-            email = user_in.email,
-            password_hash = hashed_password,
-            full_name = user_in.full_name,
-            role = user_in.role,
-            is_active = user_in.is_active,
-            is_verified = user_in.is_verified,
-        )
-        
-        db.add(db_user)
-        db.commit()
-        db.refresh(db_user)
-        
+
+        db_user = user_repo.create(db, obj_in={
+            "email": user_in.email,
+            "password_hash": hashed_password,
+            "full_name": user_in.full_name,
+            "role": user_in.role,
+            "is_active": user_in.is_active,
+            "is_verified": user_in.is_verified,
+        })
+
         if not db_user.is_verified:
             UserService.create_otp(db, db_user.id, db_user.email)
-            
+
         return db_user
 
     @staticmethod
@@ -56,10 +55,7 @@ class UserService:
         Generates and sends an OTP for verification purposes.
         Enforces a 60-second wait between OTP requests.
         """
-        last_otp = db.query(AccountVerification).filter(
-            AccountVerification.user_id == user_id,
-            AccountVerification.verification_type == v_type
-        ).order_by(AccountVerification.created_at.desc()).first()
+        last_otp = auth_repo.get_latest_otp(db, user_id, v_type)
         
         if last_otp:
             time_elapsed = datetime.now(timezone.utc) - last_otp.created_at.replace(tzinfo = timezone.utc)
@@ -75,15 +71,13 @@ class UserService:
         otp = "".join(random.choices(string.digits, k = 6))
         expires_at = datetime.now(timezone.utc) + timedelta(minutes = 10)
         
-        db_otp = AccountVerification(
-            user_id = user_id,
-            otp_code = otp,
-            verification_type = v_type,
-            expires_at = expires_at
+        auth_repo.create_otp(
+            db,
+            user_id=user_id,
+            otp_code=otp,
+            verification_type=v_type,
+            expires_at=expires_at,
         )
-        
-        db.add(db_otp)
-        db.commit()
         
         send_otp_email(email, otp)
         
@@ -94,24 +88,21 @@ class UserService:
         """
         Verifies an OTP and marks the user as verified if successful.
         """
-        user = UserService.get_user_by_email(db, email)
+        user = UserService.get_user_by_email(db, email=email)
         
         if not user:
             return False
             
-        db_otp = db.query(AccountVerification).filter(
-            AccountVerification.user_id == user.id,
-            AccountVerification.otp_code == otp_code,
-            AccountVerification.verification_type == VerificationType.ACCOUNT_VERIFICATION
-        ).order_by(AccountVerification.created_at.desc()).first()
+        db_otp = auth_repo.get_valid_otp(db, user.id, otp_code, VerificationType.ACCOUNT_VERIFICATION)
         
         if not db_otp or db_otp.is_expired:
             return False
             
         user.is_verified = True
-        
-        db.delete(db_otp)
+        user_repo.save(db, db_obj=user, commit=False, refresh=False)
+        auth_repo.delete_otp(db, db_otp, commit=False)
         db.commit()
+        db.refresh(user)
         
         return True
 
@@ -125,40 +116,46 @@ class UserService:
         """
         Resets a user's password after successful OTP verification.
         """
-        user = UserService.get_user_by_email(db, email)
+        user = UserService.get_user_by_email(db, email=email)
         
         if not user:
             return False
             
-        db_otp = db.query(AccountVerification).filter(
-            AccountVerification.user_id == user.id,
-            AccountVerification.otp_code == otp_code,
-            AccountVerification.verification_type == VerificationType.PASSWORD_RESET
-        ).order_by(AccountVerification.created_at.desc()).first()
+        db_otp = auth_repo.get_valid_otp(db, user.id, otp_code, VerificationType.PASSWORD_RESET)
         
         if not db_otp or db_otp.is_expired:
             return False
             
         user.password_hash = get_password_hash(new_password)
-        
-        db.delete(db_otp)
+        user_repo.save(db, db_obj=user, commit=False, refresh=False)
+        auth_repo.delete_otp(db, db_otp, commit=False)
         db.commit()
+        db.refresh(user)
         
         return True
+
+    @staticmethod
+    def get_user_by_id(db: Session, user_id: uuid.UUID) -> Optional[User]:
+        """
+        Retrieves a user by their identifier.
+        """
+        return user_repo.get(db, user_id)
 
     @staticmethod
     def get_user_by_email(db: Session, email: str) -> Optional[User]:
         """
         Retrieves a user by their email address.
+        Delegates the query to the UserRepository.
         """
-        return db.query(User).filter(User.email == email).first()
+        return user_repo.get_by_email(db, email)
 
     @staticmethod
     def get_all_users(db: Session) -> List[User]:
         """
         Retrieves all users from the database.
+        Delegates the query to the UserRepository.
         """
-        return db.query(User).all()
+        return user_repo.get_multi(db, skip=0, limit=1000)
 
     @staticmethod
     def delete_user_by_email(db: Session, email: str) -> bool:
@@ -173,9 +170,11 @@ class UserService:
                 detail = "User not found"
             )
             
-        db.query(PartnerProfile).filter(PartnerProfile.user_id == user.id).delete()
-        
-        db.delete(user)
+        partner_profile = partner_repo.get_by_user_id(db, user.id)
+        if partner_profile:
+            partner_repo.remove(db, id=partner_profile.id, commit=False)
+            
+        user_repo.remove(db, id=user.id, commit=False)
         db.commit()
         
         return True
@@ -184,18 +183,15 @@ class UserService:
     def promote_user(db: Session, user_id: uuid.UUID, new_role: UserRole) -> User:
         """
         Updates a user's role.
+        Business logic: validate existence, then delegate update to the repository.
         """
-        user = db.query(User).filter(User.id == user_id).first()
-        
+        user = user_repo.get(db, user_id)
+
         if not user:
             raise HTTPException(
                 status_code = status.HTTP_404_NOT_FOUND,
                 detail = "User not found"
             )
-        
-        user.role = new_role
-        
-        db.commit()
-        db.refresh(user)
-        
-        return user
+
+        # Delegate the update to the repository
+        return user_repo.update(db, db_obj=user, obj_in={"role": new_role})

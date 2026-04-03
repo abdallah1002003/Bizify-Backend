@@ -9,9 +9,10 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import SessionLocal
-from app.models.security_log import SecurityLog
-from app.models.token_blacklist import TokenBlacklist
 from app.models.user import User, UserRole
+from app.repositories.admin_repo import security_repo
+from app.repositories.auth_repo import auth_repo
+from app.repositories.user_repo import user_repo
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
@@ -42,9 +43,7 @@ def get_current_user(
         headers = {"WWW-Authenticate": "Bearer"},
     )
     
-    blacklisted = db.query(TokenBlacklist).filter(TokenBlacklist.token == token).first()
-    
-    if blacklisted:
+    if auth_repo.is_token_blacklisted(db, token):
         raise HTTPException(
             status_code = status.HTTP_401_UNAUTHORIZED,
             detail = "Token has been revoked (logged out)",
@@ -67,7 +66,7 @@ def get_current_user(
     except (ValueError, AttributeError):
         raise credentials_exception
 
-    user = db.query(User).filter(User.id == user_uuid).first()
+    user = user_repo.get(db, user_uuid)
     if user is None:
         raise credentials_exception
 
@@ -115,7 +114,7 @@ def get_current_user(
         )
 
     user.last_activity = now
-    db.commit()
+    user_repo.save(db, db_obj=user)
     
     return user
 
@@ -139,19 +138,18 @@ class RoleChecker:
         Validates the user's role and logs unauthorized access attempts.
         """
         if current_user.role not in self.allowed_roles:
-            new_log = SecurityLog(
-                user_id = current_user.id,
-                event_type = "UNAUTHORIZED_ACCESS",
-                details = {
+            security_repo.log_event(
+                db,
+                user_id=current_user.id,
+                event_type="UNAUTHORIZED_ACCESS",
+                details={
                     "path": str(request.url),
                     "method": request.method,
                     "required_roles": [role.value for role in self.allowed_roles],
-                    "user_role": current_user.role.value
+                    "user_role": current_user.role.value,
                 },
-                ip_address = request.client.host if request.client else "unknown"
+                ip_address=request.client.host if request.client else "unknown",
             )
-            db.add(new_log)
-            db.commit()
                
             raise HTTPException(
                 status_code = status.HTTP_403_FORBIDDEN,
