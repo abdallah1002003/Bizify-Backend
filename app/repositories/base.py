@@ -1,7 +1,9 @@
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union
+
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+
 from app.core.database import Base
 
 ModelType = TypeVar("ModelType", bound=Base)
@@ -10,16 +12,17 @@ UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 
 
 class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
-    def __init__(self, model: Type[ModelType]):
-        """
-        Initializes the base repository with the given model.
-        """
+    """Shared CRUD helpers for SQLAlchemy-backed models."""
+
+    def __init__(self, model: Type[ModelType]) -> None:
         self.model = model
 
     def get(self, db: Session, id: Any) -> Optional[ModelType]:
+        """Return a single record by primary key."""
         return db.get(self.model, id)
 
     def get_multi(self, db: Session, *, skip: int = 0, limit: int = 100) -> List[ModelType]:
+        """Return a paginated list of records."""
         return db.query(self.model).offset(skip).limit(limit).all()
 
     def create(
@@ -30,6 +33,7 @@ class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         commit: bool = True,
         refresh: bool = True,
     ) -> ModelType:
+        """Create and optionally commit a new record."""
         obj_in_data = jsonable_encoder(obj_in)
         db_obj = self.model(**obj_in_data)  # type: ignore
         db.add(db_obj)
@@ -50,16 +54,17 @@ class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         commit: bool = True,
         refresh: bool = True,
     ) -> ModelType:
+        """Update an existing record with partial data."""
         obj_data = jsonable_encoder(db_obj)
         if isinstance(obj_in, dict):
             update_data = obj_in
         else:
             update_data = obj_in.model_dump(exclude_unset=True)
-            
+
         for field in obj_data:
             if field in update_data:
                 setattr(db_obj, field, update_data[field])
-                
+
         db.add(db_obj)
         if commit:
             db.commit()
@@ -77,6 +82,7 @@ class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         commit: bool = True,
         refresh: bool = True,
     ) -> ModelType:
+        """Persist an already-instantiated model."""
         db.add(db_obj)
         if commit:
             db.commit()
@@ -87,6 +93,7 @@ class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         return db_obj
 
     def remove(self, db: Session, *, id: Any, commit: bool = True) -> Optional[ModelType]:
+        """Delete a record by primary key."""
         obj = db.get(self.model, id)
         if obj is None:
             return None
@@ -98,6 +105,7 @@ class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         return obj
 
     def delete_instance(self, db: Session, *, db_obj: ModelType, commit: bool = True) -> ModelType:
+        """Delete a loaded model instance."""
         db.delete(db_obj)
         if commit:
             db.commit()

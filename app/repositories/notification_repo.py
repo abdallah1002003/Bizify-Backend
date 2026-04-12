@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import and_, delete, or_, update
 from sqlalchemy.orm import Session
@@ -11,34 +11,33 @@ from app.repositories.base import BaseRepository
 
 
 class NotificationRepository(BaseRepository[Notification, Any, Any]):
-    """
-    Repository for Notification and NotificationSetting database operations.
-    """
+    """Data-access helpers for notifications and notification settings."""
 
     def get_active_for_user(
-        self, db: Session, user_id: uuid.UUID, skip: int = 0, limit: int = 20
+        self,
+        db: Session,
+        user_id: uuid.UUID,
+        skip: int = 0,
+        limit: int = 20,
     ) -> List[Notification]:
-        """
-        Fetch active (non-expired, non-archived, non-dismissed) notifications
-        for a user, ordered by most recent first.
-        """
+        """Fetch active notifications for a user, newest first."""
         now = datetime.utcnow()
         return (
-            db.query(Notification)
+            db.query(self.model)
             .filter(
                 and_(
-                    Notification.user_id == user_id,
+                    self.model.user_id == user_id,
                     or_(
-                        Notification.expires_at == None,
-                        Notification.expires_at > now,
+                        self.model.expires_at.is_(None),
+                        self.model.expires_at > now,
                     ),
                     and_(
-                        Notification.status != NotificationStatus.ARCHIVED,
-                        Notification.status != NotificationStatus.DISMISSED,
+                        self.model.status != NotificationStatus.ARCHIVED,
+                        self.model.status != NotificationStatus.DISMISSED,
                     ),
                 )
             )
-            .order_by(Notification.created_at.desc())
+            .order_by(self.model.created_at.desc())
             .offset(skip)
             .limit(limit)
             .all()
@@ -46,11 +45,11 @@ class NotificationRepository(BaseRepository[Notification, Any, Any]):
 
     def get_by_id(self, db: Session, notification_id: uuid.UUID) -> Optional[Notification]:
         """Fetch a single notification by its ID."""
-        return db.query(Notification).filter(Notification.id == notification_id).first()
+        return db.query(self.model).filter(self.model.id == notification_id).first()
 
     def count_for_user(self, db: Session, user_id: uuid.UUID) -> int:
         """Return the total number of notifications for a user."""
-        return db.query(Notification).filter_by(user_id = user_id).count()
+        return db.query(self.model).filter_by(user_id=user_id).count()
 
     def bulk_update_status(
         self,
@@ -59,10 +58,7 @@ class NotificationRepository(BaseRepository[Notification, Any, Any]):
         notification_ids: List[uuid.UUID],
         status: NotificationStatus,
     ) -> int:
-        """
-        Update multiple notifications to a given status.
-        Scoped to the user to prevent IDOR attacks.
-        """
+        """Update multiple notifications to a given status."""
         stmt = (
             update(Notification)
             .where(
@@ -78,7 +74,7 @@ class NotificationRepository(BaseRepository[Notification, Any, Any]):
         return result.rowcount
 
     def delete_one(self, db: Session, user_id: uuid.UUID, notification_id: uuid.UUID) -> bool:
-        """Permanently delete a single notification. Scoped to owner (IDOR protection)."""
+        """Delete a single notification belonging to the user."""
         stmt = delete(Notification).where(
             and_(
                 Notification.id == notification_id,
@@ -87,14 +83,18 @@ class NotificationRepository(BaseRepository[Notification, Any, Any]):
         )
         result = db.execute(stmt)
         db.commit()
-        return result.rowcount > 0
+        return bool(result.rowcount)
 
     def delete_bulk(
-        self, db: Session, user_id: uuid.UUID, notification_ids: List[uuid.UUID]
+        self,
+        db: Session,
+        user_id: uuid.UUID,
+        notification_ids: List[uuid.UUID],
     ) -> int:
-        """Permanently delete multiple notifications. Scoped to owner."""
+        """Delete multiple notifications belonging to the user."""
         if not notification_ids:
             return 0
+
         stmt = delete(Notification).where(
             and_(
                 Notification.id.in_(notification_ids),
@@ -106,21 +106,18 @@ class NotificationRepository(BaseRepository[Notification, Any, Any]):
         return result.rowcount
 
     def delete_all_for_user(self, db: Session, user_id: uuid.UUID) -> int:
-        """Permanently delete every notification for a user."""
+        """Delete all notifications belonging to the user."""
         stmt = delete(Notification).where(Notification.user_id == user_id)
         result = db.execute(stmt)
         db.commit()
         return result.rowcount
 
-    # --- NotificationSetting helpers ---
-
     def get_or_create_settings(
-        self, db: Session, user_id: uuid.UUID
+        self,
+        db: Session,
+        user_id: uuid.UUID,
     ) -> NotificationSetting:
-        """
-        Fetch user notification preferences, or create a default record if none exists.
-        Implements lazy initialization to support legacy users without settings rows.
-        """
+        """Fetch notification settings or create defaults for a user."""
         settings = (
             db.query(NotificationSetting)
             .filter(NotificationSetting.user_id == user_id)
@@ -137,8 +134,9 @@ class NotificationRepository(BaseRepository[Notification, Any, Any]):
         self,
         db: Session,
         user_id: uuid.UUID,
-        update_data: dict[str, Any],
+        update_data: Dict[str, Any],
     ) -> NotificationSetting:
+        """Update notification settings for a user."""
         settings = self.get_or_create_settings(db, user_id)
         if update_data:
             for key, value in update_data.items():
@@ -148,20 +146,21 @@ class NotificationRepository(BaseRepository[Notification, Any, Any]):
         return settings
 
     def run_maintenance(self, db: Session, *, now: datetime) -> None:
+        """Archive expired notifications and delete stale records."""
         db.execute(
             update(Notification)
             .where(
                 and_(
-                    Notification.expires_at != None,
+                    Notification.expires_at.is_not(None),
                     Notification.expires_at < now,
                     Notification.status != NotificationStatus.ARCHIVED,
                 )
             )
-            .values(status = NotificationStatus.ARCHIVED)
+            .values(status=NotificationStatus.ARCHIVED)
         )
 
-        thirty_days_ago = now - timedelta(days = 30)
-        seven_days_ago = now - timedelta(days = 7)
+        thirty_days_ago = now - timedelta(days=30)
+        seven_days_ago = now - timedelta(days=7)
         db.execute(
             delete(Notification)
             .where(

@@ -5,9 +5,7 @@ from app.repositories.base import BaseRepository
 
 
 class BusinessRepository(BaseRepository[Business, Any, Any]):
-    """
-    Repository for Business database operations.
-    """
-    pass
+    """Data-access helpers for businesses."""
+
 
 business_repo = BusinessRepository(Business)

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Dict, Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -9,25 +9,20 @@ from app.models.notification_setting import NotificationSetting
 from app.models.privacy_setting import PrivacySetting
 from app.models.user import User
 from app.models.user_profile import UserProfile
-from app.schemas.settings import NotificationUpdate, PasswordChange, ProfileUpdate, PrivacyUpdate
-from app.repositories.privacy_repo import privacy_repo
 from app.repositories.admin_repo import audit_repo
-from app.repositories.user_repo import user_repo
 from app.repositories.notification_repo import notification_repo
+from app.repositories.privacy_repo import privacy_repo
 from app.repositories.profile_repo import profile_repo
+from app.repositories.user_repo import user_repo
+from app.schemas.settings import NotificationUpdate, PasswordChange, PrivacyUpdate, ProfileUpdate
 
 
 class SettingsService:
-    """
-    Service class for managing user account settings.
-    Handles password changes, profile updates, privacy, notifications, and account lifecycle.
-    """
+    """User account settings and lifecycle workflows."""
 
     @staticmethod
     def get_user_settings(db: Session, user: User) -> User:
-        """
-        Retrieves user settings, creating a default privacy record if one does not exist.
-        """
+        """Fetch user settings, creating privacy defaults when missing."""
         privacy_repo.get_or_create(db, user.id)
         return user_repo.get(db, user.id) or user
 
@@ -36,55 +31,66 @@ class SettingsService:
         db: Session,
         user: User,
         data: PasswordChange,
-        ip: Optional[str] = None
-    ) -> dict:
-        """
-        Updates user password after verifying the current one and logging the action.
-        """
+        ip: Optional[str] = None,
+    ) -> Dict[str, str]:
+        """Update the user's password after validating the current one."""
         if data.new_password != data.confirm_password:
             raise HTTPException(
-                status_code = status.HTTP_400_BAD_REQUEST,
-                detail = "Passwords do not match"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Passwords do not match",
             )
 
         if not verify_password(data.current_password, user.password_hash):
             raise HTTPException(
-                status_code = status.HTTP_400_BAD_REQUEST,
-                detail = "Incorrect current password"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Incorrect current password",
             )
 
         user.password_hash = get_password_hash(data.new_password)
         user.last_password_change = datetime.utcnow()
-        user_repo.save(db, db_obj=user)
-
-        audit_repo.log_action(db, user.id, "PASSWORD_CHANGE", ip)
+        user_repo.save(db, db_obj=user, commit=False, refresh=False)
+        audit_repo.log_action(
+            db,
+            user.id,
+            "PASSWORD_CHANGE",
+            ip,
+            commit=False,
+        )
+        db.commit()
+        db.refresh(user)
 
         return {"message": "Password updated successfully. All other sessions revoked."}
 
     @staticmethod
-    def deactivate_account(db: Session, user: User, ip: Optional[str] = None) -> dict:
-        """
-        Deactivates the user account and logs the action for audit purposes.
-        """
+    def deactivate_account(
+        db: Session,
+        user: User,
+        ip: Optional[str] = None,
+    ) -> Dict[str, str]:
+        """Deactivate the user's account and record the action."""
         user.is_active = False
-        user_repo.save(db, db_obj=user)
-
-        audit_repo.log_action(db, user.id, "ACCOUNT_DEACTIVATION", ip)
+        user_repo.save(db, db_obj=user, commit=False, refresh=False)
+        audit_repo.log_action(
+            db,
+            user.id,
+            "ACCOUNT_DEACTIVATION",
+            ip,
+            commit=False,
+        )
+        db.commit()
+        db.refresh(user)
 
         return {"message": "Account deactivated and session terminated."}
 
     @staticmethod
     def update_profile(db: Session, user: User, data: ProfileUpdate) -> UserProfile:
-        """
-        Updates the basic profile fields for a user (name, bio, interests).
-        """
-        user_changed = False
+        """Update the user's public profile and basic account name."""
+        has_user_changes = False
         if data.full_name is not None and data.full_name != user.full_name:
             user.full_name = data.full_name
-            user_changed = True
+            has_user_changes = True
 
         profile = profile_repo.get_or_create(db, user.id)
-        
         update_data = {}
         if data.bio is not None:
             update_data["bio"] = data.bio
@@ -92,10 +98,10 @@ class SettingsService:
         if data.interests is not None:
             update_data["interests_json"] = data.interests
 
-        if not user_changed and not update_data:
+        if not has_user_changes and not update_data:
             return profile
 
-        if user_changed:
+        if has_user_changes:
             user_repo.save(db, db_obj=user, commit=False, refresh=False)
 
         if update_data:
@@ -114,11 +120,8 @@ class SettingsService:
 
     @staticmethod
     def update_privacy(db: Session, user: User, data: PrivacyUpdate) -> PrivacySetting:
-        """
-        Updates the user's privacy visibility and contact info settings.
-        """
+        """Update privacy preferences for a user."""
         privacy = privacy_repo.get_or_create(db, user.id)
-
         update_data = {}
         if data.visibility is not None:
             update_data["visibility"] = data.visibility
@@ -135,11 +138,9 @@ class SettingsService:
     def update_notifications(
         db: Session,
         user: User,
-        data: NotificationUpdate
+        data: NotificationUpdate,
     ) -> NotificationSetting:
-        """
-        Updates the user's notification channel preferences.
-        """
+        """Update notification delivery preferences."""
         update_data = {}
         if data.is_enabled is not None:
             update_data["is_enabled"] = data.is_enabled
@@ -153,20 +154,29 @@ class SettingsService:
         return notification_repo.update_settings(db, user.id, update_data)
 
     @staticmethod
-    def delete_account(db: Session, user: User, ip: Optional[str] = None) -> dict:
-        """
-        Permanently anonymizes user data to comply with data erasure requirements.
-        """
+    def delete_account(
+        db: Session,
+        user: User,
+        ip: Optional[str] = None,
+    ) -> Dict[str, str]:
+        """Anonymize a user account and disable access permanently."""
         user.email = f"deleted_{user.id}@anonymous.com"
+        user.full_name = "Anonymous User"
         user.password_hash = "DELETED"
         user.is_active = False
 
         if user.profile:
-            user.profile.full_name = "Anonymous User"
             user.profile.bio = None
 
-        user_repo.save(db, db_obj=user)
-        
-        audit_repo.log_action(db, user.id, "ACCOUNT_DELETION", ip)
+        user_repo.save(db, db_obj=user, commit=False, refresh=False)
+        audit_repo.log_action(
+            db,
+            user.id,
+            "ACCOUNT_DELETION",
+            ip,
+            commit=False,
+        )
+        db.commit()
+        db.refresh(user)
 
         return {"message": "Account data anonymized and permanently disabled."}

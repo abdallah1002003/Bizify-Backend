@@ -7,6 +7,13 @@ from pydantic import BaseModel, ConfigDict, EmailStr, ValidationInfo, field_vali
 from app.models.user import UserRole
 
 
+class GoogleCallbackRequest(BaseModel):
+    """
+    Pydantic model for Google OAuth2 callback.
+    """
+    code: str
+
+
 class UserBase(BaseModel):
     """
     Base Pydantic model for User data.

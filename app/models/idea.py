@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, Float, ForeignKey, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Enum, Float, ForeignKey, String, Text , JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -44,6 +44,9 @@ class Idea(Base):
     )
     
     ai_score = Column(Float)
+    budget = Column(Float)
+    skills = Column(JSON)
+    feasibility = Column(Float)
     is_score_outdated = Column(Boolean, default = False)
     is_archived = Column(Boolean, default = False)
     

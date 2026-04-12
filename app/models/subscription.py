@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Enum, ForeignKey
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -34,6 +34,8 @@ class Subscription(Base):
     )
     start_date = Column(DateTime, default = datetime.utcnow)
     end_date = Column(DateTime)
+    # PayPal billing agreement / subscription reference
+    paypal_subscription_id = Column(String, nullable = True, index = True)
 
     user = relationship("User", back_populates = "subscriptions")
     plan = relationship("Plan", back_populates = "subscriptions")

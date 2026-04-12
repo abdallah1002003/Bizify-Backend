@@ -6,106 +6,107 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, get_db, oauth2_scheme
+from app.core import google_client
 from app.core.config import settings
 from app.models.user import User
-from app.schemas.user import OTPResendRequest, OTPVerify, Token
+from app.schemas.user import GoogleCallbackRequest, OTPResendRequest, OTPVerify, Token
 from app.services.auth_service import AuthService
-
 
 router = APIRouter()
 
 
-@router.post("/login", response_model = Token)
+@router.get("/google/url")
+def get_google_auth_url() -> Dict[str, str]:
+    """Return the Google OAuth2 authorization URL."""
+    redirect_uri = f"{settings.FRONTEND_URL}/"
+    url = google_client.get_google_auth_url(redirect_uri)
+    return {"url": url}
+
+
+@router.post("/google/callback", response_model=Token)
+async def google_auth_callback(
+    data: GoogleCallbackRequest,
+    db: Session = Depends(get_db),
+) -> Any:
+    """Exchange a Google auth code for a Bizify token."""
+    redirect_uri = f"{settings.FRONTEND_URL}/"
+    return await AuthService.google_login(db, code=data.code, redirect_uri=redirect_uri)
+
+
+@router.post("/login", response_model=Token)
 def login_access_token(
     db: Session = Depends(get_db),
-    form_data: OAuth2PasswordRequestForm = Depends()
+    form_data: OAuth2PasswordRequestForm = Depends(),
 ) -> Any:
-    """
-    OAuth2 compatible token login, retrieve an access token for future requests.
-    """
+    """Authenticate with email/password and return an access token."""
     user = AuthService.authenticate(
         db,
-        email = form_data.username,
-        password = form_data.password
+        email=form_data.username,
+        password=form_data.password,
     )
-    
     return AuthService.create_token_response(user)
 
 
 @router.post("/logout")
 def logout(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)) -> Dict[str, str]:
-    """
-    Invalidates the current session token.
-    """
+    """Invalidate the current session token."""
     return AuthService.logout(db, token)
 
 
 @router.post("/verify-otp")
 def verify_otp(data: OTPVerify, db: Session = Depends(get_db)) -> Dict[str, str]:
-    """
-    Verifies the account using a 6-digit OTP code sent to email.
-    """
+    """Verify an account using an emailed OTP."""
     return AuthService.verify_otp(db, data)
 
 
 @router.post("/resend-verification-otp")
 def resend_verification_otp(
     data: OTPResendRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> Dict[str, str]:
-    """
-    Resends the account verification OTP for users who have not verified yet.
-    """
+    """Resend the account verification OTP."""
     return AuthService.resend_verification_otp(db, data)
-    
+
 
 @router.post("/forgot-password")
 def forgot_password(email: str, db: Session = Depends(get_db)) -> Dict[str, str]:
-    """
-    Sends a password reset code if the email address exists.
-    """
+    """Send a password reset code if the email exists."""
     return AuthService.forgot_password(db, email)
-    
+
 
 @router.post("/reset-password")
 def reset_password(
     email: str,
     otp_code: str,
     new_password: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> Dict[str, str]:
-    """
-    Resets the password using a reset code and new password.
-    """
+    """Reset a password using an OTP code."""
     return AuthService.reset_password(db, email, otp_code, new_password)
 
 
 @router.get("/session-status")
 def get_session_status(current_user: User = Depends(get_current_user)) -> Dict[str, Any]:
-    """
-    Retrieves the current session's remaining time and status.
-    """
+    """Return the current session status and remaining time."""
     now = datetime.now(timezone.utc)
-    last_act = current_user.last_activity
-    
-    if last_act and last_act.tzinfo is None:
-        last_act = last_act.replace(tzinfo=timezone.utc)
+    last_activity = current_user.last_activity
+
+    if last_activity and last_activity.tzinfo is None:
+        last_activity = last_activity.replace(tzinfo=timezone.utc)
     else:
-        last_act = last_act or now
-        
-    elapsed = now - last_act
+        last_activity = last_activity or now
+
+    elapsed = now - last_activity
     remaining = timedelta(minutes=settings.SESSION_TIMEOUT_MINUTES) - elapsed
-    
+
     return {
         "is_active": True,
         "remaining_minutes": max(0.0, remaining.total_seconds() / 60),
-        "warning_threshold": settings.SESSION_WARNING_MINUTES
+        "warning_threshold": settings.SESSION_WARNING_MINUTES,
     }
 
 
 @router.post("/ping")
 def session_ping(current_user: User = Depends(get_current_user)) -> Dict[str, str]:
-    """
-    Keeps the session alive by updating the last activity timestamp.
-    """
+    """Keep the current session active."""
     return {"message": "Session kept alive"}

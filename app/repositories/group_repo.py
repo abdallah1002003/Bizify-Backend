@@ -9,11 +9,10 @@ from app.models.group_invite import GroupInvite, GroupInviteStatus
 from app.models.group_join_request import GroupJoinRequest, GroupJoinRequestStatus
 from app.models.group_member import GroupMember, GroupMemberStatus
 from app.repositories.base import BaseRepository
+
+
 class GroupRepository(BaseRepository[Group, Any, Any]):
-    """
-    Repository for Group-specific database operations.
-    Covers: Group, GroupMember, GroupInvite, GroupJoinRequest
-    """
+    """Data-access helpers for groups and related membership records."""
 
     def get_by_id(self, db: Session, group_id: uuid.UUID) -> Optional[Group]:
         """Fetch a single group by its primary key."""
@@ -24,7 +23,7 @@ class GroupRepository(BaseRepository[Group, Any, Any]):
         return db.query(self.model).filter(self.model.business_id == business_id).all()
 
     def get_user_owned_groups(self, db: Session, user_id: uuid.UUID) -> List[Group]:
-        """Fetch all groups owned by the user (via Business ownership)."""
+        """Fetch all groups owned by a user through business ownership."""
         return db.query(Group).join(Business).filter(Business.owner_id == user_id).all()
 
     def get_user_member_groups(self, db: Session, user_id: uuid.UUID) -> List[Group]:
@@ -51,10 +50,7 @@ class GroupRepository(BaseRepository[Group, Any, Any]):
         )
 
     def get_active_members_for_user(self, db: Session, user_id: uuid.UUID) -> List[GroupMember]:
-        """
-        Fetch all active GroupMember records for a user across all groups.
-        Used by IdeaService to determine which ideas the user can access via collaborations.
-        """
+        """Fetch all active memberships for a user across groups."""
         return (
             db.query(GroupMember)
             .filter(
@@ -64,11 +60,13 @@ class GroupRepository(BaseRepository[Group, Any, Any]):
             .all()
         )
 
-
     def get_member_by_user_and_group(
-        self, db: Session, group_id: uuid.UUID, user_id: uuid.UUID
+        self,
+        db: Session,
+        group_id: uuid.UUID,
+        user_id: uuid.UUID,
     ) -> Optional[GroupMember]:
-        """Check if a user is already a member of a group."""
+        """Fetch a membership by group and user identifiers."""
         return (
             db.query(GroupMember)
             .filter(GroupMember.group_id == group_id, GroupMember.user_id == user_id)
@@ -76,6 +74,7 @@ class GroupRepository(BaseRepository[Group, Any, Any]):
         )
 
     def is_active_member(self, db: Session, group_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+        """Return whether the user is an active member of a group."""
         return (
             db.query(GroupMember)
             .filter(
@@ -92,9 +91,12 @@ class GroupRepository(BaseRepository[Group, Any, Any]):
         return db.query(GroupMember).filter(GroupMember.id == member_id).first()
 
     def is_member_of_business(
-        self, db: Session, business_id: uuid.UUID, user_id: uuid.UUID
+        self,
+        db: Session,
+        business_id: uuid.UUID,
+        user_id: uuid.UUID,
     ) -> Optional[GroupMember]:
-        """Check if a user is an active member of any group in a business."""
+        """Return a matching active membership within a business, if any."""
         return (
             db.query(GroupMember)
             .join(Group)
@@ -106,10 +108,8 @@ class GroupRepository(BaseRepository[Group, Any, Any]):
             .first()
         )
 
-    def get_pending_invite_by_token(
-        self, db: Session, token: str
-    ) -> Optional[GroupInvite]:
-        """Fetch a pending invite using the secret token from the invitation email."""
+    def get_pending_invite_by_token(self, db: Session, token: str) -> Optional[GroupInvite]:
+        """Fetch a pending invite using its secret token."""
         return (
             db.query(GroupInvite)
             .filter(
@@ -120,7 +120,9 @@ class GroupRepository(BaseRepository[Group, Any, Any]):
         )
 
     def get_pending_join_request(
-        self, db: Session, request_id: uuid.UUID
+        self,
+        db: Session,
+        request_id: uuid.UUID,
     ) -> Optional[GroupJoinRequest]:
         """Fetch a pending join request by its ID."""
         return (
@@ -143,6 +145,7 @@ class GroupRepository(BaseRepository[Group, Any, Any]):
         return member
 
     def save_member(self, db: Session, member: GroupMember, *, commit: bool = True) -> GroupMember:
+        """Persist updates to an existing group member."""
         db.add(member)
         if commit:
             db.commit()
@@ -162,6 +165,7 @@ class GroupRepository(BaseRepository[Group, Any, Any]):
         return invite
 
     def save_invite(self, db: Session, invite: GroupInvite, *, commit: bool = True) -> GroupInvite:
+        """Persist updates to an existing invite."""
         db.add(invite)
         if commit:
             db.commit()
@@ -193,6 +197,7 @@ class GroupRepository(BaseRepository[Group, Any, Any]):
         *,
         commit: bool = True,
     ) -> GroupJoinRequest:
+        """Persist updates to an existing join request."""
         db.add(request)
         if commit:
             db.commit()
@@ -202,7 +207,7 @@ class GroupRepository(BaseRepository[Group, Any, Any]):
         return request
 
     def remove_member(self, db: Session, member: GroupMember, *, commit: bool = True) -> None:
-        """Remove a group member from the database."""
+        """Delete a group member record."""
         db.delete(member)
         if commit:
             db.commit()

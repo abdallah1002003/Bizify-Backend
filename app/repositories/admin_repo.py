@@ -1,5 +1,5 @@
 import uuid
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
 
@@ -9,23 +9,30 @@ from app.repositories.base import BaseRepository
 
 
 class AuditRepository(BaseRepository[AuditLog, Any, Any]):
-    """
-    Repository for tracking user account actions (Audit Logs).
-    """
+    """Data-access helpers for audit logs."""
 
-    def log_action(self, db: Session, user_id: uuid.UUID, action: str, ip_address: Optional[str] = None) -> AuditLog:
-        """Log a specific user action like password change or deletion."""
+    def log_action(
+        self,
+        db: Session,
+        user_id: uuid.UUID,
+        action: str,
+        ip_address: Optional[str] = None,
+        *,
+        commit: bool = True,
+    ) -> AuditLog:
+        """Persist an audit log entry."""
         log = AuditLog(user_id=user_id, action=action, ip_address=ip_address)
         db.add(log)
-        db.commit()
+        if commit:
+            db.commit()
+        else:
+            db.flush()
         db.refresh(log)
         return log
 
 
 class SecurityRepository(BaseRepository[SecurityLog, Any, Any]):
-    """
-    Repository for tracking system security events.
-    """
+    """Data-access helpers for security logs."""
 
     def get_recent_logs(self, db: Session) -> List[SecurityLog]:
         """Fetch all security logs, newest first."""
@@ -37,9 +44,10 @@ class SecurityRepository(BaseRepository[SecurityLog, Any, Any]):
         *,
         user_id: Optional[uuid.UUID],
         event_type: str,
-        details: Optional[dict] = None,
+        details: Optional[Dict[str, Any]] = None,
         ip_address: Optional[str] = None,
     ) -> SecurityLog:
+        """Persist a security event record."""
         return self.create(
             db,
             obj_in={

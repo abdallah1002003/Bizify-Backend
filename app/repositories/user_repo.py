@@ -1,48 +1,51 @@
-from typing import Optional
+import uuid
+from typing import List, Optional, Union
+
 from sqlalchemy.orm import Session
 
-from app.models.user import User
-from app.schemas.user import UserCreate
+from app.models.user import User, UserRole
 from app.repositories.base import BaseRepository
+from app.schemas.user import UserCreate
 
 
 class UserRepository(BaseRepository[User, UserCreate, UserCreate]):
-    """
-    Repository for User-specific database operations.
-    Inherits base CRUD operations (get, get_multi, create, update, remove)
-    from BaseRepository and adds User-specific queries below.
-    """
+    """Data-access helpers for `User` records."""
 
     def get_by_email(self, db: Session, email: str) -> Optional[User]:
-        """
-        Fetch a user by their email address.
-        Used in login, password recovery, and registration duplicate checks.
-        """
+        """Fetch a user by email address."""
         return db.query(self.model).filter(self.model.email == email).first()
 
-    def get_active_user(self, db: Session, user_id: str) -> Optional[User]:
-        """
-        Fetch a user only if they are active and not locked.
-        Centralizes the 'active user' logic so it never gets duplicated across services.
-        """
+    def get_by_google_id(self, db: Session, google_id: str) -> Optional[User]:
+        """Fetch a user by Google account identifier."""
+        return db.query(self.model).filter(self.model.google_id == google_id).first()
+
+    def get_active_user(self, db: Session, user_id: uuid.UUID) -> Optional[User]:
+        """Fetch an active, verified user by identifier."""
         return (
             db.query(self.model)
             .filter(
                 self.model.id == user_id,
-                self.model.is_active == True,
-                self.model.is_verified == True,
+                self.model.is_active.is_(True),
+                self.model.is_verified.is_(True),
             )
             .first()
         )
 
-    def get_by_role(self, db: Session, role: str) -> list[User]:
-        """
-        Fetch all users with a specific role (e.g. 'ADMIN', 'USER').
-        """
+    def get_by_role(self, db: Session, role: Union[str, UserRole]) -> List[User]:
+        """Fetch all users with a specific role."""
         return db.query(self.model).filter(self.model.role == role).all()
 
+    def get_first_by_role(self, db: Session, role: Union[str, UserRole]) -> Optional[User]:
+        """Fetch the first user matching a specific role."""
+        return db.query(self.model).filter(self.model.role == role).first()
 
-# A ready-to-use singleton instance.
-# Import this object directly in any Service or dependency:
-# from app.repositories.user_repo import user_repo
+    def count_all(self, db: Session) -> int:
+        """Return the total number of users."""
+        return db.query(self.model).count()
+
+    def count_inactive(self, db: Session) -> int:
+        """Return the total number of inactive users."""
+        return db.query(self.model).filter(self.model.is_active.is_(False)).count()
+
+
 user_repo = UserRepository(User)

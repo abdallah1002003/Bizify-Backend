@@ -9,31 +9,27 @@ from app.models.verification import AccountVerification, VerificationType
 
 
 class AuthRepository:
-    """
-    Repository for authentication-related database operations.
-    Covers: TokenBlacklist, AccountVerification.
-    """
+    """Data-access helpers for authentication state and OTP records."""
 
     def is_token_blacklisted(self, db: Session, token: str) -> bool:
-        """
-        Check whether a JWT token has been invalidated (blacklisted after logout).
-        Returns True if the token is in the blacklist, False if it is still valid.
-        """
-        result = (
-            db.query(TokenBlacklist)
-            .filter(TokenBlacklist.token == token)
-            .first()
-        )
+        """Return whether a JWT has already been blacklisted."""
+        result = db.query(TokenBlacklist).filter(TokenBlacklist.token == token).first()
         return result is not None
 
-    def blacklist_token(self, db: Session, token: str) -> TokenBlacklist:
-        """
-        Add a JWT token to the blacklist to invalidate it immediately.
-        Called during logout to prevent re-use of a valid token after sign-out.
-        """
+    def blacklist_token(
+        self,
+        db: Session,
+        token: str,
+        *,
+        commit: bool = True,
+    ) -> TokenBlacklist:
+        """Persist a JWT blacklist entry."""
         blacklisted = TokenBlacklist(token=token)
         db.add(blacklisted)
-        db.commit()
+        if commit:
+            db.commit()
+        else:
+            db.flush()
         db.refresh(blacklisted)
         return blacklisted
 
@@ -47,6 +43,7 @@ class AuthRepository:
         expires_at: datetime,
         commit: bool = True,
     ) -> AccountVerification:
+        """Create an OTP verification record."""
         otp = AccountVerification(
             user_id=user_id,
             otp_code=otp_code,
@@ -67,10 +64,7 @@ class AuthRepository:
         user_id: uuid.UUID,
         v_type: VerificationType,
     ) -> Optional[AccountVerification]:
-        """
-        Fetch the most recently issued OTP for a user and verification type.
-        Used to enforce the 60-second cooldown between OTP requests.
-        """
+        """Fetch the latest OTP for a user and verification type."""
         return (
             db.query(AccountVerification)
             .filter(
@@ -88,10 +82,7 @@ class AuthRepository:
         otp_code: str,
         v_type: VerificationType,
     ) -> Optional[AccountVerification]:
-        """
-        Fetch a non-expired OTP matching the given code and type.
-        Returns None if the OTP does not exist, is wrong, or has expired.
-        """
+        """Fetch the latest OTP matching a user, code, and verification type."""
         return (
             db.query(AccountVerification)
             .filter(
@@ -110,6 +101,7 @@ class AuthRepository:
         *,
         commit: bool = True,
     ) -> None:
+        """Delete an OTP record."""
         db.delete(otp)
         if commit:
             db.commit()
