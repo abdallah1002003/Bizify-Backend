@@ -7,6 +7,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core import paypal_client
+from app.core import paymob_client
 from app.models.plan import Plan
 from app.models.subscription import Subscription
 from app.repositories.billing_repo import payment_repo, plan_repo, subscription_repo
@@ -157,3 +158,124 @@ async def handle_webhook(event_type: str, resource: Dict[str, Any], db: Session)
         subscription = subscription_repo.get_by_paypal_subscription(db, paypal_sub_id)
         if subscription:
             subscription_repo.cancel(db, subscription)
+
+
+# ─────────────────────────────────────────────
+#  Paymob – Visa / Mastercard
+# ─────────────────────────────────────────────
+
+async def create_paymob_payment(
+    plan_id: uuid.UUID,
+    user_id: uuid.UUID,
+    db: Session,
+    billing_data: Optional[Dict[str, str]] = None,
+) -> Dict[str, Any]:
+    """
+    Initiate a Paymob card payment for the selected plan.
+
+    Executes Paymob's 3-step flow (auth → order → payment key) and returns
+    the iframe URL that the frontend should render for the cardholder.
+
+    A `pending` Payment record is persisted immediately so we can reconcile
+    the transaction when Paymob fires its webhook callback.
+    """
+    plan = get_plan_or_404(plan_id, db)
+
+    # Sensible defaults for `billing_data` (Paymob requires these fields).
+    billing_data = billing_data or {
+        "apartment":       "NA",
+        "email":           "NA",
+        "floor":           "NA",
+        "first_name":      "Bizify",
+        "street":          "NA",
+        "building":        "NA",
+        "phone_number":    "NA",
+        "shipping_method": "NA",
+        "postal_code":     "NA",
+        "city":            "NA",
+        "country":         "EG",
+        "last_name":       "User",
+        "state":           "NA",
+    }
+
+    try:
+        result = await paymob_client.create_card_payment(
+            amount=plan.price,
+            currency="EGP",
+            merchant_order_id=str(plan.id),
+            billing_data=billing_data,
+        )
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Paymob error: {exc.response.text}",
+        ) from exc
+
+    # Create an active subscription (or upgrade the existing one) immediately.
+    subscription = subscription_repo.create_or_update(
+        db,
+        user_id=user_id,
+        plan_id=plan.id,
+        commit=False,
+    )
+
+    # Persist a pending payment – will be updated to `succeeded` via webhook.
+    payment = payment_repo.create_paymob_payment(
+        db,
+        user_id=user_id,
+        subscription_id=subscription.id,
+        amount=plan.price,
+        currency="EGP",
+        paymob_order_id=result["paymob_order_id"],
+        status="pending",
+        commit=True,
+    )
+    db.refresh(subscription)
+
+    return {
+        "payment_id":      payment.id,
+        "subscription_id": subscription.id,
+        "paymob_order_id": result["paymob_order_id"],
+        "iframe_url":      result["iframe_url"],
+    }
+
+
+async def handle_paymob_webhook(data: Dict[str, Any], db: Session) -> None:
+    """
+    Process Paymob's Transaction Processed Callback.
+
+    Validates the HMAC signature, then marks the Payment and Subscription
+    as `succeeded` / active when Paymob reports a successful transaction.
+    """
+    if not paymob_client.verify_hmac(data):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid Paymob HMAC signature.",
+        )
+
+    obj = data.get("obj", {})
+    is_success: bool = obj.get("success", False)
+    paymob_order_id = str(obj.get("order", {}).get("id", ""))
+    transaction_id  = str(obj.get("id", ""))
+
+    if not paymob_order_id:
+        return
+
+    payment = payment_repo.get_by_paymob_order(db, paymob_order_id)
+    if not payment:
+        return
+
+    new_status = "succeeded" if is_success else "failed"
+    payment.status               = new_status
+    payment.paymob_transaction_id = transaction_id
+    db.add(payment)
+
+    # Activate the linked subscription on success.
+    if is_success and payment.subscription_id:
+        from app.models.subscription import SubscriptionStatus  # avoid circular import
+        subscription = db.get(Subscription, payment.subscription_id)
+        if subscription:
+            subscription.status = SubscriptionStatus.ACTIVE
+            db.add(subscription)
+
+    db.commit()

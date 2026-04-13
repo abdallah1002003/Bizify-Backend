@@ -51,6 +51,26 @@ class PaymentRepository(BaseRepository[Payment, Any, Any]):
             .first()
         )
 
+    def get_by_paymob_transaction(
+        self, db: Session, transaction_id: str
+    ) -> Optional[Payment]:
+        """Find a payment by its Paymob transaction ID."""
+        return (
+            db.query(self.model)
+            .filter(self.model.paymob_transaction_id == transaction_id)
+            .first()
+        )
+
+    def get_by_paymob_order(
+        self, db: Session, paymob_order_id: str
+    ) -> Optional[Payment]:
+        """Find a pending payment by its Paymob order ID."""
+        return (
+            db.query(self.model)
+            .filter(self.model.paymob_order_id == paymob_order_id)
+            .first()
+        )
+
     def create_payment(
         self,
         db: Session,
@@ -72,6 +92,35 @@ class PaymentRepository(BaseRepository[Payment, Any, Any]):
             status="succeeded",
             paypal_order_id=paypal_order_id,
             paypal_capture_id=paypal_capture_id,
+        )
+        db.add(payment)
+        if commit:
+            db.commit()
+            db.refresh(payment)
+        else:
+            db.flush()
+        return payment
+
+    def create_paymob_payment(
+        self,
+        db: Session,
+        *,
+        user_id: uuid.UUID,
+        subscription_id: uuid.UUID,
+        amount: Decimal,
+        currency: str,
+        paymob_order_id: str,
+        status: str = "pending",
+        commit: bool = True,
+    ) -> Payment:
+        """Create a pending Paymob payment record (transaction ID filled in via webhook)."""
+        payment = Payment(
+            user_id=user_id,
+            subscription_id=subscription_id,
+            amount=amount,
+            currency=currency,
+            status=status,
+            paymob_order_id=paymob_order_id,
         )
         db.add(payment)
         if commit:

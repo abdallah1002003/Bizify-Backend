@@ -21,11 +21,13 @@ class Payment(Base):
     payment_method_id = Column(UUID(as_uuid = True), ForeignKey("payment_methods.id"))
     amount = Column(Numeric(10, 2), nullable = False)
     currency = Column(String, default = "USD")
-    # e.g., "succeeded", "failed", "pending"
     status = Column(String, nullable = False)
     # PayPal-specific identifiers
     paypal_order_id = Column(String, nullable = True, index = True)
     paypal_capture_id = Column(String, nullable = True, index = True)
+    # Paymob-specific identifiers
+    paymob_order_id = Column(String, nullable = True, index = True)
+    paymob_transaction_id = Column(String, nullable = True, index = True)
     created_at = Column(DateTime, default = datetime.utcnow)
 
     user = relationship("User", back_populates = "payments")

@@ -1,6 +1,6 @@
 """
 Pydantic schemas for the billing / payment module.
-Covers Plans, PayPal order lifecycle, Payments, and Subscriptions.
+Covers Plans, PayPal order lifecycle, Paymob card payment, Payments, and Subscriptions.
 """
 import uuid
 from datetime import datetime
@@ -10,9 +10,6 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
 
-# ─────────────────────────────────────────────
-#  Plans
-# ─────────────────────────────────────────────
 
 class PlanRead(BaseModel):
     """
@@ -27,9 +24,7 @@ class PlanRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-# ─────────────────────────────────────────────
-#  PayPal Order lifecycle
-# ─────────────────────────────────────────────
+
 
 class OrderCreate(BaseModel):
     """
@@ -67,9 +62,7 @@ class CaptureResponse(BaseModel):
     currency:        str
 
 
-# ─────────────────────────────────────────────
-#  Payments
-# ─────────────────────────────────────────────
+
 
 class PaymentRead(BaseModel):
     """
@@ -88,9 +81,6 @@ class PaymentRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-# ─────────────────────────────────────────────
-#  Subscriptions
-# ─────────────────────────────────────────────
 
 class SubscriptionRead(BaseModel):
     """
@@ -106,3 +96,30 @@ class SubscriptionRead(BaseModel):
     plan:                   Optional[PlanRead] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ─────────────────────────────────────────────
+#  Paymob – Visa / Mastercard
+# ─────────────────────────────────────────────
+
+class PaymobCheckoutRequest(BaseModel):
+    """
+    Request body to initiate a Paymob card payment (iframe flow).
+    The frontend receives the iframe URL and renders the card form.
+    """
+    plan_id:       uuid.UUID
+    first_name:    Optional[str] = None
+    last_name:     Optional[str] = None
+    email:         Optional[str] = None
+    phone_number:  Optional[str] = None
+
+
+class PaymobCheckoutResponse(BaseModel):
+    """
+    Response returned after initiating a Paymob payment.
+    The frontend should embed `iframe_url` in an <iframe> element.
+    """
+    payment_id:      uuid.UUID
+    subscription_id: uuid.UUID
+    paymob_order_id: str
+    iframe_url:      str

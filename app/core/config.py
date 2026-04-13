@@ -42,6 +42,12 @@ class Settings(BaseSettings):
     PAYPAL_WEBHOOK_ID: Optional[str] = None
     FRONTEND_URL: str = "http://localhost:3000"
 
+    # Paymob (Visa / Mastercard)
+    PAYMOB_API_KEY: Optional[str] = None
+    PAYMOB_HMAC_SECRET: Optional[str] = None
+    PAYMOB_INTEGRATION_ID: Optional[int] = None
+    PAYMOB_IFRAME_ID: Optional[str] = None
+
     GOOGLE_CLIENT_ID: Optional[str] = None
     GOOGLE_CLIENT_SECRET: Optional[str] = None
 

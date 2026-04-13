@@ -12,6 +12,8 @@ from app.schemas.billing import (
     CaptureResponse,
     OrderCreate,
     OrderResponse,
+    PaymobCheckoutRequest,
+    PaymobCheckoutResponse,
     PlanRead,
     SubscriptionRead,
 )
@@ -26,7 +28,7 @@ def list_plans(db: Session = Depends(get_db)) -> List[PlanRead]:
     return payment_service.get_active_plans(db)
 
 
-@router.post("/subscribe", response_model=OrderResponse)
+@router.post("/paypal/subscribe", response_model=OrderResponse)
 async def create_subscription_order(
     body: OrderCreate,
     current_user: User = Depends(get_current_user),
@@ -40,7 +42,7 @@ async def create_subscription_order(
     return result
 
 
-@router.post("/capture", response_model=CaptureResponse)
+@router.post("/paypal/capture", response_model=CaptureResponse)
 async def capture_subscription_payment(
     body: CaptureRequest,
     current_user: User = Depends(get_current_user),
@@ -81,7 +83,7 @@ def cancel_my_subscription(
     return {"message": "Subscription cancelled successfully."}
 
 
-@router.post("/webhook", status_code=status.HTTP_200_OK)
+@router.post("/paypal/webhook", status_code=status.HTTP_200_OK)
 async def paypal_webhook(
     request: Request,
     db: Session = Depends(get_db),
@@ -112,3 +114,62 @@ async def paypal_webhook(
     resource = event.get("resource", {})
     await payment_service.handle_webhook(event_type, resource, db)
     return {"message": "Webhook received."}
+
+
+
+
+@router.post("/paymob/subscribe", response_model=PaymobCheckoutResponse)
+async def create_paymob_subscription(
+    body: PaymobCheckoutRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """
+    Initiate a Paymob card payment for the chosen plan.
+
+    Returns an iframe URL that the frontend should render inside an <iframe>
+    so the cardholder can enter their Visa / Mastercard details.
+    """
+    billing_data: Optional[dict] = None
+    if any([body.first_name, body.last_name, body.email, body.phone_number]):
+        billing_data = {
+            "apartment":       "NA",
+            "email":           body.email or "NA",
+            "floor":           "NA",
+            "first_name":      body.first_name or "NA",
+            "street":          "NA",
+            "building":        "NA",
+            "phone_number":    body.phone_number or "NA",
+            "shipping_method": "NA",
+            "postal_code":     "NA",
+            "city":            "NA",
+            "country":         "EG",
+            "last_name":       body.last_name or "NA",
+            "state":           "NA",
+        }
+
+    result = await payment_service.create_paymob_payment(
+        plan_id=body.plan_id,
+        user_id=current_user.id,
+        db=db,
+        billing_data=billing_data,
+    )
+    return result
+
+
+@router.post("/paymob/webhook", status_code=status.HTTP_200_OK)
+async def paymob_webhook(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> Any:
+    """
+    Receive Transaction Processed Callbacks from Paymob.
+
+    Paymob signs the payload with an HMAC-SHA512 hash using your HMAC secret
+    (configured as PAYMOB_HMAC_SECRET in .env). The service layer validates
+    this signature before processing the event.
+    """
+    data = await request.json()
+    await payment_service.handle_paymob_webhook(data, db)
+    return {"message": "Paymob webhook received."}
+
