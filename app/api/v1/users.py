@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, get_db
 from app.models.partner_profile import PartnerType
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.schemas.partner_profile import (
     PartnerProfileCreate,
     PartnerProfileRead,
@@ -29,7 +29,6 @@ router = APIRouter()
 )
 def register_user(user_in: UserCreate, db: Session = Depends(get_db)) -> UserRead:
     """Register a new user with the default `USER` role."""
-    user_in.role = UserRole.USER
     if UserService.get_user_by_email(db, user_in.email):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

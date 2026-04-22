@@ -1,3 +1,4 @@
+import logging
 import random
 import string
 import uuid
@@ -7,7 +8,7 @@ from typing import List, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.mail import send_otp_email
+from app.core.mail import EmailDeliveryError, send_otp_email
 from app.core.security import get_password_hash
 from app.models.user import User, UserRole
 from app.models.verification import VerificationType
@@ -15,6 +16,9 @@ from app.repositories.auth_repo import auth_repo
 from app.repositories.partner_repo import partner_repo
 from app.repositories.user_repo import user_repo
 from app.schemas.user import UserCreate
+
+
+logger = logging.getLogger(__name__)
 
 
 class UserService:
@@ -30,14 +34,27 @@ class UserService:
                 "email": user_in.email,
                 "password_hash": hashed_password,
                 "full_name": user_in.full_name,
-                "role": user_in.role,
-                "is_active": user_in.is_active,
-                "is_verified": user_in.is_verified,
+                "role": UserRole.USER,
+                "is_active": True,
+                "is_verified": False,
             },
+            commit=False,
+            refresh=False,
         )
 
-        if not db_user.is_verified:
-            UserService.create_otp(db, db_user.id, db_user.email)
+        try:
+            UserService.create_otp(
+                db,
+                db_user.id,
+                db_user.email,
+                commit=False,
+            )
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+
+        db.refresh(db_user)
 
         return db_user
 
@@ -47,6 +64,7 @@ class UserService:
         user_id: uuid.UUID,
         email: str,
         v_type: VerificationType = VerificationType.ACCOUNT_VERIFICATION,
+        commit: bool = True,
     ) -> str:
         """Generate and send an OTP with a cooldown between requests."""
         last_otp = auth_repo.get_latest_otp(db, user_id, v_type)
@@ -68,8 +86,24 @@ class UserService:
             otp_code=otp,
             verification_type=v_type,
             expires_at=expires_at,
+            commit=False,
         )
-        send_otp_email(email, otp)
+
+        try:
+            send_otp_email(email, otp)
+            if commit:
+                db.commit()
+        except EmailDeliveryError as exc:
+            db.rollback()
+            logger.exception("OTP delivery failed for %s", email)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Unable to send verification code right now. Please try again later.",
+            ) from exc
+        except Exception:
+            db.rollback()
+            raise
+
         return otp
 
     @staticmethod

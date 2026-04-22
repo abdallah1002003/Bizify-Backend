@@ -8,6 +8,10 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
+class EmailDeliveryError(RuntimeError):
+    """Raised when an outbound email could not be delivered."""
+
+
 def send_email(
     email_to: str,
     subject: str,
@@ -15,12 +19,11 @@ def send_email(
 ) -> None:
     """
     Generic function to send an email via SMTP.
-    If configuration is missing, it logs the content to stdout.
+    Raise an explicit error when configuration is missing or delivery fails.
     """
     if not settings.SMTP_HOST or not settings.SMTP_USER or not settings.SMTP_PASSWORD:
-        logger.warning("SMTP settings not configured. Email NOT sent.")
-        logger.info(f"Content for {email_to}: \n{html_content}")
-        return
+        logger.error("SMTP settings are incomplete. Email was not sent.")
+        raise EmailDeliveryError("SMTP settings are incomplete")
 
     message = EmailMessage()
     message["Subject"] = subject
@@ -38,7 +41,8 @@ def send_email(
             
             logger.info(f"Successfully sent email to {email_to}")
     except Exception as e:
-        logger.error(f"Failed to send email to {email_to}: {e}")
+        logger.exception("Failed to send email to %s", email_to)
+        raise EmailDeliveryError("Failed to send email") from e
 
 
 def send_otp_email(email_to: str, otp: str) -> None:

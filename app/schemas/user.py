@@ -33,13 +33,16 @@ class UserBase(BaseModel):
         return v
 
 
-class UserCreate(UserBase):
+class UserCreate(BaseModel):
     """
     Pydantic model for creating a new User.
     """
-    
+
+    email: EmailStr
+    full_name: Optional[str] = None
     password: str
     confirm_password: str
+    model_config = ConfigDict(extra="forbid")
     
     @field_validator("password")
     @classmethod
@@ -65,21 +68,6 @@ class UserCreate(UserBase):
         """
         if "password" in info.data and v != info.data["password"]:
             raise ValueError("Passwords do not match")
-        return v
-
-
-    email: Optional[EmailStr] = None
-    full_name: Optional[str] = None
-    role: Optional[UserRole] = None
-    is_active: Optional[bool] = None
-    is_verified: Optional[bool] = None
-    password: Optional[str] = None
-
-    @field_validator("role", mode="before")
-    @classmethod
-    def validate_role(cls, v):
-        if isinstance(v, str):
-            return v.upper()
         return v
 
 
