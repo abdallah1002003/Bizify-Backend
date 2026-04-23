@@ -3,7 +3,7 @@ name = "bizify"
 version = "0.1.0"
 description = "A professional FastAPI project for AI-driven business strategy"
 authors = [
-    {name = "Abdallah Abdelrhim", email = "abdallah@example.com"},
+    {name = "Abdallah Abdelrhim", email = "abdallah.antar@gmail.com"},
 ]
 dependencies = [
     "fastapi",

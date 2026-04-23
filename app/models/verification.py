@@ -28,7 +28,7 @@ class AccountVerification(Base):
 
     id = Column(UUID(as_uuid = True), primary_key = True, default = uuid.uuid4)
     user_id = Column(UUID(as_uuid = True), ForeignKey("users.id"), nullable = False)
-    otp_code = Column(String(6), nullable = False)
+    otp_hash = Column(String, nullable = False)
     verification_type = Column(
         Enum(VerificationType, values_callable = lambda x: [e.value for e in x]),
         default = VerificationType.ACCOUNT_VERIFICATION

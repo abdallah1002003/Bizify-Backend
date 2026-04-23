@@ -38,7 +38,7 @@ class AuthRepository:
         db: Session,
         *,
         user_id: uuid.UUID,
-        otp_code: str,
+        otp_hash: str,
         verification_type: VerificationType,
         expires_at: datetime,
         commit: bool = True,
@@ -46,7 +46,7 @@ class AuthRepository:
         """Create an OTP verification record."""
         otp = AccountVerification(
             user_id=user_id,
-            otp_code=otp_code,
+            otp_hash=otp_hash,
             verification_type=verification_type,
             expires_at=expires_at,
         )
@@ -75,24 +75,7 @@ class AuthRepository:
             .first()
         )
 
-    def get_valid_otp(
-        self,
-        db: Session,
-        user_id: uuid.UUID,
-        otp_code: str,
-        v_type: VerificationType,
-    ) -> Optional[AccountVerification]:
-        """Fetch the latest OTP matching a user, code, and verification type."""
-        return (
-            db.query(AccountVerification)
-            .filter(
-                AccountVerification.user_id == user_id,
-                AccountVerification.otp_code == otp_code,
-                AccountVerification.verification_type == v_type,
-            )
-            .order_by(AccountVerification.created_at.desc())
-            .first()
-        )
+
 
     def delete_otp(
         self,

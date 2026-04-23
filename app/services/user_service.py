@@ -9,7 +9,7 @@ from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.mail import EmailDeliveryError, send_otp_email
-from app.core.security import get_password_hash
+from app.core.security import get_password_hash, verify_password
 from app.models.user import User, UserRole
 from app.models.verification import VerificationType
 from app.repositories.auth_repo import auth_repo
@@ -127,11 +127,12 @@ class UserService:
                 )
 
         otp = "".join(random.choices(string.digits, k=6))
+        hashed_otp = get_password_hash(otp)
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
         auth_repo.create_otp(
             db,
             user_id=user_id,
-            otp_code=otp,
+            otp_hash=hashed_otp,
             verification_type=v_type,
             expires_at=expires_at,
             commit=False,
@@ -161,13 +162,15 @@ class UserService:
         if not user:
             return False
 
-        db_otp = auth_repo.get_valid_otp(
+        db_otp = auth_repo.get_latest_otp(
             db,
             user.id,
-            otp_code,
             VerificationType.ACCOUNT_VERIFICATION,
         )
         if not db_otp or db_otp.is_expired:
+            return False
+
+        if not verify_password(otp_code, db_otp.otp_hash):
             return False
 
         user.is_verified = True
@@ -189,13 +192,15 @@ class UserService:
         if not user:
             return False
 
-        db_otp = auth_repo.get_valid_otp(
+        db_otp = auth_repo.get_latest_otp(
             db,
             user.id,
-            otp_code,
             VerificationType.PASSWORD_RESET,
         )
         if not db_otp or db_otp.is_expired:
+            return False
+
+        if not verify_password(otp_code, db_otp.otp_hash):
             return False
 
         user.password_hash = get_password_hash(new_password)
