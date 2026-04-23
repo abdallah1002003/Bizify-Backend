@@ -7,13 +7,14 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, get_db
 from app.models.partner_profile import PartnerType
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.partner_profile import (
     PartnerProfileCreate,
+    PartnerProfileRegistration,
     PartnerProfileRead,
     PartnerProfileUpdate,
 )
-from app.schemas.user import UserCreate, UserRead
+from app.schemas.user import EntrepreneurRegistration, UserCreate, UserRead
 from app.schemas.user_profile import UserProfileRead, UserProfileUpdate
 from app.services.partner_service import PartnerService
 from app.services.profile_service import ProfileService
@@ -22,13 +23,37 @@ from app.services.user_service import UserService
 router = APIRouter()
 
 
+def _parse_partner_json_field(raw_value: Optional[str], field_name: str):
+    if not raw_value:
+        return None
+
+    try:
+        return json.loads(raw_value)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"{field_name} must be valid JSON",
+        ) from exc
+
+
 @router.post(
     "/register",
     response_model=UserRead,
     status_code=status.HTTP_201_CREATED,
 )
-def register_user(user_in: UserCreate, db: Session = Depends(get_db)) -> UserRead:
-    """Register a new user with the default `USER` role."""
+def register_user(
+    registration_in: EntrepreneurRegistration,
+    db: Session = Depends(get_db),
+) -> UserRead:
+    """Register a regular entrepreneur account using JSON only."""
+    user_in = UserCreate(
+        email=registration_in.email,
+        full_name=registration_in.full_name,
+        role=UserRole.ENTREPRENEUR,
+        password=registration_in.password,
+        confirm_password=registration_in.confirm_password,
+    )
+
     if UserService.get_user_by_email(db, user_in.email):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -36,6 +61,93 @@ def register_user(user_in: UserCreate, db: Session = Depends(get_db)) -> UserRea
         )
 
     return UserService.create_user(db, user_in)
+
+
+@router.post(
+    "/register-partner",
+    response_model=UserRead,
+    status_code=status.HTTP_201_CREATED,
+    summary="Register Partner Account",
+    description=(
+        "Register a mentor, supplier, or manufacturer account and upload the "
+        "supporting documents during signup."
+    ),
+    openapi_extra={
+        "requestBody": {
+            "content": {
+                "multipart/form-data": {
+                    "schema": {
+                        "type": "object",
+                        "required": ["email", "role", "password", "confirm_password", "files"],
+                        "properties": {
+                            "email": {"type": "string", "format": "email"},
+                            "full_name": {"type": "string", "nullable": True},
+                            "role": {
+                                "type": "string",
+                                "enum": ["MENTOR", "SUPPLIER", "MANUFACTURER"],
+                            },
+                            "password": {"type": "string"},
+                            "confirm_password": {"type": "string"},
+                            "files": {
+                                "type": "array",
+                                "items": {"type": "string", "format": "binary"},
+                                "description": "Upload one or more supporting files",
+                            },
+                            "company_name": {"type": "string", "nullable": True},
+                            "description": {"type": "string", "nullable": True},
+                            "services_json": {"type": "string", "nullable": True},
+                            "experience_json": {"type": "string", "nullable": True},
+                        },
+                    },
+                    "encoding": {
+                        "files": {"contentType": "application/pdf, image/*"},
+                    },
+                }
+            }
+        }
+    },
+)
+async def register_partner_user(
+    email: str = Form(...),
+    full_name: Optional[str] = Form(None),
+    role: PartnerType = Form(...),
+    password: str = Form(...),
+    confirm_password: str = Form(...),
+    files: List[UploadFile] = File(..., description="Upload one or more supporting files"),
+    company_name: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    services_json: Optional[str] = Form(None),
+    experience_json: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+) -> UserRead:
+    """Register a partner account using multipart form data."""
+    user_in = UserCreate(
+        email=email,
+        full_name=full_name,
+        role=role.value,
+        password=password,
+        confirm_password=confirm_password,
+    )
+    partner_profile_in = PartnerProfileRegistration(
+        partner_type=role.value,
+        company_name=company_name,
+        description=description,
+        services_json=_parse_partner_json_field(services_json, "services_json"),
+        experience_json=_parse_partner_json_field(experience_json, "experience_json"),
+    )
+
+    if UserService.get_user_by_email(db, user_in.email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered",
+        )
+
+    return UserService.create_user(
+        db,
+        user_in,
+        partner_profile_in=partner_profile_in,
+        partner_files=files,
+    )
 
 
 @router.post(

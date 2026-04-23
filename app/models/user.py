@@ -37,7 +37,7 @@ class User(Base):
     
     role = Column(
         Enum(UserRole, values_callable = lambda x: [e.value for e in x]), 
-        default = UserRole.USER, 
+        default = UserRole.ENTREPRENEUR, 
         nullable = False
     ) 
     

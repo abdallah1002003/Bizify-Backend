@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core import google_client, security
 from app.core.config import settings
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.verification import VerificationType
 from app.repositories.auth_repo import auth_repo
 from app.repositories.profile_repo import profile_repo
@@ -55,6 +55,7 @@ class AuthService:
                 "email": email,
                 "google_id": google_id,
                 "full_name": full_name,
+                "role": UserRole.ENTREPRENEUR,
                 "is_verified": True,
                 "is_active": True,
                 "password_hash": None,

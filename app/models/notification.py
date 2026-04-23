@@ -44,17 +44,17 @@ class Notification(Base):
     
     title = Column(String, nullable = False)
     content = Column(Text, nullable = True)
-    message = Column(Text, nullable = False) # Required by DB schema
-    type = Column(String, nullable = False)  # e.g., "TEAM_JOIN", "SYSTEM", "BILLING"
+    message = Column(Text, nullable = False) 
+    type = Column(String, nullable = False)  
     
     status = Column(
-        Enum(NotificationStatus), 
+        Enum(NotificationStatus, values_callable=lambda e: [m.value for m in e]), 
         default = NotificationStatus.UNREAD, 
         nullable = False
     )
     
     delivery_status = Column(
-        Enum(DeliveryStatus), 
+        Enum(DeliveryStatus, values_callable=lambda e: [m.value for m in e]), 
         default = DeliveryStatus.PENDING, 
         nullable = False
     )

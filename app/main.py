@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.api import api_router
 from app.core.config import settings
+from app.core.database import ensure_sqlite_compatibility_schema
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -26,6 +27,12 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix="/api/v1")
+
+
+@app.on_event("startup")
+async def startup_tasks() -> None:
+    """Apply local SQLite compatibility fixes before handling requests."""
+    ensure_sqlite_compatibility_schema()
 
 
 @app.get("/")

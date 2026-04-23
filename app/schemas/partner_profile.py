@@ -34,6 +34,12 @@ class PartnerProfileCreate(PartnerProfileBase):
     user_id: uuid.UUID
 
 
+class PartnerProfileRegistration(PartnerProfileBase):
+    """
+    Partner profile payload collected during user registration.
+    """
+
+
 class PartnerProfileUpdate(BaseModel):
     """
     Pydantic model for updating a Partner Profile.

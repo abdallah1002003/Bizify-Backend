@@ -82,7 +82,8 @@
 
 | Method | Endpoint | Auth Required | Description |
 |--------|----------|:---:|-------------|
-| `POST` | `/users/register` | ❌ | Register a new user |
+| `POST` | `/users/register` | ❌ | Register a new entrepreneur |
+| `POST` | `/users/register-partner` | ❌ | Register a mentor, supplier, or manufacturer with documents |
 | `POST` | `/users/profile` | ✅ | Update authenticated user's profile |
 | `POST` | `/users/partner-profile` | ✅ | Submit partner profile with documents (multipart) |
 | `PATCH` | `/users/partner-profile` | ✅ | Update partner profile info |
@@ -103,11 +104,31 @@
   "id": "uuid",
   "email": "user@example.com",
   "full_name": "John Doe",
-  "role": "USER",
+  "role": "ENTREPRENEUR",
   "is_active": true,
   "is_verified": false
 }
 ```
+
+This endpoint always creates an `ENTREPRENEUR` account.
+
+### POST `/users/register-partner`
+```
+email: "mentor@example.com"
+full_name: "John Mentor"
+role: "MENTOR"   // or SUPPLIER / MANUFACTURER
+password: "SecurePass123"
+confirm_password: "SecurePass123"
+company_name: "Mentor Co"
+description: "Experienced startup mentor"
+services_json: "[\"Mentoring\", \"Go-to-market\"]"
+experience_json: "[\"10 years in startups\"]"
+files: [File1, File2, ...]   // required
+```
+
+This endpoint must be sent as `multipart/form-data`.
+
+Partner registration creates the user account and sends OTP normally, but the actual partner role stays pending admin review until the uploaded documents are approved.
 
 ### POST `/users/partner-profile`
 ```

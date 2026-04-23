@@ -28,6 +28,7 @@ dependencies = [
     "requests>=2.32.5",
     "imagekitio>=5.2.0",
     "pyjwt>=2.8.0",
+    "supabase>=2.12.0",
 ]
 requires-python = ">=3.9"
 

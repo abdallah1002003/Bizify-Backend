@@ -1,6 +1,5 @@
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union
 
-from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -34,7 +33,10 @@ class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         refresh: bool = True,
     ) -> ModelType:
         """Create and optionally commit a new record."""
-        obj_in_data = jsonable_encoder(obj_in)
+        if isinstance(obj_in, dict):
+            obj_in_data = obj_in.copy()
+        else:
+            obj_in_data = obj_in.model_dump(mode="python")
         db_obj = self.model(**obj_in_data)  # type: ignore
         db.add(db_obj)
         if commit:
@@ -55,11 +57,14 @@ class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         refresh: bool = True,
     ) -> ModelType:
         """Update an existing record with partial data."""
-        obj_data = jsonable_encoder(db_obj)
+        obj_data = {
+            column.name: getattr(db_obj, column.name)
+            for column in db_obj.__table__.columns
+        }
         if isinstance(obj_in, dict):
-            update_data = obj_in
+            update_data = obj_in.copy()
         else:
-            update_data = obj_in.model_dump(exclude_unset=True)
+            update_data = obj_in.model_dump(exclude_unset=True, mode="python")
 
         for field in obj_data:
             if field in update_data:

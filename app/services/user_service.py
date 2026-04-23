@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.mail import EmailDeliveryError, send_otp_email
@@ -15,18 +15,51 @@ from app.models.verification import VerificationType
 from app.repositories.auth_repo import auth_repo
 from app.repositories.partner_repo import partner_repo
 from app.repositories.user_repo import user_repo
+from app.schemas.partner_profile import PartnerProfileCreate, PartnerProfileRegistration
 from app.schemas.user import UserCreate
+from app.services.partner_service import PartnerService
 
 
 logger = logging.getLogger(__name__)
+PARTNER_REGISTRATION_ROLES = {
+    UserRole.MENTOR,
+    UserRole.SUPPLIER,
+    UserRole.MANUFACTURER,
+}
 
 
 class UserService:
     """User workflows for registration, lookup, and OTP handling."""
 
     @staticmethod
-    def create_user(db: Session, user_in: UserCreate) -> User:
+    def create_user(
+        db: Session,
+        user_in: UserCreate,
+        partner_profile_in: Optional[PartnerProfileRegistration] = None,
+        partner_files: Optional[List[UploadFile]] = None,
+    ) -> User:
         """Create a new user and send a verification OTP when needed."""
+        requires_partner_application = user_in.role in PARTNER_REGISTRATION_ROLES
+        partner_files = partner_files or []
+
+        if requires_partner_application and (not partner_profile_in or not partner_files):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Mentor, supplier, and manufacturer registration requires "
+                    "partner details and supporting documents."
+                ),
+            )
+
+        if not requires_partner_application and partner_profile_in:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Partner documents can only be submitted for partner roles.",
+            )
+
+        persisted_role = (
+            UserRole.ENTREPRENEUR if requires_partner_application else user_in.role
+        )
         hashed_password = get_password_hash(user_in.password)
         db_user = user_repo.create(
             db,
@@ -34,7 +67,7 @@ class UserService:
                 "email": user_in.email,
                 "password_hash": hashed_password,
                 "full_name": user_in.full_name,
-                "role": UserRole.USER,
+                "role": persisted_role,
                 "is_active": True,
                 "is_verified": False,
             },
@@ -42,7 +75,20 @@ class UserService:
             refresh=False,
         )
 
+        partner_profile = None
         try:
+            if partner_profile_in:
+                partner_profile = PartnerService.apply_partner(
+                    db,
+                    db_user,
+                    PartnerProfileCreate(
+                        user_id=db_user.id,
+                        **partner_profile_in.model_dump(),
+                    ),
+                    partner_files,
+                    commit=False,
+                    refresh=False,
+                )
             UserService.create_otp(
                 db,
                 db_user.id,
@@ -52,6 +98,8 @@ class UserService:
             db.commit()
         except Exception:
             db.rollback()
+            if partner_profile:
+                PartnerService.cleanup_documents(partner_profile.documents_json)
             raise
 
         db.refresh(db_user)

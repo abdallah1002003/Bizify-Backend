@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: Optional[str] = None
     GOOGLE_CLIENT_SECRET: Optional[str] = None
 
+    SUPABASE_URL: Optional[str] = None
+    SUPABASE_KEY: Optional[str] = None
+    SUPABASE_BUCKET_NAME: str = "partner-documents"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,

@@ -6,6 +6,13 @@ from pydantic import BaseModel, ConfigDict, EmailStr, ValidationInfo, field_vali
 
 from app.models.user import UserRole
 
+REGISTRATION_ALLOWED_ROLES = {
+    UserRole.ENTREPRENEUR,
+    UserRole.MENTOR,
+    UserRole.SUPPLIER,
+    UserRole.MANUFACTURER,
+}
+
 
 class GoogleCallbackRequest(BaseModel):
     """
@@ -14,28 +21,9 @@ class GoogleCallbackRequest(BaseModel):
     code: str
 
 
-class UserBase(BaseModel):
+class RegistrationBase(BaseModel):
     """
-    Base Pydantic model for User data.
-    """
-    
-    email: EmailStr
-    full_name: Optional[str] = None
-    role: Optional[UserRole] = UserRole.USER
-    is_active: Optional[bool] = True
-    is_verified: Optional[bool] = False
-
-    @field_validator("role", mode="before")
-    @classmethod
-    def validate_role(cls, v):
-        if isinstance(v, str):
-            return v.upper()
-        return v
-
-
-class UserCreate(BaseModel):
-    """
-    Pydantic model for creating a new User.
+    Shared fields for public registration flows.
     """
 
     email: EmailStr
@@ -43,7 +31,7 @@ class UserCreate(BaseModel):
     password: str
     confirm_password: str
     model_config = ConfigDict(extra="forbid")
-    
+
     @field_validator("password")
     @classmethod
     def password_strength(cls, v: str) -> str:
@@ -69,6 +57,65 @@ class UserCreate(BaseModel):
         if "password" in info.data and v != info.data["password"]:
             raise ValueError("Passwords do not match")
         return v
+
+
+class UserBase(BaseModel):
+    """
+    Base Pydantic model for User data.
+    """
+    
+    email: EmailStr
+    full_name: Optional[str] = None
+    role: Optional[UserRole] = UserRole.ENTREPRENEUR
+    is_active: Optional[bool] = True
+    is_verified: Optional[bool] = False
+
+    @field_validator("role", mode="before")
+    @classmethod
+    def validate_role(cls, v):
+        if isinstance(v, str):
+            return v.upper()
+        return v
+
+
+class EntrepreneurRegistration(RegistrationBase):
+    """
+    Public registration payload for entrepreneur accounts.
+    """
+
+
+class UserCreate(RegistrationBase):
+    """
+    Pydantic model for creating a new User.
+    """
+
+    role: UserRole = UserRole.ENTREPRENEUR
+
+    @field_validator("role", mode="before")
+    @classmethod
+    def validate_registration_role(cls, v):
+        """
+        Allow only public registration roles and default to entrepreneur.
+        """
+        if v is None:
+            return UserRole.ENTREPRENEUR
+
+        if isinstance(v, str):
+            v = v.upper()
+
+        try:
+            role = UserRole(v)
+        except ValueError as exc:
+            raise ValueError(
+                "Role must be one of: ENTREPRENEUR, MENTOR, SUPPLIER, MANUFACTURER"
+            ) from exc
+
+        if role not in REGISTRATION_ALLOWED_ROLES:
+            raise ValueError(
+                "Role must be one of: ENTREPRENEUR, MENTOR, SUPPLIER, MANUFACTURER"
+            )
+
+        return role
 
 
 class UserRead(UserBase):
