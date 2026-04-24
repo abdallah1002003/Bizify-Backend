@@ -20,3 +20,5 @@ fastapi-users-db-sqlalchemy>=7.0.0
 requests>=2.32.5
 imagekitio>=5.2.0
 pyjwt>=2.8.0
+supabase>=2.12.0
+httpx>=0.27.0

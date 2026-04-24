@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.v1 import (
     admin,
+    ai_pipeline,
     auth,
     billing,
     export,
@@ -29,3 +30,4 @@ api_router.include_router(settings.router, prefix="/settings", tags=["User Setti
 api_router.include_router(imports.router, prefix="/import", tags=["Import"])
 api_router.include_router(groups.router, tags=["Teams"])
 api_router.include_router(billing.router, prefix="/billing", tags=["Billing"])
+api_router.include_router(ai_pipeline.router, prefix="/ai", tags=["AI Pipeline"])

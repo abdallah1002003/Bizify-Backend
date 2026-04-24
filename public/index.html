@@ -68,9 +68,9 @@
                     const data = await res.json();
                     
                     if (res.ok) {
-                        statusDiv.innerHTML = `<span style="color: green">✅ Success!</span><br><br><b>Access Token:</b><br>${data.access_token}`;
+                        statusDiv.innerHTML = `<span style="color: green"> Success!</span><br><br><b>Access Token:</b><br>${data.access_token}`;
                     } else {
-                        statusDiv.innerHTML = `<span style="color: red">❌ Error:</span><br>${data.detail || JSON.stringify(data)}`;
+                        statusDiv.innerHTML = `<span style="color: red"> Error:</span><br>${data.detail || JSON.stringify(data)}`;
                     }
                 } catch (e) {
                     statusDiv.innerText = "Error completing login";

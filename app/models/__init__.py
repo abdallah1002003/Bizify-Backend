@@ -38,6 +38,8 @@ from app.models.guidance_concept import GuidanceConcept
 from app.models.user_concept_state import UserConceptState
 from app.models.feature_concept_mapping import FeatureConceptMapping
 from app.models.user_skill import UserSkill
+from app.models.skill_category import SkillCategory
+from app.models.predefined_skill import PredefinedSkill
 from app.models.skill_benchmark import SkillBenchmark
 from app.models.industry import Industry
 from app.models.export_job import ExportJob, ExportStatus
@@ -118,6 +120,8 @@ __all__ = [
     "UserConceptState",
     "FeatureConceptMapping",
     "UserSkill",
+    "SkillCategory",
+    "PredefinedSkill",
     "SkillBenchmark",
     "Industry",
     "ExportJob",
