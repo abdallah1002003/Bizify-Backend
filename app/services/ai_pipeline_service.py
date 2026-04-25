@@ -1,5 +1,6 @@
 import logging
 import uuid
+import asyncio
 from typing import Any, Optional
 
 import httpx
@@ -9,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 _AI_PIPELINE_URL = "https://bizifyai-production.up.railway.app/pipeline/run"
 _AI_PIPELINE_API_KEY = "7f986c28-88d1-424d-8622-776ffaff3452"
-_REQUEST_TIMEOUT_SECONDS = 30
+_REQUEST_TIMEOUT_SECONDS = 120
 
 
 class AIPipelineService:
@@ -22,16 +23,20 @@ class AIPipelineService:
 
         Schema matches the questionnaire output:
         {
+          "user_id": "...",
           "user_profile": { curiosity_domain, experience_level, business_interests,
                             target_region, founder_setup, risk_tolerance },
           "career_profile": { free_day_preferences, preferred_work_types,
                               problem_solving_styles, preferred_work_environments,
-                              desired_impact }
+                              desired_impact },
+          "skills": ["Python", "Machine Learning", ...]
         }
         """
         from app.models.user_profile import UserProfile
+        from app.repositories.skill_repo import skill_repo
 
         profile = db.query(UserProfile).filter_by(user_id=user_id).first()
+        user_skills = skill_repo.get_by_user(db, user_id)
         
         user_profile_data = profile.background_json if profile and profile.background_json else {}
         career_profile_data = profile.personality_json if profile and profile.personality_json else {}
@@ -67,6 +72,7 @@ class AIPipelineService:
                 "preferred_work_environments": multi(career_profile_data, "preferred_work_environments"),
                 "desired_impact":             multi(career_profile_data, "desired_impact"),
             },
+            "skills": [s.skill_name for s in user_skills],
         }
 
     @staticmethod
@@ -107,3 +113,43 @@ class AIPipelineService:
             response.raise_for_status()
             logger.info("AI pipeline responded with status %s", response.status_code)
             return response.json()
+
+    @staticmethod
+    async def get_status(user_id: uuid.UUID) -> dict:
+        """Fetch the current progress of the AI pipeline for the given user."""
+        url = f"{_AI_PIPELINE_URL.rsplit('/', 1)[0]}/status/{user_id}"
+        headers = {
+            "x-api-key": _AI_PIPELINE_API_KEY,
+            "Content-Type": "application/json",
+        }
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(url, headers=headers)
+            response.raise_for_status()
+            return response.json()
+
+    @staticmethod
+    async def get_results(user_id: uuid.UUID) -> dict:
+        """Fetch the final generated results from the AI pipeline."""
+        base_url = _AI_PIPELINE_URL.rsplit('/pipeline', 1)[0]
+        headers = {
+            "x-api-key": _AI_PIPELINE_API_KEY,
+            "Content-Type": "application/json",
+        }
+        
+        async with httpx.AsyncClient(timeout=30) as client:
+            profile_res, problems_res, idea_res = await asyncio.gather(
+                client.get(f"{base_url}/pipeline/profile/{user_id}", headers=headers),
+                client.get(f"{base_url}/pipeline/problems/{user_id}", headers=headers),
+                client.get(f"{base_url}/pipeline/idea/{user_id}", headers=headers),
+            )
+            
+            profile_res.raise_for_status()
+            problems_res.raise_for_status()
+            idea_res.raise_for_status()
+            
+            return {
+                "profile_analysis": profile_res.json().get("profile_analysis"),
+                "problems": problems_res.json().get("problems", []),
+                "idea": idea_res.json().get("current_idea"),
+                "chat_history": idea_res.json().get("chat_history", [])
+            }
