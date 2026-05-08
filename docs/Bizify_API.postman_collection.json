@@ -1,0 +1,657 @@
+{
+	"info": {
+		"_postman_id": "bizify-v1-collection",
+		"name": "Bizify API v1",
+		"description": "Complete Postman collection for the Bizify backend API. Base URL: http://localhost:8000/api/v1\n\n**How to use:**\n1. Set the `base_url` collection variable to your server address.\n2. Set the `token` collection variable after logging in.\n3. Run requests in order within each folder.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000/api/v1",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"item": [
+		{
+			"name": "🔑 Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/auth/login",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{"key": "username", "value": "user@example.com"},
+								{"key": "password", "value": "SecurePass123"}
+							]
+						},
+						"description": "Login with email and password. Copy the access_token from the response and set it as the `token` collection variable."
+					}
+				},
+				{
+					"name": "Register Entrepreneur",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/users/register",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"entrepreneur@example.com\",\n  \"password\": \"SecurePass123\",\n  \"confirm_password\": \"SecurePass123\",\n  \"full_name\": \"John Doe\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Verify OTP",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/auth/verify-otp",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\",\n  \"otp_code\": \"123456\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Forgot Password",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "{{base_url}}/auth/forgot-password?email=user@example.com",
+							"query": [{"key": "email", "value": "user@example.com"}]
+						}
+					}
+				},
+				{
+					"name": "Reset Password",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "{{base_url}}/auth/reset-password?email=user@example.com&otp_code=123456&new_password=NewPass123",
+							"query": [
+								{"key": "email", "value": "user@example.com"},
+								{"key": "otp_code", "value": "123456"},
+								{"key": "new_password", "value": "NewPass123"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Session Status",
+					"request": {
+						"auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{token}}"}]},
+						"method": "GET",
+						"url": "{{base_url}}/auth/session-status"
+					}
+				},
+				{
+					"name": "Ping (Keep Alive)",
+					"request": {
+						"auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{token}}"}]},
+						"method": "POST",
+						"url": "{{base_url}}/auth/ping"
+					}
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{token}}"}]},
+						"method": "POST",
+						"url": "{{base_url}}/auth/logout"
+					}
+				},
+				{
+					"name": "Google OAuth — Get URL",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/auth/google/url"
+					}
+				}
+			]
+		},
+		{
+			"name": "🗂️ Profile & Onboarding",
+			"item": [
+				{
+					"name": "Get My Profile",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/profile/"
+					}
+				},
+				{
+					"name": "Submit Questionnaire",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/profile/questionnaire",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"background\": \"Software Engineer with 5 years experience\",\n  \"interests\": [\"FinTech\", \"AI\"],\n  \"personality\": \"INTJ\",\n  \"risk_profile\": \"moderate\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Get My Skills",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/profile/skills"
+					}
+				},
+				{
+					"name": "Add Skill",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/profile/skills",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"skill_name\": \"Python\",\n  \"predefined_skill_id\": null\n}"
+						}
+					}
+				},
+				{
+					"name": "Delete Skill",
+					"request": {
+						"method": "DELETE",
+						"url": "{{base_url}}/profile/skills/{{skill_id}}"
+					}
+				},
+				{
+					"name": "Skip Questionnaire",
+					"request": {"method": "POST", "url": "{{base_url}}/profile/skip"}
+				},
+				{
+					"name": "Complete Onboarding",
+					"request": {"method": "POST", "url": "{{base_url}}/profile/complete"}
+				}
+			]
+		},
+		{
+			"name": "💡 Ideas",
+			"item": [
+				{
+					"name": "List My Ideas",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/ideas/?sort_by=created_at&sort_order=desc",
+							"query": [
+								{"key": "sort_by", "value": "created_at"},
+								{"key": "sort_order", "value": "desc"},
+								{"key": "min_budget", "value": "", "disabled": true},
+								{"key": "max_budget", "value": "", "disabled": true},
+								{"key": "skills", "value": "", "disabled": true}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Idea",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/ideas/",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"AI-Powered Accounting Tool\",\n  \"description\": \"An app that automates bookkeeping for small businesses using AI.\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Archive Idea",
+					"request": {
+						"method": "PATCH",
+						"url": "{{base_url}}/ideas/{{idea_id}}/archive"
+					}
+				},
+				{
+					"name": "Get Archived Ideas",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/ideas/archived"
+					}
+				},
+				{
+					"name": "Unarchive Idea",
+					"request": {
+						"method": "PATCH",
+						"url": "{{base_url}}/ideas/{{idea_id}}/unarchive"
+					}
+				}
+			]
+		},
+		{
+			"name": "👥 Groups & Chat",
+			"item": [
+				{
+					"name": "Create Group",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/groups",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"My Dev Team\",\n  \"description\": \"Core engineering group\"\n}"
+						}
+					}
+				},
+				{
+					"name": "My Groups",
+					"request": {"method": "GET", "url": "{{base_url}}/groups"}
+				},
+				{
+					"name": "Invite User to Group",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/groups/{{group_id}}/invites",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"friend@example.com\",\n  \"role\": \"EDITOR\",\n  \"idea_ids\": []\n}"
+						}
+					}
+				},
+				{
+					"name": "Accept Invite",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "{{base_url}}/groups/invites/accept?token={{invite_token}}",
+							"query": [{"key": "token", "value": "{{invite_token}}"}]
+						}
+					}
+				},
+				{
+					"name": "Get Group Members",
+					"request": {"method": "GET", "url": "{{base_url}}/groups/{{group_id}}/members"}
+				},
+				{
+					"name": "Get Group Messages",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/groups/{{group_id}}/messages?limit=50&offset=0",
+							"query": [
+								{"key": "limit", "value": "50"},
+								{"key": "offset", "value": "0"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Send Group Message (HTTP)",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/groups/{{group_id}}/messages",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"content\": \"Hello team!\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Delete Group",
+					"request": {"method": "DELETE", "url": "{{base_url}}/groups/{{group_id}}"}
+				}
+			]
+		},
+		{
+			"name": "🔔 Notifications",
+			"item": [
+				{
+					"name": "List Notifications",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/notifications/?skip=0&limit=20",
+							"query": [
+								{"key": "skip", "value": "0"},
+								{"key": "limit", "value": "20"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Mark as Read",
+					"request": {
+						"method": "PATCH",
+						"url": "{{base_url}}/notifications/{{notification_id}}/status",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"READ\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Bulk Update Status",
+					"request": {
+						"method": "PATCH",
+						"url": "{{base_url}}/notifications/status/bulk",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"notification_ids\": [\"uuid1\", \"uuid2\"],\n  \"status\": \"READ\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Get Notification Settings",
+					"request": {"method": "GET", "url": "{{base_url}}/notifications/settings"}
+				},
+				{
+					"name": "Delete All Notifications",
+					"request": {"method": "DELETE", "url": "{{base_url}}/notifications/status/all"}
+				}
+			]
+		},
+		{
+			"name": "💳 Billing",
+			"item": [
+				{
+					"name": "List Plans",
+					"request": {"method": "GET", "url": "{{base_url}}/billing/plans"}
+				},
+				{
+					"name": "My Subscription",
+					"request": {"method": "GET", "url": "{{base_url}}/billing/subscription"}
+				},
+				{
+					"name": "PayPal — Create Order",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/billing/paypal/subscribe",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"plan_id\": \"{{plan_id}}\"\n}"
+						}
+					}
+				},
+				{
+					"name": "PayPal — Capture Payment",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/billing/paypal/capture",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"order_id\": \"PAYPAL-ORDER-ID\",\n  \"plan_id\": \"{{plan_id}}\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Paymob — Initiate Checkout",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/billing/paymob/subscribe",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"plan_id\": \"{{plan_id}}\",\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\",\n  \"email\": \"john@example.com\",\n  \"phone_number\": \"+201012345678\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Cancel Subscription",
+					"request": {"method": "DELETE", "url": "{{base_url}}/billing/subscription"}
+				}
+			]
+		},
+		{
+			"name": "📤 Export",
+			"item": [
+				{
+					"name": "Start Export Job",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/export/",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"scope\": \"all\",\n  \"format\": \"pdf\"\n}"
+						},
+						"description": "scope: ideas | profile | all\nformat: json | pdf | word"
+					}
+				},
+				{
+					"name": "Get Job Status",
+					"request": {"method": "GET", "url": "{{base_url}}/export/{{job_id}}"}
+				},
+				{
+					"name": "Download Export",
+					"request": {"method": "GET", "url": "{{base_url}}/export/{{job_id}}/download"}
+				},
+				{
+					"name": "Cancel Export Job",
+					"request": {"method": "POST", "url": "{{base_url}}/export/{{job_id}}/cancel"}
+				}
+			]
+		},
+		{
+			"name": "📥 Import",
+			"item": [
+				{
+					"name": "Upload Document",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/import/upload",
+						"body": {
+							"mode": "formdata",
+							"formdata": [{"key": "file", "type": "file", "src": ""}]
+						},
+						"description": "Supports PDF, DOCX, and PPTX. Extracts text for AI processing."
+					}
+				},
+				{
+					"name": "Delete Document",
+					"request": {"method": "DELETE", "url": "{{base_url}}/import/{{document_id}}"}
+				},
+				{
+					"name": "Export for AI",
+					"request": {"method": "GET", "url": "{{base_url}}/import/{{document_id}}/export-ai"}
+				}
+			]
+		},
+		{
+			"name": "🤖 AI Pipeline",
+			"item": [
+				{
+					"name": "Run AI Analysis",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/ai/analyze",
+						"description": "No body needed. Reads profile from DB and sends to external AI engine."
+					}
+				},
+				{
+					"name": "Check Analysis Status",
+					"request": {"method": "GET", "url": "{{base_url}}/ai/analyze/status"}
+				},
+				{
+					"name": "Get Analysis Results",
+					"request": {"method": "GET", "url": "{{base_url}}/ai/analyze/results"}
+				}
+			]
+		},
+		{
+			"name": "📚 Guidance",
+			"item": [
+				{
+					"name": "Get All Stages",
+					"request": {"method": "GET", "url": "{{base_url}}/guidance/stages"}
+				},
+				{
+					"name": "Get Stage Concepts",
+					"request": {"method": "GET", "url": "{{base_url}}/guidance/stages/{{stage_id}}/concepts"}
+				},
+				{
+					"name": "Get Concept Detail",
+					"request": {"method": "GET", "url": "{{base_url}}/guidance/concepts/{{concept_id}}"}
+				},
+				{
+					"name": "Mark Concept as Viewed",
+					"request": {"method": "POST", "url": "{{base_url}}/guidance/progress/{{concept_id}}"}
+				},
+				{
+					"name": "Get My Progress",
+					"request": {"method": "GET", "url": "{{base_url}}/guidance/progress"}
+				}
+			]
+		},
+		{
+			"name": "⚙️ Settings",
+			"item": [
+				{
+					"name": "Get All Settings",
+					"request": {"method": "GET", "url": "{{base_url}}/settings/"}
+				},
+				{
+					"name": "Update Profile",
+					"request": {
+						"method": "PATCH",
+						"url": "{{base_url}}/settings/profile",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"full_name\": \"Updated Name\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Change Password",
+					"request": {
+						"method": "PATCH",
+						"url": "{{base_url}}/settings/password",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"current_password\": \"OldPass123\",\n  \"new_password\": \"NewPass456\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Update Privacy Settings",
+					"request": {
+						"method": "PATCH",
+						"url": "{{base_url}}/settings/privacy",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"visibility\": \"private\",\n  \"show_contact_info\": false\n}"
+						}
+					}
+				},
+				{
+					"name": "Deactivate Account",
+					"request": {"method": "POST", "url": "{{base_url}}/settings/deactivate"}
+				},
+				{
+					"name": "Delete Account",
+					"request": {"method": "DELETE", "url": "{{base_url}}/settings/"}
+				}
+			]
+		},
+		{
+			"name": "🛡️ Admin",
+			"item": [
+				{
+					"name": "List All Users",
+					"request": {"method": "GET", "url": "{{base_url}}/admin/users"}
+				},
+				{
+					"name": "Search User by Email",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/admin/users/search?email=user@example.com",
+							"query": [{"key": "email", "value": "user@example.com"}]
+						}
+					}
+				},
+				{
+					"name": "Suspend User",
+					"request": {"method": "PATCH", "url": "{{base_url}}/admin/users/{{user_id}}/suspend"}
+				},
+				{
+					"name": "Promote User",
+					"request": {
+						"method": "PATCH",
+						"url": {
+							"raw": "{{base_url}}/admin/users/{{user_id}}/promote?new_role=admin",
+							"query": [{"key": "new_role", "value": "admin"}]
+						}
+					}
+				},
+				{
+					"name": "List Partner Requests",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/admin/requests?status=pending",
+							"query": [{"key": "status", "value": "pending"}]
+						}
+					}
+				},
+				{
+					"name": "Approve Partner",
+					"request": {"method": "PATCH", "url": "{{base_url}}/admin/approve/{{profile_id}}"}
+				},
+				{
+					"name": "Reject Partner",
+					"request": {"method": "PATCH", "url": "{{base_url}}/admin/reject/{{profile_id}}"}
+				},
+				{
+					"name": "View Security Logs",
+					"request": {"method": "GET", "url": "{{base_url}}/admin/security-logs"}
+				},
+				{
+					"name": "Dashboard Stats",
+					"request": {"method": "GET", "url": "{{base_url}}/admin/stats"}
+				}
+			]
+		},
+		{
+			"name": "🌐 Health",
+			"item": [
+				{
+					"name": "Root",
+					"request": {
+						"auth": {"type": "noauth"},
+						"method": "GET",
+						"url": "http://localhost:8000/"
+					}
+				},
+				{
+					"name": "Health Check",
+					"request": {
+						"auth": {"type": "noauth"},
+						"method": "GET",
+						"url": "http://localhost:8000/health"
+					}
+				}
+			]
+		}
+	]
+}

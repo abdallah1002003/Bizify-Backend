@@ -563,6 +563,26 @@ file: <File>
 
 ---
 
+## 13. 🤖 AI Pipeline `/api/v1/ai`
+
+| Method | Endpoint | Auth Required | Description |
+|--------|----------|:---:|-------------|
+| `POST` | `/ai/analyze` | ✅ | Read user's questionnaire answers and start AI pipeline |
+| `GET` | `/ai/analyze/status` | ✅ | Check current progress of the AI pipeline |
+| `GET` | `/ai/analyze/results` | ✅ | Fetch generated results and save to DB |
+
+### POST `/ai/analyze`
+```json
+// No request body needed. The backend fetches profile data and sends it automatically.
+// Response
+{
+  "success": true,
+  "result": { ... }
+}
+```
+
+---
+
 ## 📌 Quick Reference
 
 | Category | Base Path |
@@ -578,8 +598,17 @@ file: <File>
 | Billing (PayPal + Paymob) | `/api/v1/billing` |
 | Export | `/api/v1/export` |
 | Import | `/api/v1/import` |
+| AI Pipeline | `/api/v1/ai` |
 | Admin | `/api/v1/admin` |
 
 ---
 
 ## 🧪 Import in Postman
+
+A complete, ready-to-use Postman collection is available for this API.
+
+1. Open Postman.
+2. Click **Import** (or File -> Import).
+3. Select the `Bizify_API.postman_collection.json` file located in the root directory.
+4. Set the `base_url` variable to your local or production server.
+5. After logging in, copy your JWT and set the `token` variable.

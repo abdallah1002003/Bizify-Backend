@@ -48,7 +48,6 @@ class Business(Base):
     created_at = Column(DateTime, default = datetime.utcnow)
     updated_at = Column(DateTime, default = datetime.utcnow, onupdate = datetime.utcnow)
     
-    industry_id = Column(UUID(as_uuid = True), ForeignKey("industries.id"), nullable = True)
 
     owner = relationship("User", back_populates = "businesses")
     converted_idea = relationship("Idea", foreign_keys = [idea_id])
@@ -59,4 +58,3 @@ class Business(Base):
     embeddings = relationship("Embedding", back_populates = "business")
     chat_sessions = relationship("ChatSession", back_populates = "business")
     share_links = relationship("ShareLink", back_populates = "business")
-    industry = relationship("Industry", back_populates = "businesses")
