@@ -14,6 +14,7 @@ from app.api.v1 import (
     profile,
     settings,
     users,
+    payment_methods,
 )
 
 api_router = APIRouter()
@@ -30,4 +31,5 @@ api_router.include_router(settings.router, prefix="/settings", tags=["User Setti
 api_router.include_router(imports.router, prefix="/import", tags=["Import"])
 api_router.include_router(groups.router, tags=["Teams"])
 api_router.include_router(billing.router, prefix="/billing", tags=["Billing"])
+api_router.include_router(payment_methods.router, prefix="/payment-methods", tags=["Payment Methods"])
 api_router.include_router(ai_pipeline.router, prefix="/ai", tags=["AI Pipeline"])
