@@ -1,113 +1,122 @@
 import logging
-import json
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import StreamingResponse
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user
+from app.core.config import settings
 from app.models.user import User
-from app.schemas.ai_pipeline import AIPipelineResponse
-from app.services.ai_pipeline_service import AIPipelineService
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+_AI_BASE_URL = "https://bizifyai-production.up.railway.app"
+_REQUEST_TIMEOUT_SECONDS = 120
 
-@router.post(
-    "/analyze",
-    response_model=AIPipelineResponse,
-    summary="Run AI Pipeline",
+
+@router.api_route(
+    "/{full_path:path}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    summary="AI Pipeline Generic Proxy",
     description=(
-        "Reads the current user's questionnaire answers from the database and "
-        "forwards them to the external AI pipeline for analysis. "
-        "No request body needed — the profile is fetched automatically."
+        "A secure, authenticated proxy that forwards any request to the AI pipeline service. "
+        "Validates the user's JWT token, injects the x-api-key, and overrides the user_id "
+        "with the authenticated user's ID to prevent unauthorized access to other users' data."
     ),
 )
-async def run_ai_pipeline(
-    db: Session = Depends(get_db),
+async def ai_pipeline_proxy(
+    full_path: str,
+    request: Request,
     current_user: User = Depends(get_current_user),
-) -> AIPipelineResponse:
-    """Build payload from user's stored profile and proxy it to the AI pipeline."""
+) -> StreamingResponse:
+    """
+    Generic proxy to the external AI pipeline service.
+
+    Security guarantees:
+    - JWT must be valid (enforced by get_current_user dependency).
+    - x-api-key is injected server-side (never exposed to the client).
+    - user_id in the request body is always overridden with the authenticated user's ID.
+    - user_id path params are validated to match the authenticated user's ID.
+    """
+    user_id = str(current_user.id)
+
+    path_parts = full_path.split("/")
+    for i, part in enumerate(path_parts):
+        if i > 0 and part and part != user_id:
+            prev = path_parts[i - 1] if i > 0 else ""
+            known_resources = {
+                "status", "idea", "questionnaire", "profile", "problems",
+                "idea-intake", "customers", "competition", "market-potential", "idea-strategy"
+            }
+            if prev in known_resources:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You are not allowed to access another user's pipeline data.",
+                )
+
+    target_url = f"{_AI_BASE_URL}/pipeline/{full_path}"
+
+    forwarded_headers = {
+        "x-api-key": settings.AI_PIPELINE_API_KEY,
+        "Content-Type": "application/json",
+    }
+
+    body_bytes = await request.body()
+    body: dict | None = None
+
+    if body_bytes:
+        import json
+        try:
+            body = json.loads(body_bytes)
+            if isinstance(body, dict):
+                body["user_id"] = user_id
+        except (json.JSONDecodeError, ValueError):
+            body = None
+
     try:
-        result = await AIPipelineService.run(db=db, user_id=current_user.id)
-        return AIPipelineResponse(success=True, result=result)
+        async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS) as client:
+            logger.info(
+                "Proxying %s /pipeline/%s for user %s",
+                request.method, full_path, user_id,
+            )
 
-    except httpx.HTTPStatusError as exc:
-        logger.error(
-            "AI pipeline returned HTTP %s: %s",
-            exc.response.status_code,
-            exc.response.text,
-        )
+            proxy_response = await client.request(
+                method=request.method,
+                url=target_url,
+                headers=forwarded_headers,
+                json=body if body is not None else None,
+                content=body_bytes if body is None and body_bytes else None,
+                params=dict(request.query_params),
+            )
+
+            logger.info(
+                "AI pipeline responded %s for /pipeline/%s",
+                proxy_response.status_code, full_path,
+            )
+
+            return StreamingResponse(
+                content=proxy_response.aiter_bytes(),
+                status_code=proxy_response.status_code,
+                headers={"Content-Type": proxy_response.headers.get("content-type", "application/json")},
+            )
+
+    except httpx.TimeoutException:
+        logger.error("AI pipeline request timed out for /pipeline/%s", full_path)
         raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="The AI pipeline is taking too long to respond. Please try again.",
+        )
+    except httpx.HTTPStatusError as exc:
+        logger.error("AI pipeline returned HTTP %s: %s", exc.response.status_code, exc.response.text)
+        raise HTTPException(
+            status_code=exc.response.status_code,
             detail=f"AI pipeline error: {exc.response.text}",
-        ) from exc
-
+        )
     except httpx.RequestError as exc:
         logger.error("AI pipeline request failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Could not reach the AI pipeline. Please try again later.",
-        ) from exc
-
-
-@router.get(
-    "/analyze/status",
-    summary="Check AI Pipeline Status",
-    description="Check the current progress of the AI pipeline for the logged-in user.",
-)
-async def get_ai_pipeline_status(
-    current_user: User = Depends(get_current_user),
-) -> dict:
-    """Proxy the status check to the external AI pipeline."""
-    try:
-        return await AIPipelineService.get_status(user_id=current_user.id)
-            
-    except httpx.HTTPStatusError as exc:
-        logger.error("AI pipeline status returned HTTP %s", exc.response.status_code)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"AI pipeline error: {exc.response.text}",
-        ) from exc
-    except httpx.RequestError as exc:
-        logger.error("AI pipeline status request failed: %s", exc)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Could not reach the AI pipeline. Please try again later.",
-        ) from exc
-
-
-
-@router.get(
-    "/analyze/results",
-    summary="Get AI Pipeline Results",
-    description="Fetch the final generated results from the AI pipeline, save them to the database, and return them.",
-)
-async def get_ai_pipeline_results(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> dict:
-    """Proxy the results fetching to the external AI pipeline and save to DB."""
-    try:
-        results = await AIPipelineService.get_results(user_id=current_user.id)
-        
-        if current_user.profile:
-            current_user.profile.personalization_profile = json.dumps(results)
-            db.commit()
-            
-        return results
-            
-    except httpx.HTTPStatusError as exc:
-        logger.error("AI pipeline results returned HTTP %s", exc.response.status_code)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"AI pipeline error: {exc.response.text}",
-        ) from exc
-    except httpx.RequestError as exc:
-        logger.error("AI pipeline results request failed: %s", exc)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Could not reach the AI pipeline. Please try again later.",
-        ) from exc
+        )
