@@ -76,31 +76,53 @@ async def ai_pipeline_proxy(
             body = None
 
     try:
-        async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS) as client:
-            logger.info(
-                "Proxying %s /pipeline/%s for user %s",
-                request.method, full_path, user_id,
-            )
+        client = httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS)
+        
+        req = client.build_request(
+            method=request.method,
+            url=target_url,
+            headers=forwarded_headers,
+            json=body if body is not None else None,
+            content=body_bytes if body is None and body_bytes else None,
+            params=dict(request.query_params),
+        )
 
-            proxy_response = await client.request(
-                method=request.method,
-                url=target_url,
-                headers=forwarded_headers,
-                json=body if body is not None else None,
-                content=body_bytes if body is None and body_bytes else None,
-                params=dict(request.query_params),
-            )
+        logger.info(
+            "Proxying %s /pipeline/%s for user %s",
+            request.method, full_path, user_id,
+        )
 
-            logger.info(
-                "AI pipeline responded %s for /pipeline/%s",
-                proxy_response.status_code, full_path,
-            )
+        proxy_response = await client.send(req, stream=True)
 
-            return StreamingResponse(
-                content=proxy_response.aiter_bytes(),
+        if proxy_response.is_error:
+            await proxy_response.aread()
+            error_text = proxy_response.text
+            await proxy_response.aclose()
+            await client.aclose()
+            logger.error("AI pipeline returned HTTP %s: %s", proxy_response.status_code, error_text)
+            raise HTTPException(
                 status_code=proxy_response.status_code,
-                headers={"Content-Type": proxy_response.headers.get("content-type", "application/json")},
+                detail=f"AI pipeline error: {error_text}",
             )
+
+        logger.info(
+            "AI pipeline responded %s for /pipeline/%s. Starting stream...",
+            proxy_response.status_code, full_path,
+        )
+
+        async def stream_generator():
+            try:
+                async for chunk in proxy_response.aiter_bytes():
+                    yield chunk
+            finally:
+                await proxy_response.aclose()
+                await client.aclose()
+
+        return StreamingResponse(
+            stream_generator(),
+            status_code=proxy_response.status_code,
+            headers={"Content-Type": proxy_response.headers.get("content-type", "text/event-stream")},
+        )
 
     except httpx.TimeoutException:
         logger.error("AI pipeline request timed out for /pipeline/%s", full_path)
