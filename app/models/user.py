@@ -63,7 +63,7 @@ class User(Base):
             
         return False
 
-    profile = relationship("UserProfile", back_populates = "user", uselist = False)
+    profile = relationship("UserProfile", back_populates = "user", uselist = False, cascade="all, delete-orphan")
     ideas = relationship("Idea", back_populates = "owner")
     businesses = relationship("Business", back_populates = "owner")
     subscriptions = relationship("Subscription", back_populates = "user")
@@ -79,7 +79,8 @@ class User(Base):
         "PartnerProfile", 
         back_populates = "user", 
         uselist = False, 
-        foreign_keys = "[PartnerProfile.user_id]"
+        foreign_keys = "[PartnerProfile.user_id]",
+        cascade="all, delete-orphan"
     )
     
     admin_logs = relationship("AdminActionLog", back_populates = "admin")
@@ -87,4 +88,4 @@ class User(Base):
     share_links = relationship("ShareLink", back_populates = "creator")
     chat_sessions = relationship("ChatSession", back_populates = "user")
     group_messages = relationship("GroupMessage", back_populates = "sender", cascade="all, delete-orphan")
-    verification_codes = relationship("AccountVerification", back_populates = "user")
+    verification_codes = relationship("AccountVerification", back_populates = "user", cascade="all, delete-orphan")

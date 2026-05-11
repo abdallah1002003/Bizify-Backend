@@ -54,13 +54,23 @@ def register_user(
         confirm_password=registration_in.confirm_password,
     )
 
-    if UserService.get_user_by_email(db, user_in.email):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered",
-        )
+    existing_user = UserService.get_user_by_email(db, user_in.email)
+    if existing_user:
+        if not existing_user.is_verified:
+            # Overwrite unverified user to prevent locking out incomplete signups
+            UserService.delete_user_by_email(db, existing_user.email)
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered",
+            )
 
-    return UserService.create_user(db, user_in)
+    user = UserService.create_user(db, user_in)
+    
+    if registration_in.questionnaire_answers:
+        ProfileService.submit_full_questionnaire(db, user.id, registration_in.questionnaire_answers)
+        
+    return user
 
 
 @router.post(

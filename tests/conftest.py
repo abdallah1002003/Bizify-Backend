@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -17,6 +18,16 @@ engine = create_engine(
     poolclass=StaticPool,
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def mock_global_services():
+    """
+    Globally mock email delivery and DB compatibility tasks to prevent hangs.
+    """
+    with patch("app.services.user_service.send_otp_email"), \
+         patch("app.core.database.ensure_sqlite_compatibility_schema"):
+        yield
 
 
 @pytest.fixture(scope="function")

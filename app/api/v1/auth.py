@@ -74,6 +74,12 @@ def forgot_password(email: str, db: Session = Depends(get_db)) -> Dict[str, str]
     return AuthService.forgot_password(db, email)
 
 
+@router.post("/verify-reset-code")
+def verify_reset_code(email: str, otp_code: str, db: Session = Depends(get_db)) -> Dict[str, str]:
+    """Verify a password reset code before allowing the user to type a new password."""
+    return AuthService.verify_reset_code(db, email, otp_code)
+
+
 @router.post("/reset-password")
 def reset_password(
     email: str,

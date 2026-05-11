@@ -5,6 +5,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, EmailStr, ValidationInfo, field_validator
 
 from app.models.user import UserRole
+from app.schemas.questionnaire import QuestionnaireAnswer
 
 REGISTRATION_ALLOWED_ROLES = {
     UserRole.ENTREPRENEUR,
@@ -30,6 +31,7 @@ class RegistrationBase(BaseModel):
     full_name: Optional[str] = None
     password: str
     confirm_password: str
+    questionnaire_answers: Optional[list[QuestionnaireAnswer]] = None
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("password")

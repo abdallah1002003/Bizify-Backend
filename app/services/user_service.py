@@ -211,6 +211,26 @@ class UserService:
         return True
 
     @staticmethod
+    def verify_reset_code_only(db: Session, email: str, otp_code: str) -> bool:
+        """Verify if a password reset OTP is valid without resetting."""
+        user = UserService.get_user_by_email(db, email=email)
+        if not user:
+            return False
+
+        db_otp = auth_repo.get_latest_otp(
+            db,
+            user.id,
+            VerificationType.PASSWORD_RESET,
+        )
+        if not db_otp or db_otp.is_expired:
+            return False
+
+        if not verify_password(otp_code, db_otp.otp_hash):
+            return False
+
+        return True
+
+    @staticmethod
     def get_user_by_id(db: Session, user_id: uuid.UUID) -> Optional[User]:
         """Fetch a user by identifier."""
         return user_repo.get(db, user_id)

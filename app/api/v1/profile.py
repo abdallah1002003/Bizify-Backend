@@ -38,13 +38,7 @@ def skip_questionnaire(
     return ProfileService.skip_questionnaire(db, current_user.id)
 
 
-@router.post("/skip-guide")
-def skip_guide(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> Dict[str, str]:
-    """Skip the beginner guide only."""
-    return ProfileService.skip_guide(db, current_user.id)
+
 
 
 @router.post("/restart")
@@ -65,14 +59,7 @@ def finalize_onboarding(
     return ProfileService.finalize_onboarding(db, current_user.id)
 
 
-@router.patch("/guide-status")
-def update_guide_status(
-    status_in: GuideStatusUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
-    """Update the current user's guide status."""
-    return ProfileService.update_guide_status(db, current_user.id, status_in)
+
 
 
 @router.get("/", response_model=UserProfileRead)
