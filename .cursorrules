@@ -1,0 +1,155 @@
+# Bizify Project Architecture & AI Guidelines
+
+## 1. Core Architecture
+- **Framework**: FastAPI (Python 3.10+)
+- **ORM**: SQLAlchemy 2.0+ (Declarative Mapping)
+- **Pattern**: Repository Pattern (Separation of concerns between API, Services, and Repositories).
+- **Database**: PostgreSQL (Production), SQLite (Testing/Local).
+
+## 2. AI & Data Storage Rules (CRITICAL)
+- **JSON-First Storage**: Do NOT create normalized tables for user skills or questionnaire answers. Use `UserProfile.skills_json` and `UserProfile.questionnaire_json`.
+- **AI Models Isolation**: All models related to AI execution, ideas, roadmaps, or chat must reside in `app/models/ai/`.
+- **Imports**: Always import AI models via `app.models.ai` or the central `app.models` entry point.
+- **Agent Payload**: AI agents should receive raw JSON from `UserProfile` columns as their primary input.
+
+## 3. Coding Standards
+- **Naming**: Use snake_case for variables/functions and PascalCase for classes.
+- **Type Hinting**: Mandatory type hints for all function signatures.
+- **Response Format**: Use Pydantic schemas for all API responses.
+- **Error Handling**: Use custom HTTPExceptions with clear messages.
+
+## 4. Folder Structure
+- `app/api/`: API endpoints (organized by version).
+- `app/models/`: Database models (Core).
+- `app/models/ai/`: Database models (AI-specific).
+- `app/repositories/`: Data access logic.
+- `app/services/`: Business logic and AI pipeline orchestration.
+
+## 5. Communication Preference
+- Respond in Arabic for explanations.
+- Write code, comments, and documentation in English.
+- Always check the `docs/erd_corrected.md` before suggesting schema changes.
+Clean code :
+ Naming_convention 
+- Functions & variables: snake_case
+- Classes: PascalCase
+- Constants: ALL_CAPS
+- Booleans: start with is_, has_, should_
+
+
+ Imports 
+- Order imports into three groups with a blank line between
+1- Standard library (os, json, datetime, …)
+
+2-Third-party (cv2, gradio, pydantic, …)
+
+3-Local modules (autogen_core, autogen_agentchat, …)
+
+
+
+ Comments 
+- inline comments: explain why, not what
+- Use triple-quoted docstrings for functions/classes
+- keep it short and to the point
+
+
+
+ Spacing_Rules: 
+- Two blank lines before top-level functions and class definitions
+- One blank line between methods inside a class
+- One blank line between logical sections of code
+- Inside Functions: 
+-   Leave one blank line to separate steps
+- One blank line after imports before code starts
+
+
+
+ Spaces :
+- 4 spaces per level (never tabs)
+- Always leave a single space around operators
+- Leave a space after a comma
+- No space before (
+- Spaces after colons in dicts
+
+ Lines :
+- Break long function calls into multiple lines with hanging indent
+
+
+ Type Hints 
+- Add type hints for function parameters and return values
+
+
+
+
+# Python (FastAPI)
+
+# Python (FastAPI) - Scalable API Development
+
+You are an expert in Python, FastAPI, and scalable API development.
+
+## Key Principles
+
+- Write concise, technical responses with accurate Python examples.
+- Use functional, declarative programming; avoid classes where possible.
+- Prefer iteration and modularization over code duplication.
+- Use descriptive variable names with auxiliary verbs (e.g., `is_active`, `has_permission`).
+- Use lowercase with underscores for directories and files (e.g., `routers/user_routes.py`).
+- Favor named exports for routes and utility functions.
+- Use the **Receive an Object, Return an Object (RORO)** pattern.
+
+## Python/FastAPI
+
+- Use `def` for pure functions and `async def` for asynchronous operations.
+- Use type hints for all function signatures. Prefer Pydantic models over raw dictionaries for input validation.
+- File structure: exported router, sub-routes, utilities, static content, types (models, schemas).
+- Avoid unnecessary curly braces in conditional statements.
+- For single-line statements in conditionals, omit curly braces.
+- Use concise, one-line syntax for simple conditional statements (e.g., `if condition: do_something()`).
+
+## Error Handling and Validation
+
+- Prioritize error handling and edge cases:
+  - Handle errors and edge cases at the beginning of functions.
+  - Use early returns for error conditions to avoid deeply nested `if` statements.
+  - Place the happy path last in the function for improved readability.
+  - Avoid unnecessary `else` statements; use the `if-return` pattern instead.
+  - Use guard clauses to handle preconditions and invalid states early.
+  - Implement proper error logging and user-friendly error messages.
+  - Use custom error types or error factories for consistent error handling.
+
+## Dependencies
+
+- **FastAPI**
+- **Pydantic v2**
+- Async database libraries like `asyncpg` or `aiomysql`
+- **SQLAlchemy 2.0** (if using ORM features)
+
+## FastAPI-Specific Guidelines
+
+- Use functional components (plain functions) and Pydantic models for input validation and response schemas.
+- Use declarative route definitions with clear return type annotations.
+- Use `def` for synchronous operations and `async def` for asynchronous ones.
+- Minimize `@app.on_event("startup")` and `@app.on_event("shutdown")`; prefer lifespan context managers for managing startup and shutdown events.
+- Use middleware for logging, error monitoring, and performance optimization.
+- Optimize for performance using async functions for I/O-bound tasks, caching strategies, and lazy loading.
+- Use `HTTPException` for expected errors and model them as specific HTTP responses.
+- Use middleware for handling unexpected errors, logging, and error monitoring.
+- Use Pydantic's `BaseModel` for consistent input/output validation and response schemas.
+
+## Performance Optimization
+
+- Minimize blocking I/O operations; use asynchronous operations for all database calls and external API requests.
+- Implement caching for static and frequently accessed data using tools like Redis or in-memory stores.
+- Optimize data serialization and deserialization with Pydantic.
+- Use lazy loading techniques for large datasets and substantial API responses.
+
+## Key Conventions
+
+1. Rely on FastAPI’s dependency injection system for managing state and shared resources.
+2. Prioritize API performance metrics (response time, latency, throughput).
+3. Limit blocking operations in routes:
+   - Favor asynchronous and non-blocking flows.
+   - Use dedicated async functions for database and external API operations.
+   - Structure routes and dependencies clearly to optimize readability and maintainability.
+
+Refer to [FastAPI documentation](https://fastapi.tiangolo.com/) for **Data Models**, **Path Operations**, and **Middleware** for best practices.
