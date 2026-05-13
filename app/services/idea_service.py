@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models.group_member import GroupRole
-from app.models.idea import Idea, IdeaStatus
+from app.models.ai.idea import Idea, IdeaStatus
 from app.repositories.group_repo import group_repo
 from app.repositories.idea_repo import idea_repo
 

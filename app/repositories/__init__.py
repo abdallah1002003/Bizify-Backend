@@ -12,7 +12,7 @@ from app.repositories.notification_repo import notification_repo
 from app.repositories.partner_repo import partner_repo
 from app.repositories.privacy_repo import privacy_repo
 from app.repositories.profile_repo import profile_repo
-from app.repositories.skill_repo import skill_repo
+
 from app.repositories.user_repo import user_repo
 
 __all__ = [
@@ -32,7 +32,7 @@ __all__ = [
     "privacy_repo",
     "profile_repo",
     "security_repo",
-    "skill_repo",
+
     "subscription_repo",
     "user_repo",
 ]

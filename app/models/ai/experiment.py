@@ -25,3 +25,4 @@ class Experiment(Base):
 
     idea = relationship("Idea", back_populates = "experiments")
     creator = relationship("User")
+    agent_runs = relationship("AgentRun", back_populates = "experiment")

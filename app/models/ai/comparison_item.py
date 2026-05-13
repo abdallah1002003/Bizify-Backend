@@ -25,3 +25,4 @@ class ComparisonItem(Base):
 
     comparison = relationship("IdeaComparison", back_populates = "items")
     idea = relationship("Idea", back_populates = "comparison_items")
+    agent_runs = relationship("AgentRun", back_populates = "comparison_item")

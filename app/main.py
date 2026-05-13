@@ -1,17 +1,36 @@
+from contextlib import asynccontextmanager
 from typing import Dict
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.api.api import api_router
 from app.core.config import settings
-from app.core.database import ensure_sqlite_compatibility_schema
+from app.core.database import engine, ensure_sqlite_compatibility_schema
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Apply local SQLite compatibility fixes and test DB connection before handling requests."""
+    ensure_sqlite_compatibility_schema()
+    
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        print(" Database connected successfully!")
+    except Exception as e:
+        print(f" Database connection failed: {e}")
+
+    yield
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="Bizify",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -29,10 +48,7 @@ app.add_middleware(
 app.include_router(api_router, prefix="/api/v1")
 
 
-@app.on_event("startup")
-async def startup_tasks() -> None:
-    """Apply local SQLite compatibility fixes before handling requests."""
-    ensure_sqlite_compatibility_schema()
+
 
 
 @app.get("/")

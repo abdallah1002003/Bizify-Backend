@@ -176,14 +176,16 @@ def process_export_task(job_id: str) -> None:
             if profile:
                 data_to_export["profile"] = {
                     "bio": profile.bio,
-                    "interests": profile.interests_json,
-                    "background": profile.background_json,
+                    "questionnaire_json": profile.questionnaire_json,
                 }
 
         if "skills" in job.scope:
             skills = skill_repo.get_by_user(db, user_id)
             data_to_export["skills"] = [
-                {"name": skill.skill_name, "level": skill.declared_level}
+                {
+                    "name": skill.skill_name,
+                    "level": getattr(skill, "declared_level", None),
+                }
                 for skill in skills
             ]
 

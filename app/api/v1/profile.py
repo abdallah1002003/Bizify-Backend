@@ -11,10 +11,8 @@ from app.schemas.questionnaire import (
     QuestionnaireAnswer,
     QuestionnaireResponse,
 )
-from app.schemas.skill_gap import PredefinedSkillSearchResult, SkillCategoryRead, UserSkillCreate, UserSkillRead
 from app.schemas.user_profile import UserProfileRead
 from app.services.profile_service import ProfileService
-from app.services.skill_gap_service import SkillGapService
 
 router = APIRouter()
 
@@ -27,6 +25,16 @@ def submit_questionnaire(
 ) -> QuestionnaireResponse:
     """Submit the onboarding questionnaire."""
     return ProfileService.submit_full_questionnaire(db, current_user.id, answers)
+
+
+@router.get("/questionnaire")
+def get_questionnaire(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """Get the user's saved questionnaire JSON data."""
+    profile = ProfileService.get_or_create_profile(db, current_user.id)
+    return profile.questionnaire_json or {}
 
 
 @router.post("/skip")
@@ -72,92 +80,15 @@ def get_my_profile(
 
 
 
-@router.get(
-    "/skill-categories",
-    response_model=List[SkillCategoryRead],
-    summary="List Skill Categories",
-    description="Returns all skill categories with their predefined skills. "
-                "Use this to build the skill-picker UI.",
-)
-def list_skill_categories(
+
+@router.post("/skills/json")
+def update_skills_json(
+    skills: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[SkillCategoryRead]:
-    """Return all categories so the frontend can render a grouped skill picker."""
-    return SkillGapService.get_all_categories(db)
-
-
-@router.get(
-    "/skills/search",
-    response_model=List[PredefinedSkillSearchResult],
-    summary="Search Skills",
-    description=(
-        "Search across all predefined skills by name. "
-        "Returns up to 20 results. Useful for building a search box.\n\n"
-        "**Example:** `/skills/search?q=python`"
-    ),
-)
-def search_skills(
-    q: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> List[PredefinedSkillSearchResult]:
-    """Full-text search on predefined skill names (case-insensitive)."""
-    return SkillGapService.search_predefined_skills(db, q)
-
-
-
-@router.get("/skills", response_model=List[UserSkillRead])
-def get_user_skills(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> List[UserSkillRead]:
-    """Return all skills selected by the current user."""
-    return SkillGapService.get_user_skills(db, current_user.id)
-
-
-@router.post(
-    "/skills",
-    response_model=UserSkillRead,
-    status_code=status.HTTP_201_CREATED,
-    summary="Add a Skill",
-    description=(
-        "Add a skill to your profile.\n\n"
-        "**Option 1 – pick from the list:** send `predefined_skill_id` only.\n\n"
-        "**Option 2 – custom skill:** send `skill_name` only (leave `predefined_skill_id` out or null)."
-    ),
-)
-def add_user_skill(
-    skill_in: Annotated[
-        UserSkillCreate,
-        Body(
-            openapi_examples={
-                "predefined": {
-                    "summary": "✅ Add from list (predefined)",
-                    "description": "Pick a skill by its ID from the /skill-categories list.",
-                    "value": {"predefined_skill_id": "paste-the-skill-uuid-here"},
-                },
-                "custom": {
-                    "summary": "✏️ Add custom skill (not in list)",
-                    "description": "If the skill doesn't exist in the list, type its name here.",
-                    "value": {"skill_name": "My Custom Skill"},
-                },
-            }
-        ),
-    ],
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> UserSkillRead:
-    """Add a predefined or custom skill to the current user's profile."""
-    return SkillGapService.add_user_skill(db, current_user.id, skill_in)
-
-
-@router.delete("/skills/{skill_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user_skill(
-    skill_id: UUID,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> None:
-    """Remove a skill from the current user's profile."""
-    SkillGapService.delete_user_skill(db, current_user.id, skill_id)
-    return None
+) -> Any:
+    """Save the raw skills JSON data for the current user."""
+    profile = ProfileService.get_or_create_profile(db, current_user.id)
+    profile.skills_json = skills
+    db.commit()
+    return profile.skills_json or {}

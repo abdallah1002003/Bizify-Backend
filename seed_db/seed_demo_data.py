@@ -105,26 +105,29 @@ def seed():
                 bio=f"Passionate {domain} entrepreneur.",
                 onboarding_completed=True,
                 guide_status=GuideStatus.COMPLETED,
-                preferences_json={
-                    "curiosity_domain": domain,
-                    "experience_level": "Intermediate",
-                    "business_interests": [interest],
-                    "target_region": "Global",
-                    "founder_setup": "Co-founder",
-                    "risk_tolerance": "Moderate",
-                },
-                personality_json={
-                    "free_day_preferences": ["Build or create something", "Solve a problem"],
-                    "preferred_work_types": ["Working with technology", "Analyzing data"],
-                    "problem_solving_styles": ["Logical or technical problems"],
-                    "preferred_work_environments": ["Remote / flexible"],
-                    "desired_impact": ["Build products", "Innovate new ideas"],
+                questionnaire_json={
+                    "user_profile": {
+                        "curiosity_domain": domain,
+                        "experience_level": "Intermediate",
+                        "business_interests": [interest],
+                        "target_region": "Global",
+                        "founder_setup": "Co-founder",
+                        "risk_tolerance": "Moderate",
+                    },
+                    "career_profile": {
+                        "free_day_preferences": ["Build or create something", "Solve a problem"],
+                        "preferred_work_types": ["Working with technology", "Analyzing data"],
+                        "problem_solving_styles": ["Logical or technical problems"],
+                        "preferred_work_environments": ["Remote / flexible"],
+                        "desired_impact": ["Build products", "Innovate new ideas"],
+                    },
+                    "interests": [interest],
                 },
             ))
 
             # 5 skills per entrepreneur
-            for j, skill in enumerate(skills_list + ["Leadership", "Communication", "AI Tools"], 1):
-                db.add(UserSkill(id=uuid.uuid4(), user_id=e.id, skill_name=skill, declared_level=j * 2))
+            for _, skill in enumerate(skills_list + ["Leadership", "Communication", "AI Tools"], 1):
+                db.add(UserSkill(id=uuid.uuid4(), user_id=e.id, skill_name=skill, is_custom=False))
 
             # 5 notifications per entrepreneur
             notifs = [

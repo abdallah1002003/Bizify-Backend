@@ -1,9 +1,12 @@
 import asyncio
+import json
+import uuid
+
 from app.core.database import SessionLocal
+from app.core.security import get_password_hash
 from app.models.user import User
 from app.models.user_profile import UserProfile
-from app.core.security import get_password_hash
-import uuid
+from app.utils.questionnaire_storage import merge_questionnaire
 
 async def create_demo_users():
     db = SessionLocal()
@@ -36,41 +39,47 @@ async def create_demo_users():
 
     profile_creative = UserProfile(
         user_id=user_creative.id,
-        background_json={
-            "curiosity_domain": "Art&Design",
-            "experience_level": "Growth-Seeker",
-            "business_interests": ["E-commerce", "Marketplace"],
-            "target_region": "Global",
-            "founder_setup": "Co-founder",
-            "risk_tolerance": "I enjoy taking calculated risks"
+        questionnaire_json={
+            "user_profile": {
+                "curiosity_domain": "Art&Design",
+                "experience_level": "Growth-Seeker",
+                "business_interests": ["E-commerce", "Marketplace"],
+                "target_region": "Global",
+                "founder_setup": "Co-founder",
+                "risk_tolerance": "I enjoy taking calculated risks",
+            },
+            "career_profile": {
+                "free_day_preferences": ["Design or express ideas"],
+                "preferred_work_types": ["Creative work (design, writing, media)"],
+                "problem_solving_styles": ["Creative challenges"],
+                "preferred_work_environments": ["Creative studio"],
+                "desired_impact": ["Innovate new ideas"],
+            },
+            "interests": ["E-commerce", "Marketplace"],
         },
-        personality_json={
-            "free_day_preferences": ["Design or express ideas"],
-            "preferred_work_types": ["Creative work (design, writing, media)"],
-            "problem_solving_styles": ["Creative challenges"],
-            "preferred_work_environments": ["Creative studio"],
-            "desired_impact": ["Innovate new ideas"]
-        }
     )
     db.add(profile_creative)
     
     profile_tech = UserProfile(
         user_id=user_tech.id,
-        background_json={
-            "curiosity_domain": "Technology",
-            "experience_level": "Aspiring Entrepreneur",
-            "business_interests": ["SaaS", "AI"],
-            "target_region": "MENA",
-            "founder_setup": "Solo",
-            "risk_tolerance": "High risk tolerance"
+        questionnaire_json={
+            "user_profile": {
+                "curiosity_domain": "Technology",
+                "experience_level": "Aspiring Entrepreneur",
+                "business_interests": ["SaaS", "AI"],
+                "target_region": "MENA",
+                "founder_setup": "Solo",
+                "risk_tolerance": "High risk tolerance",
+            },
+            "career_profile": {
+                "free_day_preferences": ["Code or build systems"],
+                "preferred_work_types": ["Technical architecture"],
+                "problem_solving_styles": ["Logical puzzles"],
+                "preferred_work_environments": ["Remote"],
+                "desired_impact": ["Change the world with tech"],
+            },
+            "interests": ["SaaS", "AI"],
         },
-        personality_json={
-            "free_day_preferences": ["Code or build systems"],
-            "preferred_work_types": ["Technical architecture"],
-            "problem_solving_styles": ["Logical puzzles"],
-            "preferred_work_environments": ["Remote"],
-            "desired_impact": ["Change the world with tech"]
-        }
     )
     db.add(profile_tech)
     
@@ -97,12 +106,17 @@ async def create_demo_users():
             
         print("Fetching results for Creative...")
         creative_results = await AIPipelineService.get_results(user_creative.id)
-        import json
-        profile_creative.personalization_profile = json.dumps(creative_results)
+        profile_creative.questionnaire_json = merge_questionnaire(
+            profile_creative.questionnaire_json,
+            personalization_profile=json.dumps(creative_results),
+        )
         
         print("Fetching results for Tech...")
         tech_results = await AIPipelineService.get_results(user_tech.id)
-        profile_tech.personalization_profile = json.dumps(tech_results)
+        profile_tech.questionnaire_json = merge_questionnaire(
+            profile_tech.questionnaire_json,
+            personalization_profile=json.dumps(tech_results),
+        )
         
         db.commit()
         print("\nAll done! Demo accounts are fully seeded with AI data.")

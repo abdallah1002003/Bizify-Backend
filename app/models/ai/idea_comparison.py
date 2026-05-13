@@ -23,3 +23,4 @@ class IdeaComparison(Base):
     user = relationship("User", back_populates = "comparisons")
     items = relationship("ComparisonItem", back_populates = "comparison")
     metrics = relationship("ComparisonMetric", back_populates = "comparison")
+    agent_runs = relationship("AgentRun", back_populates = "idea_comparison")

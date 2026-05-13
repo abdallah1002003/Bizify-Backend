@@ -24,3 +24,4 @@ class ComparisonMetric(Base):
     value = Column(Float)
 
     comparison = relationship("IdeaComparison", back_populates = "metrics")
+    agent_runs = relationship("AgentRun", back_populates = "comparison_metric")

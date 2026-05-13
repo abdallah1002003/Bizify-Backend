@@ -64,3 +64,4 @@ class Idea(Base):
     share_links = relationship("ShareLink", back_populates = "idea")
     chat_sessions = relationship("ChatSession", back_populates = "idea")
     comparison_items = relationship("ComparisonItem", back_populates = "idea")
+    agent_runs = relationship("AgentRun", back_populates = "idea")

@@ -20,6 +20,7 @@ _REQUEST_TIMEOUT_SECONDS = 120
     "/{full_path:path}",
     methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     summary="AI Pipeline Generic Proxy",
+    include_in_schema=False,
     description=(
         "A secure, authenticated proxy that forwards any request to the AI pipeline service. "
         "Validates the user's JWT token, injects the x-api-key, and overrides the user_id "

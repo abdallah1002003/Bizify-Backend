@@ -13,6 +13,11 @@ from app.repositories.admin_repo import audit_repo
 from app.repositories.notification_repo import notification_repo
 from app.repositories.privacy_repo import privacy_repo
 from app.repositories.profile_repo import profile_repo
+from app.utils.questionnaire_storage import (
+    coerce_dict,
+    get_user_profile_block,
+    merge_questionnaire,
+)
 from app.repositories.user_repo import user_repo
 from app.schemas.settings import NotificationUpdate, PasswordChange, PrivacyUpdate, ProfileUpdate
 
@@ -92,13 +97,22 @@ class SettingsService:
 
         profile = profile_repo.get_or_create(db, user.id)
         update_data = {}
+        interests_changed = False
         if data.bio is not None:
             update_data["bio"] = data.bio
 
         if data.interests is not None:
-            update_data["interests_json"] = data.interests
+            interests_changed = True
+            qj = coerce_dict(profile.questionnaire_json)
+            user_block = dict(get_user_profile_block(qj))
+            user_block["business_interests"] = list(data.interests)
+            profile.questionnaire_json = merge_questionnaire(
+                qj,
+                interests=list(data.interests),
+                user_profile=user_block,
+            )
 
-        if not has_user_changes and not update_data:
+        if not has_user_changes and not update_data and not interests_changed:
             return profile
 
         if has_user_changes:
@@ -112,6 +126,8 @@ class SettingsService:
                 commit=False,
                 refresh=False,
             )
+        elif interests_changed:
+            profile_repo.save(db, db_obj=profile, commit=False, refresh=False)
 
         db.commit()
         db.refresh(user)
@@ -167,6 +183,7 @@ class SettingsService:
 
         if user.profile:
             user.profile.bio = None
+            user.profile.questionnaire_json = None
 
         user_repo.save(db, db_obj=user, commit=False, refresh=False)
         audit_repo.log_action(

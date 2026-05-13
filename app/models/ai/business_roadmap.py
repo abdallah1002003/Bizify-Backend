@@ -26,3 +26,4 @@ class BusinessRoadmap(Base):
         back_populates = "roadmap",
         order_by = "RoadmapStage.order_index"
     )
+    agent_runs = relationship("AgentRun", back_populates = "roadmap")

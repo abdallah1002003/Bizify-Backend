@@ -7,6 +7,7 @@ from typing import List, Optional
 
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 from app.core.mail import EmailDeliveryError, send_otp_email
 from app.core.security import get_password_hash, verify_password
@@ -254,6 +255,10 @@ class UserService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found",
             )
+
+        # Clean up related records that might prevent deletion due to foreign key constraints
+        db.execute(text("DELETE FROM account_verifications WHERE user_id = :uid"), {"uid": str(user.id)})
+        db.execute(text("DELETE FROM user_profiles WHERE user_id = :uid"), {"uid": str(user.id)})
 
         partner_profile = partner_repo.get_by_user_id(db, user.id)
         if partner_profile:

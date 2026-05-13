@@ -25,3 +25,4 @@ class IdeaMetric(Base):
 
     idea = relationship("Idea", back_populates = "metrics")
     creator = relationship("User")
+    agent_runs = relationship("AgentRun", back_populates = "idea_metric")

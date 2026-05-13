@@ -19,60 +19,17 @@ class AIPipelineService:
     @staticmethod
     def _build_payload(db: Session, user_id: uuid.UUID) -> dict:
         """
-        Build the request body for the AI pipeline from the user's stored profile data.
-
-        Schema matches the questionnaire output:
-        {
-          "user_id": "...",
-          "user_profile": { curiosity_domain, experience_level, business_interests,
-                            target_region, founder_setup, risk_tolerance },
-          "career_profile": { free_day_preferences, preferred_work_types,
-                              problem_solving_styles, preferred_work_environments,
-                              desired_impact },
-          "skills": ["Python", "Machine Learning", ...]
-        }
+        Build the request body for the AI pipeline from the user's stored profile JSON data.
         """
         from app.models.user_profile import UserProfile
-        from app.repositories.skill_repo import skill_repo
 
         profile = db.query(UserProfile).filter_by(user_id=user_id).first()
-        user_skills = skill_repo.get_by_user(db, user_id)
         
-        user_profile_data = profile.background_json if profile and profile.background_json else {}
-        career_profile_data = profile.personality_json if profile and profile.personality_json else {}
-
-        def single(data: dict, key: str) -> str:
-            val = data.get(key)
-            if isinstance(val, list):
-                return val[0] if val else ""
-            return val or ""
-
-        def multi(data: dict, key: str) -> list:
-            val = data.get(key)
-            if isinstance(val, list):
-                return val
-            if val:
-                return [val]
-            return []
-
+        # We now use the raw JSON columns directly as requested
         return {
             "user_id": str(user_id),
-            "user_profile": {
-                "curiosity_domain":   single(user_profile_data, "curiosity_domain"),
-                "experience_level":   single(user_profile_data, "experience_level"),
-                "business_interests": multi(user_profile_data, "business_interests"),
-                "target_region":      single(user_profile_data, "target_region"),
-                "founder_setup":      single(user_profile_data, "founder_setup"),
-                "risk_tolerance":     single(user_profile_data, "risk_tolerance"),
-            },
-            "career_profile": {
-                "free_day_preferences":       multi(career_profile_data, "free_day_preferences"),
-                "preferred_work_types":       multi(career_profile_data, "preferred_work_types"),
-                "problem_solving_styles":     multi(career_profile_data, "problem_solving_styles"),
-                "preferred_work_environments": multi(career_profile_data, "preferred_work_environments"),
-                "desired_impact":             multi(career_profile_data, "desired_impact"),
-            },
-            "skills": [s.skill_name for s in user_skills],
+            "questionnaire": profile.questionnaire_json if profile else {},
+            "skills": profile.skills_json if profile else []
         }
 
     @staticmethod

@@ -4,7 +4,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
-from app.models.roadmap_stage import StageStatus, StageType
+from app.models.ai.roadmap_stage import StageStatus, StageType
 
 
 class RoadmapStageBase(BaseModel):

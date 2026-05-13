@@ -146,11 +146,16 @@ async def register_partner_user(
         experience_json=_parse_partner_json_field(experience_json, "experience_json"),
     )
 
-    if UserService.get_user_by_email(db, user_in.email):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered",
-        )
+    existing_user = UserService.get_user_by_email(db, user_in.email)
+    if existing_user:
+        if not existing_user.is_verified:
+            # Overwrite unverified user to prevent locking out incomplete signups
+            UserService.delete_user_by_email(db, existing_user.email)
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered",
+            )
 
     return UserService.create_user(
         db,

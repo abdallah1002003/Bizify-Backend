@@ -15,6 +15,12 @@ from app.schemas.questionnaire import (
     UserProfileOutput,
 )
 from app.schemas.user_profile import UserProfileUpdate
+from app.utils.questionnaire_storage import (
+    get_career_profile_block,
+    get_user_profile_block,
+    merge_questionnaire,
+    strip_personalization,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +62,11 @@ class ProfileService:
                 continue
 
             category, target_key = mapping[answer.field]
-            value = answer.choices if answer.multi else (answer.choices[0] if answer.choices else None)
+            value = (
+                answer.choices
+                if answer.multi
+                else (answer.choices[0] if answer.choices else None)
+            )
             if isinstance(value, str):
                 if "(" in value:
                     value = value.split(" (")[0].strip()
@@ -68,17 +78,32 @@ class ProfileService:
             else:
                 career_profile_data[target_key] = value
 
-        profile.interests_json = user_profile_data.get("business_interests", [])
-        profile.background_json = user_profile_data
-        profile.personality_json = career_profile_data
+        interests_raw = user_profile_data.get("business_interests", [])
+        if isinstance(interests_raw, str):
+            interests_list = [interests_raw]
+        elif isinstance(interests_raw, list):
+            interests_list = interests_raw
+        else:
+            interests_list = []
+
+        interests_text = (
+            ", ".join(interests_list) if interests_list else "various fields"
+        )
+        experience_level = user_profile_data.get("experience_level", "N/A")
+        personalization = (
+            f"User interested in {interests_text} with {experience_level} experience level."
+        )
+
+        profile.questionnaire_json = merge_questionnaire(
+            profile.questionnaire_json,
+            user_profile=user_profile_data,
+            career_profile=career_profile_data,
+            interests=interests_list,
+            personalization_profile=personalization,
+        )
         profile.onboarding_completed = True
         profile.guide_status = GuideStatus.COMPLETED
 
-        interests_text = ", ".join(profile.interests_json) if profile.interests_json else "various fields"
-        experience_level = user_profile_data.get("experience_level", "N/A")
-        profile.personalization_profile = (
-            f"User interested in {interests_text} with {experience_level} experience level."
-        )
         profile_repo.save(db, db_obj=profile)
 
         return QuestionnaireResponse(
@@ -115,10 +140,7 @@ class ProfileService:
     def restart_questionnaire(db: Session, user_id: uuid.UUID) -> Dict[str, str]:
         """Reset questionnaire-derived profile data."""
         profile = ProfileService.get_or_create_profile(db, user_id)
-        profile.interests_json = None
-        profile.background_json = None
-        profile.personality_json = None
-        profile.personalization_profile = None
+        profile.questionnaire_json = None
         profile.onboarding_completed = False
         profile.guide_status = GuideStatus.NOT_STARTED
         profile_repo.save(db, db_obj=profile)
@@ -149,7 +171,9 @@ class ProfileService:
         profile = ProfileService.get_or_create_profile(db, user_id)
         update_data = profile_in.model_dump(exclude_unset=True)
 
-        has_changes = any(getattr(profile, field) != value for field, value in update_data.items())
+        has_changes = any(
+            getattr(profile, field) != value for field, value in update_data.items()
+        )
         if not has_changes:
             return profile
 
@@ -169,4 +193,5 @@ class ProfileService:
     def invalidate_dependencies(db: Session, user_id: uuid.UUID, profile: UserProfile) -> None:
         """Mark dependent records as outdated after profile changes."""
         idea_repo.mark_scores_outdated(db, user_id, commit=False)
-        profile.personalization_profile = None
+        stripped = strip_personalization(profile.questionnaire_json)
+        profile.questionnaire_json = stripped if stripped else None

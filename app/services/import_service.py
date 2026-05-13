@@ -9,7 +9,7 @@ from fastapi import HTTPException, UploadFile, status
 from pptx import Presentation
 from sqlalchemy.orm import Session
 
-from app.models.document import Document
+from app.models.ai.document import Document
 from app.repositories.document_repo import document_repo
 
 

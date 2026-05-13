@@ -1,3 +1,4 @@
+import enum
 import uuid
 from datetime import datetime
 
@@ -6,8 +7,6 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
-
-import enum
 
 
 class GuideStatus(str, enum.Enum):
@@ -24,31 +23,26 @@ class GuideStatus(str, enum.Enum):
 class UserProfile(Base):
     """
     SQLAlchemy model representing a detailed User Profile.
+
+    Questionnaire-derived data lives in `questionnaire_json` (user_profile, career_profile,
+    interests, preferences, risk_profile, personalization_profile, etc.).
     """
 
     __tablename__ = "user_profiles"
 
-    id = Column(UUID(as_uuid = True), primary_key = True, default = uuid.uuid4)
-    user_id = Column(UUID(as_uuid = True), ForeignKey("users.id"), nullable = False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
 
     bio = Column(Text)
     skills_json = Column(JSON)
+    questionnaire_json = Column(JSON)
 
     guide_status = Column(
-        # Persist enum names to match the PostgreSQL enum created by Alembic.
-        Enum(GuideStatus, values_callable = lambda x: [e.name for e in x]),
-        default = GuideStatus.NOT_STARTED
+        Enum(GuideStatus, values_callable=lambda x: [e.name for e in x]),
+        default=GuideStatus.NOT_STARTED,
     )
 
-    interests_json = Column(JSON)
-    preferences_json = Column(JSON)
-    risk_profile_json = Column(JSON)
+    onboarding_completed = Column(Boolean, default=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    onboarding_completed = Column(Boolean, default = False)
-    updated_at = Column(DateTime, default = datetime.utcnow, onupdate = datetime.utcnow)
-
-    background_json = Column(JSON)
-    personality_json = Column(JSON)
-    personalization_profile = Column(Text)
-
-    user = relationship("User", back_populates = "profile")
+    user = relationship("User", back_populates="profile")

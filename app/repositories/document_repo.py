@@ -3,7 +3,7 @@ from typing import Any, Optional
 
 from sqlalchemy.orm import Session
 
-from app.models.document import Document
+from app.models.ai.document import Document
 from app.repositories.base import BaseRepository
 
 

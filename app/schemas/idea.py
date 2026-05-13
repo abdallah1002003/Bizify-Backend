@@ -4,7 +4,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
-from app.models.idea import IdeaStatus
+from app.models.ai.idea import IdeaStatus
 
 
 class IdeaBase(BaseModel):

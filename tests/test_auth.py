@@ -18,8 +18,9 @@ def test_register_user_success(client: TestClient):
     assert "id" in data
 
 
-def test_register_duplicate_email(client: TestClient):
+def test_register_duplicate_email(client: TestClient, db_session):
     """A-02: Registering with an already used email returns 400"""
+    from app.models.user import User
     payload = {
         "email": "test2@bizify.com",
         "full_name": "Test User 2",
@@ -28,6 +29,12 @@ def test_register_duplicate_email(client: TestClient):
     }
     # First registration
     client.post("/api/v1/users/register", json=payload)
+    
+    # Verify the user so the second registration gets blocked
+    user = db_session.query(User).filter_by(email="test2@bizify.com").first()
+    if user:
+        user.is_verified = True
+        db_session.commit()
     
     # Second registration with same email
     response = client.post("/api/v1/users/register", json=payload)

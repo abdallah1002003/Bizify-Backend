@@ -1091,6 +1091,7 @@ experience_json: "[...]"      // optional JSON string
 | Method | Endpoint | Auth Required | Description |
 |--------|----------|:---:|-------------|
 | `GET` | `/profile/` | ✅ | Get current user's profile |
+| `GET` | `/profile/questionnaire` | ✅ | Get user's saved questionnaire JSON |
 | `POST` | `/profile/questionnaire` | ✅ | Submit onboarding questionnaire |
 | `POST` | `/profile/skip` | ✅ | Skip questionnaire only |
 | `POST` | `/profile/skip-guide` | ✅ | Skip beginner guide |
@@ -1098,6 +1099,7 @@ experience_json: "[...]"      // optional JSON string
 | `POST` | `/profile/complete` | ✅ | Mark onboarding as completed |
 | `PATCH` | `/profile/guide-status` | ✅ | Update guide status |
 | `GET` | `/profile/skills` | ✅ | Get all user skills |
+| `GET` | `/profile/skills/json` | ✅ | Get the raw skills_json data |
 | `POST` | `/profile/skills` | ✅ | Add a new skill |
 | `PUT` | `/profile/skills/{skill_id}` | ✅ | Update an existing skill |
 | `DELETE` | `/profile/skills/{skill_id}` | ✅ | Delete a skill |
@@ -2121,4 +2123,3 @@ The following items are planned for future versions and are **not yet implemente
 
 
 ---
-
