@@ -7,7 +7,7 @@ from app.api.v1 import (
     billing,
     export,
     groups,
-    guidance,
+
     ideas,
     imports,
     marketplace,
@@ -27,7 +27,7 @@ api_router.include_router(
     marketplace.router, prefix="/marketplace", tags=["Marketplace"]
 )
 api_router.include_router(profile.router, prefix="/profile", tags=["User Profiling"])
-api_router.include_router(guidance.router, prefix="/guidance", tags=["Business Guidance"])
+
 api_router.include_router(ideas.router, prefix="/ideas", tags=["Ideas"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["Notifications"])
 api_router.include_router(export.router, prefix="/export", tags=["Export"])
