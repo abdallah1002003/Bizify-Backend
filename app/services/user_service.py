@@ -247,7 +247,7 @@ class UserService:
 
     @staticmethod
     def delete_user_by_email(db: Session, email: str) -> bool:
-        """Delete a user and any linked partner profile."""
+        """Delete a user and all their linked data using cascade delete."""
         user = UserService.get_user_by_email(db, email)
         if not user:
             raise HTTPException(
@@ -255,16 +255,9 @@ class UserService:
                 detail="User not found",
             )
 
-        # Clean up related records that might prevent deletion due to foreign key constraints
-        db.execute(text("DELETE FROM account_verifications WHERE user_id = :uid"), {"uid": str(user.id)})
-        db.execute(text("DELETE FROM user_profiles WHERE user_id = :uid"), {"uid": str(user.id)})
-
-        partner_profile = partner_repo.get_by_user_id(db, user.id)
-        if partner_profile:
-            partner_repo.remove(db, id=partner_profile.id, commit=False)
-
-        user_repo.remove(db, id=user.id, commit=False)
-        db.commit()
+        # The model relationships are configured with cascade="all, delete-orphan"
+        # so removing the user will automatically clean up profiles, verification codes, ideas, etc.
+        user_repo.remove(db, id=user.id)
         return True
 
     @staticmethod

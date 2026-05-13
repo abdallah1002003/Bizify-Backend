@@ -38,7 +38,7 @@ class UserProfile(Base):
     questionnaire_json = Column(JSON)
 
     guide_status = Column(
-        Enum(GuideStatus, values_callable=lambda x: [e.name for e in x]),
+        Enum(GuideStatus, values_callable=lambda x: [e.value for e in x]),
         default=GuideStatus.NOT_STARTED,
     )
 
