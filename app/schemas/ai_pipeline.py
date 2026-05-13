@@ -21,3 +21,17 @@ class AIPipelineResponse(BaseModel):
     success: bool
     result: Optional[Any] = None
     error: Optional[str] = None
+
+
+class GeneralChatRequest(BaseModel):
+    """Request schema for the General Chatbot."""
+
+    message: str
+    history: list[dict[str, Any]] = []
+
+
+class GeneralChatResponse(BaseModel):
+    """Response schema for the General Chatbot."""
+
+    response: str
+    history: list[dict[str, Any]]

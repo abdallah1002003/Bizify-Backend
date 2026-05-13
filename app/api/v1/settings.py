@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
@@ -15,7 +15,6 @@ from app.schemas.settings import (
 from app.schemas.user_profile import UserProfileRead
 from app.services.settings_service import SettingsService
 
-
 router = APIRouter()
 
 
@@ -23,7 +22,7 @@ router = APIRouter()
 def get_my_settings(
     db: Session = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_user)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get all current settings (profile, notifications, privacy).
     """
@@ -57,7 +56,7 @@ def change_my_password(
     data: PasswordChange,
     db: Session = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_user)
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """
     Update password and invalidate other sessions (Global Logout).
     """
@@ -94,7 +93,7 @@ def deactivate_my_account(
     request: Request,
     db: Session = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_user)
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """
     Deactivate account immediately (Soft Delete).
     """
@@ -107,7 +106,7 @@ def delete_my_account(
     request: Request,
     db: Session = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_user)
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """
     Permanently delete/anonymize account (Hard Delete).
     """

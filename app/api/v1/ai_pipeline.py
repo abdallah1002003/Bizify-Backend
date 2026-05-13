@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -7,6 +8,8 @@ from fastapi.responses import StreamingResponse
 from app.api.dependencies import get_current_user
 from app.core.config import settings
 from app.models.user import User
+from app.schemas.ai_pipeline import GeneralChatRequest, GeneralChatResponse
+from app.services.ai_pipeline_service import AIPipelineService
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +17,41 @@ router = APIRouter()
 
 _AI_BASE_URL = "https://bizifyai-production.up.railway.app"
 _REQUEST_TIMEOUT_SECONDS = 120
+
+
+@router.post(
+    "/general-chat",
+    response_model=GeneralChatResponse,
+    summary="General Chatbot",
+    description="Send a message to the general AI chatbot and get a response.",
+)
+async def general_chat(
+    request: GeneralChatRequest,
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    result = await AIPipelineService.general_chat(
+        user_id=current_user.id,
+        message=request.message,
+        history=request.history,
+    )
+    return result
+
+
+@router.post(
+    "/general-chat/stream",
+    summary="General Chatbot Stream",
+    description="Send a message to the general AI chatbot and receive a streaming SSE response.",
+)
+async def general_chat_stream(
+    request: GeneralChatRequest,
+    current_user: User = Depends(get_current_user),
+) -> StreamingResponse:
+    stream = AIPipelineService.general_chat_stream(
+        user_id=current_user.id,
+        message=request.message,
+        history=request.history,
+    )
+    return StreamingResponse(stream, media_type="text/event-stream")
 
 
 @router.api_route(
@@ -130,16 +168,16 @@ async def ai_pipeline_proxy(
         raise HTTPException(
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,
             detail="The AI pipeline is taking too long to respond. Please try again.",
-        )
+        ) from None
     except httpx.HTTPStatusError as exc:
         logger.error("AI pipeline returned HTTP %s: %s", exc.response.status_code, exc.response.text)
         raise HTTPException(
             status_code=exc.response.status_code,
             detail=f"AI pipeline error: {exc.response.text}",
-        )
+        ) from exc
     except httpx.RequestError as exc:
         logger.error("AI pipeline request failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Could not reach the AI pipeline. Please try again later.",
-        )
+        ) from exc

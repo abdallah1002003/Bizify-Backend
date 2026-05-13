@@ -1,5 +1,5 @@
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from sqlalchemy.orm import Session
 
@@ -34,7 +34,7 @@ class AuditRepository(BaseRepository[AuditLog, Any, Any]):
 class SecurityRepository(BaseRepository[SecurityLog, Any, Any]):
     """Data-access helpers for security logs."""
 
-    def get_recent_logs(self, db: Session) -> List[SecurityLog]:
+    def get_recent_logs(self, db: Session) -> list[SecurityLog]:
         """Fetch all security logs, newest first."""
         return db.query(self.model).order_by(self.model.created_at.desc()).all()
 
@@ -44,7 +44,7 @@ class SecurityRepository(BaseRepository[SecurityLog, Any, Any]):
         *,
         user_id: Optional[uuid.UUID],
         event_type: str,
-        details: Optional[Dict[str, Any]] = None,
+        details: Optional[dict[str, Any]] = None,
         ip_address: Optional[str] = None,
     ) -> SecurityLog:
         """Persist a security event record."""

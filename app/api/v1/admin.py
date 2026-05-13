@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -18,12 +18,12 @@ from app.services.user_service import UserService
 router = APIRouter()
 
 
-@router.get("/requests", response_model=List[PartnerProfileRead])
+@router.get("/requests", response_model=list[PartnerProfileRead])
 def list_role_requests(
     status: Optional[ApprovalStatus] = None,
     db: Session = Depends(get_db),
     _current_admin: User = Depends(RoleChecker([UserRole.ADMIN])),
-) -> List[PartnerProfileRead]:
+) -> list[PartnerProfileRead]:
     """List partner requests, optionally filtered by status."""
     return PartnerService.list_requests(db, status)
 
@@ -76,11 +76,11 @@ def reject_request(
     return PartnerService.reject_request(db, profile_id, current_admin.id)
 
 
-@router.get("/security-logs", response_model=List[SecurityLogRead])
+@router.get("/security-logs", response_model=list[SecurityLogRead])
 def view_logs(
     db: Session = Depends(get_db),
     _current_admin: User = Depends(RoleChecker([UserRole.ADMIN])),
-) -> List[SecurityLogRead]:
+) -> list[SecurityLogRead]:
     """Return security logs for administrative review."""
     return AdminService.get_security_logs(db)
 
@@ -96,22 +96,22 @@ def promote(
     return UserService.promote_user(db, user_id, new_role)
 
 
-@router.get("/users", response_model=List[UserRead])
+@router.get("/users", response_model=list[UserRead])
 def get_all_users(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
     _current_admin: User = Depends(RoleChecker([UserRole.ADMIN])),
-) -> List[UserRead]:
+) -> list[UserRead]:
     """Return a paginated list of users."""
     return user_repo.get_multi(db, skip=skip, limit=limit)
 
 
-@router.get("/stats", response_model=Dict[str, Any])
+@router.get("/stats", response_model=dict[str, Any])
 def get_dashboard_stats(
     db: Session = Depends(get_db),
     _current_admin: User = Depends(RoleChecker([UserRole.ADMIN])),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return aggregate dashboard statistics."""
     return AdminService.get_dashboard_stats(db=db)
 

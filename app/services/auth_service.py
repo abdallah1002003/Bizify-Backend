@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta, timezone
-from typing import Dict
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -19,7 +18,7 @@ class AuthService:
     """Authentication flows for password, OTP, and Google OAuth."""
 
     @staticmethod
-    async def google_login(db: Session, code: str, redirect_uri: str) -> Dict[str, str]:
+    async def google_login(db: Session, code: str, redirect_uri: str) -> dict[str, str]:
         """Authenticate with Google and return an access token response."""
         try:
             access_token = await google_client.exchange_code_for_token(code, redirect_uri)
@@ -130,7 +129,7 @@ class AuthService:
             )
 
     @staticmethod
-    def create_token_response(user: User) -> Dict[str, str]:
+    def create_token_response(user: User) -> dict[str, str]:
         """Generate the standard OAuth2 token payload."""
         expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         token = security.create_access_token(
@@ -144,7 +143,7 @@ class AuthService:
         return {"access_token": token, "token_type": "bearer"}
 
     @staticmethod
-    def logout(db: Session, token: str) -> Dict[str, str]:
+    def logout(db: Session, token: str) -> dict[str, str]:
         """Blacklist the current access token."""
         if not auth_repo.is_token_blacklisted(db, token):
             auth_repo.blacklist_token(db, token)
@@ -152,7 +151,7 @@ class AuthService:
         return {"message": "Successfully logged out"}
 
     @staticmethod
-    def verify_otp(db: Session, data: OTPVerify) -> Dict[str, str]:
+    def verify_otp(db: Session, data: OTPVerify) -> dict[str, str]:
         """Validate an account verification OTP."""
         is_verified = UserService.verify_otp_status(
             db,
@@ -171,7 +170,7 @@ class AuthService:
     def resend_verification_otp(
         db: Session,
         data: OTPResendRequest,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """Resend the account verification OTP for an existing user."""
         user = UserService.get_user_by_email(db, email=data.email)
         if not user:
@@ -184,7 +183,7 @@ class AuthService:
         return {"message": "Verification code sent to your email"}
 
     @staticmethod
-    def forgot_password(db: Session, email: str) -> Dict[str, str]:
+    def forgot_password(db: Session, email: str) -> dict[str, str]:
         """Start the password reset flow."""
         user = UserService.get_user_by_email(db, email=email)
         if not user:
@@ -199,7 +198,7 @@ class AuthService:
         return {"message": "Verification code sent to your email"}
 
     @staticmethod
-    def verify_reset_code(db: Session, email: str, otp_code: str) -> Dict[str, str]:
+    def verify_reset_code(db: Session, email: str, otp_code: str) -> dict[str, str]:
         """Verify that a reset code is valid."""
         is_valid = UserService.verify_reset_code_only(db, email, otp_code)
         if not is_valid:
@@ -215,7 +214,7 @@ class AuthService:
         email: str,
         otp_code: str,
         new_password: str,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """Reset a password after successful OTP verification."""
         is_reset_successful = UserService.reset_password_logic(
             db,

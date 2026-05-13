@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -13,13 +13,18 @@ from app.repositories.admin_repo import audit_repo
 from app.repositories.notification_repo import notification_repo
 from app.repositories.privacy_repo import privacy_repo
 from app.repositories.profile_repo import profile_repo
+from app.repositories.user_repo import user_repo
+from app.schemas.settings import (
+    NotificationUpdate,
+    PasswordChange,
+    PrivacyUpdate,
+    ProfileUpdate,
+)
 from app.utils.questionnaire_storage import (
     coerce_dict,
     get_user_profile_block,
     merge_questionnaire,
 )
-from app.repositories.user_repo import user_repo
-from app.schemas.settings import NotificationUpdate, PasswordChange, PrivacyUpdate, ProfileUpdate
 
 
 class SettingsService:
@@ -37,7 +42,7 @@ class SettingsService:
         user: User,
         data: PasswordChange,
         ip: Optional[str] = None,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """Update the user's password after validating the current one."""
         if data.new_password != data.confirm_password:
             raise HTTPException(
@@ -71,7 +76,7 @@ class SettingsService:
         db: Session,
         user: User,
         ip: Optional[str] = None,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """Deactivate the user's account and record the action."""
         user.is_active = False
         user_repo.save(db, db_obj=user, commit=False, refresh=False)
@@ -174,7 +179,7 @@ class SettingsService:
         db: Session,
         user: User,
         ip: Optional[str] = None,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """Anonymize a user account and disable access permanently."""
         user.email = f"deleted_{user.id}@anonymous.com"
         user.full_name = "Anonymous User"

@@ -3,11 +3,11 @@ import random
 import string
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import HTTPException, UploadFile, status
-from sqlalchemy.orm import Session
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from app.core.mail import EmailDeliveryError, send_otp_email
 from app.core.security import get_password_hash, verify_password
@@ -19,7 +19,6 @@ from app.repositories.user_repo import user_repo
 from app.schemas.partner_profile import PartnerProfileCreate, PartnerProfileRegistration
 from app.schemas.user import UserCreate
 from app.services.partner_service import PartnerService
-
 
 logger = logging.getLogger(__name__)
 PARTNER_REGISTRATION_ROLES = {
@@ -37,7 +36,7 @@ class UserService:
         db: Session,
         user_in: UserCreate,
         partner_profile_in: Optional[PartnerProfileRegistration] = None,
-        partner_files: Optional[List[UploadFile]] = None,
+        partner_files: Optional[list[UploadFile]] = None,
     ) -> User:
         """Create a new user and send a verification OTP when needed."""
         requires_partner_application = user_in.role in PARTNER_REGISTRATION_ROLES
@@ -242,7 +241,7 @@ class UserService:
         return user_repo.get_by_email(db, email)
 
     @staticmethod
-    def get_all_users(db: Session) -> List[User]:
+    def get_all_users(db: Session) -> list[User]:
         """Fetch all users with a generous admin-facing limit."""
         return user_repo.get_multi(db, skip=0, limit=1000)
 

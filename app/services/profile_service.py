@@ -1,6 +1,6 @@
 import logging
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from sqlalchemy.orm import Session
 
@@ -16,8 +16,6 @@ from app.schemas.questionnaire import (
 )
 from app.schemas.user_profile import UserProfileUpdate
 from app.utils.questionnaire_storage import (
-    get_career_profile_block,
-    get_user_profile_block,
     merge_questionnaire,
     strip_personalization,
 )
@@ -37,12 +35,12 @@ class ProfileService:
     def submit_full_questionnaire(
         db: Session,
         user_id: uuid.UUID,
-        answers: List[QuestionnaireAnswer],
+        answers: list[QuestionnaireAnswer],
     ) -> QuestionnaireResponse:
         """Map questionnaire answers into structured profile data."""
         profile = ProfileService.get_or_create_profile(db, user_id)
-        user_profile_data: Dict[str, Any] = {}
-        career_profile_data: Dict[str, Any] = {}
+        user_profile_data: dict[str, Any] = {}
+        career_profile_data: dict[str, Any] = {}
         mapping = {
             "Q_q1": ("user_profile", "curiosity_domain"),
             "Q_q2": ("user_profile", "experience_level"),
@@ -112,7 +110,7 @@ class ProfileService:
         )
 
     @staticmethod
-    def finalize_onboarding(db: Session, user_id: uuid.UUID) -> Dict[str, str]:
+    def finalize_onboarding(db: Session, user_id: uuid.UUID) -> dict[str, str]:
         """Mark onboarding as completed."""
         profile = ProfileService.get_or_create_profile(db, user_id)
         profile.onboarding_completed = True
@@ -121,7 +119,7 @@ class ProfileService:
         return {"status": "success", "message": "Onboarding finalized"}
 
     @staticmethod
-    def skip_questionnaire(db: Session, user_id: uuid.UUID) -> Dict[str, str]:
+    def skip_questionnaire(db: Session, user_id: uuid.UUID) -> dict[str, str]:
         """Skip only the questionnaire portion of onboarding."""
         profile = ProfileService.get_or_create_profile(db, user_id)
         profile.onboarding_completed = True
@@ -129,7 +127,7 @@ class ProfileService:
         return {"status": "success", "message": "Onboarding questionnaire skipped"}
 
     @staticmethod
-    def skip_guide(db: Session, user_id: uuid.UUID) -> Dict[str, str]:
+    def skip_guide(db: Session, user_id: uuid.UUID) -> dict[str, str]:
         """Skip only the beginner guide."""
         profile = ProfileService.get_or_create_profile(db, user_id)
         profile.guide_status = GuideStatus.SKIPPED
@@ -137,7 +135,7 @@ class ProfileService:
         return {"status": "success", "message": "Beginner guide skipped"}
 
     @staticmethod
-    def restart_questionnaire(db: Session, user_id: uuid.UUID) -> Dict[str, str]:
+    def restart_questionnaire(db: Session, user_id: uuid.UUID) -> dict[str, str]:
         """Reset questionnaire-derived profile data."""
         profile = ProfileService.get_or_create_profile(db, user_id)
         profile.questionnaire_json = None
@@ -151,7 +149,7 @@ class ProfileService:
         db: Session,
         user_id: uuid.UUID,
         status_in: GuideStatusUpdate,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Update the guide status for a user."""
         profile = ProfileService.get_or_create_profile(db, user_id)
         profile.guide_status = status_in.status

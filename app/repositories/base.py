@@ -1,4 +1,4 @@
-from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union
+from typing import Any, Generic, Optional, TypeVar, Union
 
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -13,14 +13,14 @@ UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     """Shared CRUD helpers for SQLAlchemy-backed models."""
 
-    def __init__(self, model: Type[ModelType]) -> None:
+    def __init__(self, model: type[ModelType]) -> None:
         self.model = model
 
     def get(self, db: Session, id: Any) -> Optional[ModelType]:
         """Return a single record by primary key."""
         return db.get(self.model, id)
 
-    def get_multi(self, db: Session, *, skip: int = 0, limit: int = 100) -> List[ModelType]:
+    def get_multi(self, db: Session, *, skip: int = 0, limit: int = 100) -> list[ModelType]:
         """Return a paginated list of records."""
         return db.query(self.model).offset(skip).limit(limit).all()
 
@@ -28,7 +28,7 @@ class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         self,
         db: Session,
         *,
-        obj_in: Union[CreateSchemaType, Dict[str, Any]],
+        obj_in: Union[CreateSchemaType, dict[str, Any]],
         commit: bool = True,
         refresh: bool = True,
     ) -> ModelType:
@@ -52,7 +52,7 @@ class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db: Session,
         *,
         db_obj: ModelType,
-        obj_in: Union[UpdateSchemaType, Dict[str, Any]],
+        obj_in: Union[UpdateSchemaType, dict[str, Any]],
         commit: bool = True,
         refresh: bool = True,
     ) -> ModelType:

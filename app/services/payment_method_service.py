@@ -1,5 +1,4 @@
 import uuid
-from typing import List
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -9,7 +8,7 @@ from app.repositories.payment_method_repo import payment_method_repo
 from app.schemas.payment_method import PaymentMethodCreate
 
 
-def get_user_payment_methods(db: Session, user_id: uuid.UUID) -> List[PaymentMethod]:
+def get_user_payment_methods(db: Session, user_id: uuid.UUID) -> list[PaymentMethod]:
     return payment_method_repo.get_by_user(db, user_id=user_id)
 
 

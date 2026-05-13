@@ -1,6 +1,6 @@
 import uuid
+from collections.abc import Generator
 from datetime import datetime, timedelta, timezone
-from typing import Generator, List
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
@@ -112,7 +112,7 @@ def get_current_user(
 class RoleChecker:
     """Authorize access based on the current user's role."""
 
-    def __init__(self, allowed_roles: List[UserRole]) -> None:
+    def __init__(self, allowed_roles: list[UserRole]) -> None:
         self.allowed_roles = allowed_roles
 
     def __call__(

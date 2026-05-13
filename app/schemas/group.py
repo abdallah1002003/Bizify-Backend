@@ -1,12 +1,13 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-from app.models.group_member import GroupRole, GroupMemberStatus
 from app.models.group_invite import GroupInviteStatus
 from app.models.group_join_request import GroupJoinRequestStatus
+from app.models.group_member import GroupMemberStatus, GroupRole
+
 
 # ----------------- Group Schemas -----------------
 class GroupBase(BaseModel):
@@ -46,14 +47,14 @@ class GroupMemberResponse(BaseModel):
     email: str
     role: GroupRole
     status: GroupMemberStatus
-    accessible_ideas: List[MemberIdeaInfo] = []
+    accessible_ideas: list[MemberIdeaInfo] = []
     joined_at: datetime
 
     model_config = ConfigDict(from_attributes = True)
 
 class GroupMemberUpdate(BaseModel):
     role: Optional[GroupRole] = None
-    idea_ids: Optional[List[UUID]] = None
+    idea_ids: Optional[list[UUID]] = None
 
     @field_validator("idea_ids", mode = "before")
     @classmethod
@@ -69,7 +70,7 @@ class GroupMemberUpdate(BaseModel):
 class GroupInviteCreate(BaseModel):
     email: EmailStr
     role: Optional[GroupRole] = None
-    idea_ids: Optional[List[UUID]] = Field(
+    idea_ids: Optional[list[UUID]] = Field(
         default = None,
         description = "Optional. Omit this field to invite the user without restricting idea access."
     )
@@ -102,7 +103,7 @@ class GroupInviteResponse(BaseModel):
     status: GroupInviteStatus
     expires_at: datetime
     created_at: datetime
-    accessible_ideas: List[MemberIdeaInfo] = []
+    accessible_ideas: list[MemberIdeaInfo] = []
 
     model_config = ConfigDict(from_attributes = True)
 
@@ -115,14 +116,14 @@ class GroupJoinRequestResponse(BaseModel):
     role: GroupRole
     status: GroupJoinRequestStatus
     created_at: datetime
-    accessible_ideas: List[MemberIdeaInfo] = []
+    accessible_ideas: list[MemberIdeaInfo] = []
 
     model_config = ConfigDict(from_attributes = True)
 
 class HandleJoinRequest(BaseModel):
     is_approved: bool
     role: Optional[GroupRole] = None
-    idea_ids: Optional[List[UUID]] = None
+    idea_ids: Optional[list[UUID]] = None
 
     @field_validator("idea_ids", mode = "before")
     @classmethod

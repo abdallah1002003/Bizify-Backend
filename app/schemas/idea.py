@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -17,7 +17,7 @@ class IdeaBase(BaseModel):
     status: IdeaStatus = IdeaStatus.DRAFT
     is_archived: Optional[bool] = False
     budget: Optional[float] = None
-    skills: Optional[List[str]] = None
+    skills: Optional[list[str]] = None
     feasibility: Optional[float] = None
 
 
@@ -46,7 +46,7 @@ class IdeaUpdate(BaseModel):
     status: Optional[IdeaStatus] = None
     is_archived: Optional[bool] = None
     budget: Optional[float] = None
-    skills: Optional[List[str]] = None
+    skills: Optional[list[str]] = None
     feasibility: Optional[float] = None
 
 

@@ -1,6 +1,5 @@
 import json
 import logging
-from typing import Dict
 import uuid
 
 from fastapi import WebSocket
@@ -14,7 +13,7 @@ class GroupConnectionManager:
     """
     def __init__(self):
         # Dictionary mapping group_id to a dictionary of user_id -> WebSocket
-        self.active_connections: Dict[uuid.UUID, Dict[uuid.UUID, WebSocket]] = {}
+        self.active_connections: dict[uuid.UUID, dict[uuid.UUID, WebSocket]] = {}
 
     async def connect(self, websocket: WebSocket, group_id: uuid.UUID, user_id: uuid.UUID):
         await websocket.accept()

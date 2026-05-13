@@ -14,7 +14,6 @@ Real endpoint mappings (proxy → external AI):
   GET  /api/v1/ai/problems/{user_id}  → GET  /pipeline/problems/{user_id}
   GET  /api/v1/ai/idea/{user_id}      → GET  /pipeline/idea/{user_id}
 """
-import pytest
 from fastapi.testclient import TestClient
 
 

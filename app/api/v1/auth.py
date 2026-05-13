@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
@@ -16,7 +16,7 @@ router = APIRouter()
 
 
 @router.get("/google/url")
-def get_google_auth_url() -> Dict[str, str]:
+def get_google_auth_url() -> dict[str, str]:
     """Return the Google OAuth2 authorization URL."""
     redirect_uri = f"{settings.FRONTEND_URL}/"
     url = google_client.get_google_auth_url(redirect_uri)
@@ -48,13 +48,13 @@ def login_access_token(
 
 
 @router.post("/logout")
-def logout(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)) -> Dict[str, str]:
+def logout(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)) -> dict[str, str]:
     """Invalidate the current session token."""
     return AuthService.logout(db, token)
 
 
 @router.post("/verify-otp")
-def verify_otp(data: OTPVerify, db: Session = Depends(get_db)) -> Dict[str, str]:
+def verify_otp(data: OTPVerify, db: Session = Depends(get_db)) -> dict[str, str]:
     """Verify an account using an emailed OTP."""
     return AuthService.verify_otp(db, data)
 
@@ -63,19 +63,19 @@ def verify_otp(data: OTPVerify, db: Session = Depends(get_db)) -> Dict[str, str]
 def resend_verification_otp(
     data: OTPResendRequest,
     db: Session = Depends(get_db),
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Resend the account verification OTP."""
     return AuthService.resend_verification_otp(db, data)
 
 
 @router.post("/forgot-password")
-def forgot_password(email: str, db: Session = Depends(get_db)) -> Dict[str, str]:
+def forgot_password(email: str, db: Session = Depends(get_db)) -> dict[str, str]:
     """Send a password reset code if the email exists."""
     return AuthService.forgot_password(db, email)
 
 
 @router.post("/verify-reset-code")
-def verify_reset_code(email: str, otp_code: str, db: Session = Depends(get_db)) -> Dict[str, str]:
+def verify_reset_code(email: str, otp_code: str, db: Session = Depends(get_db)) -> dict[str, str]:
     """Verify a password reset code before allowing the user to type a new password."""
     return AuthService.verify_reset_code(db, email, otp_code)
 
@@ -86,13 +86,13 @@ def reset_password(
     otp_code: str,
     new_password: str,
     db: Session = Depends(get_db),
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Reset a password using an OTP code."""
     return AuthService.reset_password(db, email, otp_code, new_password)
 
 
 @router.get("/session-status")
-def get_session_status(current_user: User = Depends(get_current_user)) -> Dict[str, Any]:
+def get_session_status(current_user: User = Depends(get_current_user)) -> dict[str, Any]:
     """Return the current session status and remaining time."""
     now = datetime.now(timezone.utc)
     last_activity = current_user.last_activity
@@ -113,6 +113,6 @@ def get_session_status(current_user: User = Depends(get_current_user)) -> Dict[s
 
 
 @router.post("/ping")
-def session_ping(current_user: User = Depends(get_current_user)) -> Dict[str, str]:
+def session_ping(current_user: User = Depends(get_current_user)) -> dict[str, str]:
     """Keep the current session active."""
     return {"message": "Session kept alive"}

@@ -1,5 +1,5 @@
 import json
-from typing import List, Optional
+from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
@@ -10,8 +10,8 @@ from app.models.partner_profile import PartnerType
 from app.models.user import User, UserRole
 from app.schemas.partner_profile import (
     PartnerProfileCreate,
-    PartnerProfileRegistration,
     PartnerProfileRead,
+    PartnerProfileRegistration,
     PartnerProfileUpdate,
 )
 from app.schemas.user import EntrepreneurRegistration, UserCreate, UserRead
@@ -123,7 +123,7 @@ async def register_partner_user(
     role: PartnerType = Form(...),
     password: str = Form(...),
     confirm_password: str = Form(...),
-    files: List[UploadFile] = File(..., description="Upload one or more supporting files"),
+    files: list[UploadFile] = File(..., description="Upload one or more supporting files"),
     company_name: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
     services_json: Optional[str] = Form(None),
@@ -228,7 +228,7 @@ async def update_user_profile(
 async def create_partner_profile(
     partner_type: PartnerType = Form(...),
     user_id: str = Form(...),
-    files: List[UploadFile] = File(..., description="Upload PDF or image files"),
+    files: list[UploadFile] = File(..., description="Upload PDF or image files"),
     company_name: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
     services_json: Optional[str] = Form(None),

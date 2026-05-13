@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 from uuid import UUID
 
 from fastapi import BackgroundTasks, HTTPException
@@ -21,7 +21,7 @@ class ConnectionManager:
     """Track active SSE connections for notifications."""
 
     def __init__(self) -> None:
-        self.active_connections: Dict[UUID, List[asyncio.Queue]] = {}
+        self.active_connections: dict[UUID, list[asyncio.Queue]] = {}
 
     async def connect(self, user_id: UUID) -> asyncio.Queue:
         """Create and register a queue for a user connection."""
@@ -41,7 +41,7 @@ class ConnectionManager:
         if not self.active_connections[user_id]:
             del self.active_connections[user_id]
 
-    async def push_notification(self, user_id: UUID, data: Dict[str, Any]) -> None:
+    async def push_notification(self, user_id: UUID, data: dict[str, Any]) -> None:
         """Push a notification payload to all active queues for a user."""
         if user_id not in self.active_connections:
             return
@@ -169,7 +169,7 @@ class NotificationService:
         user_id: UUID,
         skip: int = 0,
         limit: int = 20,
-    ) -> List[Notification]:
+    ) -> list[Notification]:
         """Fetch active notifications with pagination."""
         return notification_repo.get_active_for_user(db, user_id, skip=skip, limit=limit)
 
@@ -199,7 +199,7 @@ class NotificationService:
     def bulk_update_status(
         db: Session,
         user_id: UUID,
-        notification_ids: List[UUID],
+        notification_ids: list[UUID],
         status: NotificationStatus,
     ) -> int:
         """Update multiple notifications for a user."""
@@ -209,7 +209,7 @@ class NotificationService:
     def update_settings(
         db: Session,
         user_id: UUID,
-        update_data: Dict[str, Optional[bool]],
+        update_data: dict[str, Optional[bool]],
     ) -> NotificationSetting:
         """Update notification settings for a user."""
         return notification_repo.update_settings(db, user_id, update_data)
@@ -228,7 +228,7 @@ class NotificationService:
     def bulk_delete_notifications(
         db: Session,
         user_id: UUID,
-        notification_ids: List[UUID],
+        notification_ids: list[UUID],
     ) -> int:
         """Delete multiple notifications for a user."""
         return notification_repo.delete_bulk(db, user_id, notification_ids)

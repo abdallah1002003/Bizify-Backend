@@ -1,7 +1,7 @@
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from fastapi import BackgroundTasks, HTTPException, status
 from sqlalchemy.orm import Session
@@ -148,7 +148,7 @@ class GroupService:
         cache.delete_pattern("group_members:*")
 
     @staticmethod
-    def get_groups(db: Session, business_id: uuid.UUID, requester_id: uuid.UUID) -> List[Group]:
+    def get_groups(db: Session, business_id: uuid.UUID, requester_id: uuid.UUID) -> list[Group]:
         """Return all groups inside a business the requester can access."""
         business = business_repo.get(db, business_id)
         if not business:
@@ -188,7 +188,7 @@ class GroupService:
         return group
 
     @staticmethod
-    def get_user_teams(db: Session, user_id: uuid.UUID) -> List[Group]:
+    def get_user_teams(db: Session, user_id: uuid.UUID) -> list[Group]:
         """Return teams the user owns or actively belongs to."""
         owned_groups = group_repo.get_user_owned_groups(db, user_id)
         member_groups = group_repo.get_user_member_groups(db, user_id)
@@ -202,8 +202,8 @@ class GroupService:
         invited_by: uuid.UUID,
         email: str,
         role: Optional[GroupRole] = None,
-        idea_ids: Optional[List[uuid.UUID]] = None,
-    ) -> Dict[str, Any]:
+        idea_ids: Optional[list[uuid.UUID]] = None,
+    ) -> dict[str, Any]:
         """Create an invite for a group member."""
         group = group_repo.get_by_id(db, group_id)
         if not group:
@@ -249,7 +249,7 @@ class GroupService:
         token: str,
         user_id: uuid.UUID,
         _background_tasks: BackgroundTasks,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Accept a pending group invite."""
         invite = group_repo.get_pending_invite_by_token(db, token)
         if not invite or invite.expires_at < datetime.now(timezone.utc):
@@ -275,7 +275,7 @@ class GroupService:
         return {"message": "Successfully joined the group", "group_id": invite.group_id}
 
     @staticmethod
-    def create_join_request(db: Session, group_id: uuid.UUID, user_id: uuid.UUID) -> Dict[str, Any]:
+    def create_join_request(db: Session, group_id: uuid.UUID, user_id: uuid.UUID) -> dict[str, Any]:
         """Create a join request for a group."""
         group = group_repo.get_by_id(db, group_id)
         if not group:
@@ -300,9 +300,9 @@ class GroupService:
         owner_id: uuid.UUID,
         is_approved: bool,
         role: Optional[GroupRole] = None,
-        idea_ids: Optional[List[uuid.UUID]] = None,
+        idea_ids: Optional[list[uuid.UUID]] = None,
         _background_tasks: Optional[BackgroundTasks] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Approve or reject a pending join request."""
         join_request = group_repo.get_pending_join_request(db, request_id)
         if not join_request:
@@ -341,7 +341,7 @@ class GroupService:
         db: Session,
         group_id: uuid.UUID,
         requester_id: uuid.UUID,
-    ) -> List[GroupMember]:
+    ) -> list[GroupMember]:
         """Return active group members when the requester has access."""
         group = group_repo.get_by_id(db, group_id)
         if not group:
@@ -360,7 +360,7 @@ class GroupService:
         member_id: uuid.UUID,
         requester_id: uuid.UUID,
         role: Optional[GroupRole] = None,
-        idea_ids: Optional[List[uuid.UUID]] = None,
+        idea_ids: Optional[list[uuid.UUID]] = None,
     ) -> GroupMember:
         """Update a member's role or scoped idea access."""
         member = group_repo.get_member_by_id(db, member_id)

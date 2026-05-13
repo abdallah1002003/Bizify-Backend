@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+
 def test_create_and_get_groups(auth_client: TestClient):
     """G-01 & G-02: Create a group and fetch list of groups"""
     response = auth_client.post(

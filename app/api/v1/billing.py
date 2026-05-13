@@ -1,5 +1,5 @@
 import json
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -22,8 +22,8 @@ from app.services import payment_service
 router = APIRouter()
 
 
-@router.get("/plans", response_model=List[PlanRead])
-def list_plans(db: Session = Depends(get_db)) -> List[PlanRead]:
+@router.get("/plans", response_model=list[PlanRead])
+def list_plans(db: Session = Depends(get_db)) -> list[PlanRead]:
     """Return all active subscription plans."""
     return payment_service.get_active_plans(db)
 

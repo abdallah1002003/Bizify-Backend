@@ -1,19 +1,18 @@
 import uuid
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import httpx
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core import paypal_client
-from app.core import paymob_client
+from app.core import paymob_client, paypal_client
 from app.models.plan import Plan
 from app.models.subscription import Subscription
 from app.repositories.billing_repo import payment_repo, plan_repo, subscription_repo
 
 
-def get_active_plans(db: Session) -> List[Plan]:
+def get_active_plans(db: Session) -> list[Plan]:
     """Return all active subscription plans."""
     return plan_repo.get_active_plans(db)
 
@@ -29,7 +28,7 @@ def get_plan_or_404(plan_id: uuid.UUID, db: Session) -> Plan:
     return plan
 
 
-async def create_paypal_order(plan_id: uuid.UUID, db: Session) -> Dict[str, Any]:
+async def create_paypal_order(plan_id: uuid.UUID, db: Session) -> dict[str, Any]:
     """Create a PayPal order for the selected plan."""
     plan = get_plan_or_404(plan_id, db)
 
@@ -67,7 +66,7 @@ async def capture_payment(
     plan_id: uuid.UUID,
     user_id: uuid.UUID,
     db: Session,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Capture a PayPal payment and persist billing records."""
     plan = get_plan_or_404(plan_id, db)
 
@@ -136,7 +135,7 @@ def cancel_subscription(user_id: uuid.UUID, db: Session) -> Subscription:
     return subscription_repo.cancel(db, subscription)
 
 
-async def handle_webhook(event_type: str, resource: Dict[str, Any], db: Session) -> None:
+async def handle_webhook(event_type: str, resource: dict[str, Any], db: Session) -> None:
     """Process supported PayPal webhook events."""
     if event_type == "PAYMENT.CAPTURE.COMPLETED":
         capture_id = resource.get("id")
@@ -168,8 +167,8 @@ async def create_paymob_payment(
     plan_id: uuid.UUID,
     user_id: uuid.UUID,
     db: Session,
-    billing_data: Optional[Dict[str, str]] = None,
-) -> Dict[str, Any]:
+    billing_data: Optional[dict[str, str]] = None,
+) -> dict[str, Any]:
     """
     Initiate a Paymob card payment for the selected plan.
 
@@ -240,7 +239,7 @@ async def create_paymob_payment(
     }
 
 
-async def handle_paymob_webhook(data: Dict[str, Any], db: Session) -> None:
+async def handle_paymob_webhook(data: dict[str, Any], db: Session) -> None:
     """
     Process Paymob's Transaction Processed Callback.
 

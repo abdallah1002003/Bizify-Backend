@@ -2,7 +2,7 @@ import os
 import shutil
 import uuid
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
@@ -16,7 +16,7 @@ from app.repositories.user_repo import user_repo
 from app.schemas.partner_profile import PartnerProfileCreate, PartnerProfileUpdate
 
 try:
-    from supabase import create_client, Client
+    from supabase import Client, create_client
 except ImportError:
     # Handle if supabase is not installed yet
     create_client = None
@@ -31,7 +31,7 @@ class PartnerService:
         db: Session,
         user: User,
         profile_in: PartnerProfileCreate,
-        files: List[UploadFile],
+        files: list[UploadFile],
         *,
         commit: bool = True,
         refresh: bool = True,
@@ -50,7 +50,7 @@ class PartnerService:
                 detail="Supporting documents are required for partner registration",
             )
 
-        file_paths: List[str] = []
+        file_paths: list[str] = []
         try:
             for file in files:
                 file_paths.append(PartnerService.save_id_document(user.id, file))
@@ -150,22 +150,22 @@ class PartnerService:
     def list_requests(
         db: Session,
         status: Optional[ApprovalStatus] = None,
-    ) -> List[PartnerProfile]:
+    ) -> list[PartnerProfile]:
         """List partner profiles, optionally filtered by approval status."""
         return partner_repo.get_filtered(db, status)
 
     @staticmethod
-    def get_all_requests(db: Session) -> List[PartnerProfile]:
+    def get_all_requests(db: Session) -> list[PartnerProfile]:
         """Return all partner applications."""
         return partner_repo.get_all(db)
 
     @staticmethod
-    def get_pending_requests(db: Session) -> List[PartnerProfile]:
+    def get_pending_requests(db: Session) -> list[PartnerProfile]:
         """Return all pending partner applications."""
         return partner_repo.get_pending(db)
 
     @staticmethod
-    def get_active_partners(db: Session) -> List[PartnerProfile]:
+    def get_active_partners(db: Session) -> list[PartnerProfile]:
         """Return all approved partner profiles."""
         return partner_repo.get_approved(db)
 
@@ -200,7 +200,7 @@ class PartnerService:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail=f"Failed to upload document to Supabase: {str(e)}"
-                )
+                ) from e
                 
         # Fallback to local storage (e.g., for local development)
         upload_dir = os.path.join("uploads", "partners", str(user_id))
@@ -215,7 +215,7 @@ class PartnerService:
         return file_path
 
     @staticmethod
-    def cleanup_documents(file_paths: Optional[List[str]]) -> None:
+    def cleanup_documents(file_paths: Optional[list[str]]) -> None:
         """Remove uploaded files that should not be kept after a failed workflow."""
         for file_path in file_paths or []:
             try:

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -23,7 +23,7 @@ class ProfileUpdate(BaseModel):
 
     full_name: Optional[str] = None
     bio: Optional[str] = None
-    interests: Optional[List[str]] = None
+    interests: Optional[list[str]] = None
 
 
 class PrivacyUpdate(BaseModel):

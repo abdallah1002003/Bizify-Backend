@@ -9,6 +9,7 @@ from sqlalchemy.orm import relationship
 from app.core.database import Base
 from app.models.group_member import GroupRole
 
+
 class GroupJoinRequestStatus(enum.Enum):
     PENDING = "pending"
     APPROVED = "approved"

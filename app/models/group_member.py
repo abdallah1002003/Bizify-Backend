@@ -8,6 +8,7 @@ from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 
+
 class GroupRole(enum.Enum):
     OWNER = "OWNER"
     EDITOR = "EDITOR"

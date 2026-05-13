@@ -1,5 +1,4 @@
 import uuid
-from typing import List
 
 from sqlalchemy.orm import Session
 
@@ -17,5 +16,5 @@ class GroupMessageService:
         })
 
     @staticmethod
-    def get_group_messages(db: Session, group_id: uuid.UUID, limit: int = 50, offset: int = 0) -> List[GroupMessage]:
+    def get_group_messages(db: Session, group_id: uuid.UUID, limit: int = 50, offset: int = 0) -> list[GroupMessage]:
         return message_repo.get_group_messages(db, group_id, limit, offset)

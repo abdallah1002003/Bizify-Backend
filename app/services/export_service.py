@@ -2,7 +2,7 @@ import json
 import os
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from docx import Document
 from fpdf import FPDF
@@ -16,7 +16,6 @@ from app.repositories.idea_repo import idea_repo
 from app.repositories.profile_repo import profile_repo
 
 
-
 def _sanitize_for_fpdf(text: str) -> str:
     """Replace non-latin1 characters to avoid FPDF font errors."""
     if not text:
@@ -26,7 +25,7 @@ def _sanitize_for_fpdf(text: str) -> str:
     return "".join(character if ord(character) < 256 else "?" for character in text_str)
 
 
-def _generate_docx(data: Dict[str, Any], file_path: str) -> None:
+def _generate_docx(data: dict[str, Any], file_path: str) -> None:
     """Generate a DOCX export file."""
     document = Document()
     document.add_heading("Bizify Data Export", 0)
@@ -57,7 +56,7 @@ def _generate_docx(data: Dict[str, Any], file_path: str) -> None:
     document.save(file_path)
 
 
-def _generate_pdf(data: Dict[str, Any], file_path: str) -> None:
+def _generate_pdf(data: dict[str, Any], file_path: str) -> None:
     """Generate a PDF export file."""
     pdf = FPDF()
     pdf.add_page()
@@ -119,7 +118,7 @@ class ExportService:
     def request_export(
         db: Session,
         user_id: uuid.UUID,
-        scope: List[str],
+        scope: list[str],
         file_format: str,
     ) -> ExportJob:
         """Create an export job and queue the background task."""
@@ -168,7 +167,7 @@ def process_export_task(job_id: str) -> None:
             return
 
         export_repo.update_status(db, job, ExportStatus.PROCESSING)
-        data_to_export: Dict[str, Any] = {}
+        data_to_export: dict[str, Any] = {}
         user_id = job.user_id
 
         if "profile" in job.scope:

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from sqlalchemy.orm import Session
 
@@ -14,7 +14,7 @@ from app.repositories.base import BaseRepository
 class PlanRepository(BaseRepository[Plan, Any, Any]):
     """Data-access helpers for subscription plans."""
 
-    def get_active_plans(self, db: Session) -> List[Plan]:
+    def get_active_plans(self, db: Session) -> list[Plan]:
         """Return all active plans."""
         return db.query(self.model).filter(self.model.is_active.is_(True)).all()
 
@@ -30,7 +30,7 @@ class PlanRepository(BaseRepository[Plan, Any, Any]):
 class PaymentRepository(BaseRepository[Payment, Any, Any]):
     """Data-access helpers for payments."""
 
-    def get_by_user(self, db: Session, user_id: uuid.UUID) -> List[Payment]:
+    def get_by_user(self, db: Session, user_id: uuid.UUID) -> list[Payment]:
         """Return all payments made by a user, newest first."""
         return (
             db.query(self.model)

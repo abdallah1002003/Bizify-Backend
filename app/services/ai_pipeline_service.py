@@ -1,15 +1,16 @@
+import asyncio
 import logging
 import uuid
-import asyncio
-from typing import Any, Optional
+from typing import Any, AsyncGenerator, Optional
 
 import httpx
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
+
 logger = logging.getLogger(__name__)
 
 _AI_PIPELINE_URL = "https://bizifyai-production.up.railway.app/pipeline/run"
-_AI_PIPELINE_API_KEY = "7f986c28-88d1-424d-8622-776ffaff3452"
 _REQUEST_TIMEOUT_SECONDS = 120
 
 
@@ -19,18 +20,11 @@ class AIPipelineService:
     @staticmethod
     def _build_payload(db: Session, user_id: uuid.UUID) -> dict:
         """
-        Build the request body for the AI pipeline from the user's stored profile JSON data.
+        Build the request body for the AI pipeline.
+        The pipeline now reads questionnaire/skills directly from the database,
+        so only user_id is needed.
         """
-        from app.models.user_profile import UserProfile
-
-        profile = db.query(UserProfile).filter_by(user_id=user_id).first()
-        
-        # We now use the raw JSON columns directly as requested
-        return {
-            "user_id": str(user_id),
-            "questionnaire": profile.questionnaire_json if profile else {},
-            "skills": profile.skills_json if profile else []
-        }
+        return {"user_id": str(user_id)}
 
     @staticmethod
     async def run(
@@ -54,7 +48,7 @@ class AIPipelineService:
             httpx.RequestError:    On network / timeout failures.
         """
         headers = {
-            "x-api-key": _AI_PIPELINE_API_KEY,
+            "x-api-key": settings.AI_PIPELINE_API_KEY,
             "Content-Type": "application/json",
         }
 
@@ -76,7 +70,7 @@ class AIPipelineService:
         """Fetch the current progress of the AI pipeline for the given user."""
         url = f"{_AI_PIPELINE_URL.rsplit('/', 1)[0]}/status/{user_id}"
         headers = {
-            "x-api-key": _AI_PIPELINE_API_KEY,
+            "x-api-key": settings.AI_PIPELINE_API_KEY,
             "Content-Type": "application/json",
         }
         async with httpx.AsyncClient(timeout=10) as client:
@@ -89,7 +83,7 @@ class AIPipelineService:
         """Fetch the final generated results from the AI pipeline."""
         base_url = _AI_PIPELINE_URL.rsplit('/pipeline', 1)[0]
         headers = {
-            "x-api-key": _AI_PIPELINE_API_KEY,
+            "x-api-key": settings.AI_PIPELINE_API_KEY,
             "Content-Type": "application/json",
         }
         
@@ -110,3 +104,48 @@ class AIPipelineService:
                 "idea": idea_res.json().get("current_idea"),
                 "chat_history": idea_res.json().get("chat_history", [])
             }
+
+    @staticmethod
+    async def general_chat(
+        user_id: uuid.UUID,
+        message: str,
+        history: Optional[list[dict[str, Any]]] = None,
+    ) -> dict[str, Any]:
+        """Send a message to the General Chatbot and return the response."""
+        url = f"{_AI_PIPELINE_URL.rsplit('/run', 1)[0]}/general-chat"
+        headers = {
+            "x-api-key": settings.AI_PIPELINE_API_KEY,
+            "Content-Type": "application/json",
+        }
+        body = {
+            "user_id": str(user_id),
+            "message": message,
+            "history": history or [],
+        }
+        async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS) as client:
+            response = await client.post(url, headers=headers, json=body)
+            response.raise_for_status()
+            return response.json()
+
+    @staticmethod
+    async def general_chat_stream(
+        user_id: uuid.UUID,
+        message: str,
+        history: Optional[list[dict[str, Any]]] = None,
+    ) -> AsyncGenerator[bytes, None]:
+        """Stream a response from the General Chatbot."""
+        url = f"{_AI_PIPELINE_URL.rsplit('/run', 1)[0]}/general-chat/stream"
+        headers = {
+            "x-api-key": settings.AI_PIPELINE_API_KEY,
+            "Content-Type": "application/json",
+        }
+        body = {
+            "user_id": str(user_id),
+            "message": message,
+            "history": history or [],
+        }
+        async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS) as client:
+            async with client.stream("POST", url, headers=headers, json=body) as response:
+                response.raise_for_status()
+                async for chunk in response.aiter_bytes():
+                    yield chunk

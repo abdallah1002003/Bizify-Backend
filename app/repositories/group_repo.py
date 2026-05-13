@@ -1,5 +1,5 @@
 import uuid
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from sqlalchemy.orm import Session
 
@@ -18,15 +18,15 @@ class GroupRepository(BaseRepository[Group, Any, Any]):
         """Fetch a single group by its primary key."""
         return db.query(self.model).filter(self.model.id == group_id).first()
 
-    def get_by_business_id(self, db: Session, business_id: uuid.UUID) -> List[Group]:
+    def get_by_business_id(self, db: Session, business_id: uuid.UUID) -> list[Group]:
         """Fetch all groups belonging to a specific business."""
         return db.query(self.model).filter(self.model.business_id == business_id).all()
 
-    def get_user_owned_groups(self, db: Session, user_id: uuid.UUID) -> List[Group]:
+    def get_user_owned_groups(self, db: Session, user_id: uuid.UUID) -> list[Group]:
         """Fetch all groups owned by a user through business ownership."""
         return db.query(Group).join(Business).filter(Business.owner_id == user_id).all()
 
-    def get_user_member_groups(self, db: Session, user_id: uuid.UUID) -> List[Group]:
+    def get_user_member_groups(self, db: Session, user_id: uuid.UUID) -> list[Group]:
         """Fetch all groups where the user is an active member."""
         return (
             db.query(Group)
@@ -38,7 +38,7 @@ class GroupRepository(BaseRepository[Group, Any, Any]):
             .all()
         )
 
-    def get_active_members(self, db: Session, group_id: uuid.UUID) -> List[GroupMember]:
+    def get_active_members(self, db: Session, group_id: uuid.UUID) -> list[GroupMember]:
         """Fetch all active members of a group."""
         return (
             db.query(GroupMember)
@@ -49,7 +49,7 @@ class GroupRepository(BaseRepository[Group, Any, Any]):
             .all()
         )
 
-    def get_active_members_for_user(self, db: Session, user_id: uuid.UUID) -> List[GroupMember]:
+    def get_active_members_for_user(self, db: Session, user_id: uuid.UUID) -> list[GroupMember]:
         """Fetch all active memberships for a user across groups."""
         return (
             db.query(GroupMember)

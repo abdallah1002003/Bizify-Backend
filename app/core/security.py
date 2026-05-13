@@ -1,16 +1,15 @@
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from jose import jwt
 from passlib.context import CryptContext
 
 from app.core.config import settings
 
-
 pwd_context = CryptContext(schemes = ["bcrypt"], deprecated = "auto")
 
 
-def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
     """
     Creates a JWT access token with an optional expiration time.
     """

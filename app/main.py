@@ -1,5 +1,4 @@
 from contextlib import asynccontextmanager
-from typing import Dict
 
 import uvicorn
 from fastapi import FastAPI
@@ -52,13 +51,13 @@ app.include_router(api_router, prefix="/api/v1")
 
 
 @app.get("/")
-async def root() -> Dict[str, str]:
+async def root() -> dict[str, str]:
     """Return a simple connectivity response."""
     return {"message": "Hello World!"}
 
 
 @app.get("/health")
-async def health_check() -> Dict[str, str]:
+async def health_check() -> dict[str, str]:
     """Return the service health status."""
     return {"status": "healthy", "project_name": settings.PROJECT_NAME}
 

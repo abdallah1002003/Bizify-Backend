@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -21,7 +21,7 @@ class QuestionnaireAnswer(BaseModel):
     field: str
     question: Optional[str] = None
     multi: bool = False
-    choices: List[str]
+    choices: list[str]
     label: Optional[str] = None
 
 
@@ -31,7 +31,7 @@ class UserProfileOutput(BaseModel):
     """
     curiosity_domain: Optional[str] = None
     experience_level: Optional[str] = None
-    business_interests: List[str] = []
+    business_interests: list[str] = []
     target_region: Optional[str] = None
     founder_setup: Optional[str] = None
     risk_tolerance: Optional[str] = None
@@ -41,11 +41,11 @@ class CareerProfileOutput(BaseModel):
     """
     Structured output for the user's career profile.
     """
-    free_day_preferences: List[str] = []
-    preferred_work_types: List[str] = []
-    problem_solving_styles: List[str] = []
-    preferred_work_environments: List[str] = []
-    desired_impact: List[str] = []
+    free_day_preferences: list[str] = []
+    preferred_work_types: list[str] = []
+    problem_solving_styles: list[str] = []
+    preferred_work_environments: list[str] = []
+    desired_impact: list[str] = []
 
 
 class QuestionnaireResponse(BaseModel):

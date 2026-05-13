@@ -1,5 +1,5 @@
 import uuid
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 from sqlalchemy.orm import Session
 
@@ -31,7 +31,7 @@ class UserRepository(BaseRepository[User, UserCreate, UserCreate]):
             .first()
         )
 
-    def get_by_role(self, db: Session, role: Union[str, UserRole]) -> List[User]:
+    def get_by_role(self, db: Session, role: Union[str, UserRole]) -> list[User]:
         """Fetch all users with a specific role."""
         return db.query(self.model).filter(self.model.role == role).all()
 

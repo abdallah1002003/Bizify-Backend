@@ -1,5 +1,5 @@
 import uuid
-from typing import List, Optional
+from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -9,20 +9,20 @@ from app.schemas.payment_method import PaymentMethodCreate
 
 
 class CRUDPaymentMethod(BaseRepository[PaymentMethod, PaymentMethodCreate, PaymentMethodCreate]):
-    def get_by_user(self, db: Session, user_id: uuid.UUID) -> List[PaymentMethod]:
+    def get_by_user(self, db: Session, user_id: uuid.UUID) -> list[PaymentMethod]:
         return db.query(PaymentMethod).filter(PaymentMethod.user_id == user_id).all()
 
     def get_default_by_user(self, db: Session, user_id: uuid.UUID) -> Optional[PaymentMethod]:
         return (
             db.query(PaymentMethod)
-            .filter(PaymentMethod.user_id == user_id, PaymentMethod.is_default == True)
+            .filter(PaymentMethod.user_id == user_id, PaymentMethod.is_default.is_(True))
             .first()
         )
 
     def set_default(self, db: Session, method_id: uuid.UUID, user_id: uuid.UUID) -> Optional[PaymentMethod]:
         # Reset current defaults
         db.query(PaymentMethod).filter(
-            PaymentMethod.user_id == user_id, PaymentMethod.is_default == True
+            PaymentMethod.user_id == user_id, PaymentMethod.is_default.is_(True)
         ).update({"is_default": False})
 
         # Set new default

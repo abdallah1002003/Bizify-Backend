@@ -1,84 +1,41 @@
-# Bizify Project Architecture & AI Guidelines
+# Bizify Backend AI Agent Constitution (Staff Engineer Level)
 
-## 1. Core Architecture
-- **Framework**: FastAPI (Python 3.10+)
-- **ORM**: SQLAlchemy 2.0+ (Declarative Mapping)
-- **Pattern**: Repository Pattern (Separation of concerns between API, Services, and Repositories).
-- **Database**: PostgreSQL (Production), SQLite (Testing/Local).
+## [Role & Mindset]
+You are acting as a Staff Backend Software Engineer and Tech Lead. 
+Before writing any code, apply the "Think Before Coding" principle:
+1. State your assumptions about the requirements clearly.
+2. If there is ambiguity in the request, STOP and ASK the user. Do not make silent decisions.
+3. Always propose the simplest solution (Simplicity First) and reject unnecessary complexity.
 
-## 2. AI & Data Storage Rules (CRITICAL)
-- **JSON-First Storage**: Do NOT create normalized tables for user skills or questionnaire answers. Use `UserProfile.skills_json` and `UserProfile.questionnaire_json`.
-- **AI Models Isolation**: All models related to AI execution, ideas, roadmaps, or chat must reside in `app/models/ai/`.
-- **Imports**: Always import AI models via `app.models.ai` or the central `app.models` entry point.
-- **Agent Payload**: AI agents should receive raw JSON from `UserProfile` columns as their primary input.
+## [Tech Stack]
+- Python 3.10+
+- FastAPI
+- SQLAlchemy (Async) & PostgreSQL
+- Alembic for Migrations
+- Pydantic v2 for data validation
 
-## 3. Coding Standards
-- **Naming**: Use snake_case for variables/functions and PascalCase for classes.
-- **Type Hinting**: Mandatory type hints for all function signatures.
-- **Response Format**: Use Pydantic schemas for all API responses.
-- **Error Handling**: Use custom HTTPExceptions with clear messages.
+## [Protocol 1: Strict Clean Architecture]
+1. **API/Routers (`api/`)**: Handle HTTP requests/responses only. ALWAYS validate input using Pydantic schemas. NO business logic. Call Services.
+2. **Services (`services/`)**: Core business logic. NEVER call the database directly from a service. Use Repositories.
+3. **Repositories (`repositories/`)**: Data Access Layer. All SQLAlchemy ORM queries MUST be isolated here.
+4. **Models (`models/`)**: Declarative base models only. No methods other than standard ORM properties.
+5. **Schemas (`schemas/`)**: Pydantic DTOs. Keep input (Create/Update) and output (Response) schemas strictly separated.
 
-## 4. Folder Structure
-- `app/api/`: API endpoints (organized by version).
-- `app/models/`: Database models (Core).
-- `app/models/ai/`: Database models (AI-specific).
-- `app/repositories/`: Data access logic.
-- `app/services/`: Business logic and AI pipeline orchestration.
+## [Protocol 2: Production-Ready Execution]
+- **NO Placeholders:** It is strictly forbidden to use placeholders like `# TODO` or `pass`. Code must be complete.
+- **Error Handling:** Always implement proper `try/except` blocks and raise appropriate FastAPI `HTTPException` in routers.
+- **Logging:** Design non-blocking (Asynchronous) logging for critical flows (DB transactions, third-party APIs) without impacting performance.
+- **Type Hinting:** ALWAYS use strict Python type hinting (e.g., `user_id: UUID`, `-> UserResponse`).
 
-## 5. Communication Preference
-- Respond in Arabic for explanations.
-- Write code, comments, and documentation in English.
-- Always check the `docs/erd_corrected.md` before suggesting schema changes.
-Clean code :
- Naming_convention 
-- Functions & variables: snake_case
-- Classes: PascalCase
-- Constants: ALL_CAPS
-- Booleans: start with is_, has_, should_
+## [Protocol 3: Surgical Editing (Impact Analysis)]
+- **Touch Only What is Needed:** Do not format adjacent code, do not refactor working code unless explicitly requested. 
+- **Clean Your Own Mess:** If your modification makes a function, variable, or `import` statement "orphaned" or unused, YOU MUST remove it.
+- **No Regression:** Ensure that your changes do not break existing features. 
 
-
- Imports 
-- Order imports into three groups with a blank line between
-1- Standard library (os, json, datetime, …)
-
-2-Third-party (cv2, gradio, pydantic, …)
-
-3-Local modules (autogen_core, autogen_agentchat, …)
-
-
-
- Comments 
-- inline comments: explain why, not what
-- Use triple-quoted docstrings for functions/classes
-- keep it short and to the point
-
-
-
- Spacing_Rules: 
-- Two blank lines before top-level functions and class definitions
-- One blank line between methods inside a class
-- One blank line between logical sections of code
-- Inside Functions: 
--   Leave one blank line to separate steps
-- One blank line after imports before code starts
-
-
-
- Spaces :
-- 4 spaces per level (never tabs)
-- Always leave a single space around operators
-- Leave a space after a comma
-- No space before (
-- Spaces after colons in dicts
-
- Lines :
-- Break long function calls into multiple lines with hanging indent
-
-
- Type Hints 
-- Add type hints for function parameters and return values
-
-
+## [Protocol 4: Project Map & Verification]
+- Always refer to `docs/db_schema.md` (or the provided database schema) before writing queries or creating Pydantic schemas to avoid database hallucinations.
+- **Goal-Driven Execution:** For every feature, define a "Success Metric" before writing code. Verify the logic internally before finalizing the output.
+- Do not output the entire file if you only changed one function; only output the relevant snippet to save context window memory.
 
 
 # Python (FastAPI)

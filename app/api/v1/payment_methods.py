@@ -1,5 +1,5 @@
 import uuid
-from typing import Any, List
+from typing import Any
 
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
@@ -12,7 +12,7 @@ from app.services import payment_method_service
 router = APIRouter()
 
 
-@router.get("/", response_model=List[PaymentMethodRead])
+@router.get("/", response_model=list[PaymentMethodRead])
 def list_payment_methods(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),

@@ -1,25 +1,24 @@
 import asyncio
 import json
-from typing import Any, Dict
+from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_db, get_current_user, RoleChecker
+from app.api.dependencies import RoleChecker, get_current_user, get_db
 from app.models.user import User, UserRole
 from app.schemas.notification import (
-    NotificationRead,
-    NotificationList,
-    NotificationUpdateStatus,
-    NotificationBulkUpdateStatus,
     NotificationBulkDelete,
+    NotificationBulkUpdateStatus,
+    NotificationList,
+    NotificationRead,
     NotificationSettingRead,
-    NotificationSettingUpdate
+    NotificationSettingUpdate,
+    NotificationUpdateStatus,
 )
 from app.services.notification_service import NotificationService, manager
-
 
 router = APIRouter()
 
@@ -30,7 +29,7 @@ def list_notifications(
     current_user: User = Depends(get_current_user),
     skip: int = Query(0, ge = 0),
     limit: int = Query(20, ge = 1, le = 100)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Retrieve a paginated list of active notifications for the current user.
     """
@@ -83,7 +82,7 @@ def bulk_update_notifications(
     update_data: NotificationBulkUpdateStatus,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """
     Update the status of multiple notifications simultaneously.
     """
@@ -138,7 +137,7 @@ async def send_test_notification(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """
     Sends a test notification to the current user to verify the real-time stream and list.
     """
@@ -173,7 +172,7 @@ def bulk_delete_notifications(
     delete_data: NotificationBulkDelete,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """
     Permanently delete multiple notifications for the current user.
     """
@@ -189,7 +188,7 @@ def bulk_delete_notifications(
 def delete_all_notifications(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """
     Permanently delete all notifications for the current user.
     """

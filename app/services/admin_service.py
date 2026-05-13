@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -16,12 +16,12 @@ class AdminService:
     """Administrative workflows for logs, stats, and user moderation."""
 
     @staticmethod
-    def get_security_logs(db: Session) -> List[SecurityLog]:
+    def get_security_logs(db: Session) -> list[SecurityLog]:
         """Fetch security logs ordered by newest first."""
         return security_repo.get_recent_logs(db)
 
     @staticmethod
-    def get_dashboard_stats(db: Session) -> Dict[str, Any]:
+    def get_dashboard_stats(db: Session) -> dict[str, Any]:
         """Return aggregate statistics for the admin dashboard."""
         try:
             return {

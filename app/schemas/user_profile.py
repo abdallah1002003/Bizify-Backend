@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -26,14 +26,14 @@ class UserProfileUpdate(UserProfileBase):
     """Partial update for PATCH/POST profile endpoints."""
 
     bio: Optional[str] = None
-    skills_json: Optional[List[Dict[str, Any]]] = None
-    questionnaire_json: Optional[Dict[str, Any]] = None
+    skills_json: Optional[list[dict[str, Any]]] = None
+    questionnaire_json: Optional[dict[str, Any]] = None
 
     @field_validator("skills_json")
     @classmethod
     def validate_skills(
-        cls, v: Optional[List[Dict[str, Any]]]
-    ) -> Optional[List[Dict[str, Any]]]:
+        cls, v: Optional[list[dict[str, Any]]]
+    ) -> Optional[list[dict[str, Any]]]:
         if v is None:
             return v
         for skill in v:

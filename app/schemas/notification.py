@@ -1,11 +1,10 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.notification import NotificationStatus, DeliveryStatus
-
+from app.models.notification import DeliveryStatus, NotificationStatus
 
 # --- Notification Settings Schemas ---
 
@@ -63,14 +62,14 @@ class NotificationUpdateStatus(BaseModel):
 
 
 class NotificationBulkUpdateStatus(BaseModel):
-    notification_ids: List[UUID]
+    notification_ids: list[UUID]
     status: NotificationStatus = Field(..., description = "Target status for all selected notifications")
 
 
 class NotificationList(BaseModel):
     total: int
-    items: List[NotificationRead]
+    items: list[NotificationRead]
 
 
 class NotificationBulkDelete(BaseModel):
-    notification_ids: List[UUID]
+    notification_ids: list[UUID]

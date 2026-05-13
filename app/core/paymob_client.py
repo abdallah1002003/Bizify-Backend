@@ -11,7 +11,7 @@ Also provides HMAC validation for Transaction Processed callbacks.
 import hashlib
 import hmac
 from decimal import Decimal
-from typing import Any, Dict
+from typing import Any
 
 import httpx
 
@@ -39,7 +39,7 @@ async def _register_order(
     amount_cents: int,
     currency: str,
     merchant_order_id: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Step 2 – Register an order in Paymob.
     Returns the full Paymob order object (includes Paymob's numeric order ID).
@@ -71,7 +71,7 @@ async def _get_payment_key(
     paymob_order_id: int,
     amount_cents: int,
     currency: str,
-    billing_data: Dict[str, str],
+    billing_data: dict[str, str],
 ) -> str:
     """
     Step 3 – Generate a single-use payment key that the frontend embeds in the iframe URL.
@@ -106,8 +106,8 @@ async def create_card_payment(
     amount: Decimal,
     currency: str,
     merchant_order_id: str,
-    billing_data: Dict[str, str],
-) -> Dict[str, Any]:
+    billing_data: dict[str, str],
+) -> dict[str, Any]:
     """
     High-level helper that executes the full 3-step Paymob flow and returns
     the iframe URL and Paymob's order ID for storage.
@@ -155,7 +155,7 @@ async def create_card_payment(
     }
 
 
-def verify_hmac(data: Dict[str, Any]) -> bool:
+def verify_hmac(data: dict[str, Any]) -> bool:
     """
     Validates the HMAC signature sent by Paymob in the Transaction Processed callback.
 

@@ -1,12 +1,12 @@
 import uuid
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import Optional
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.models.group_member import GroupRole
 from app.models.ai.idea import Idea, IdeaStatus
+from app.models.group_member import GroupRole
 from app.repositories.group_repo import group_repo
 from app.repositories.idea_repo import idea_repo
 
@@ -15,10 +15,10 @@ class IdeaService:
     """Idea workflows with access control and filtering rules."""
 
     @staticmethod
-    def _get_accessible_ideas(db: Session, user_id: uuid.UUID) -> List[Idea]:
+    def _get_accessible_ideas(db: Session, user_id: uuid.UUID) -> list[Idea]:
         """Collect ideas the user owns or can access through groups."""
         owned_ideas = idea_repo.get_by_owner(db, user_id)
-        shared_ideas: List[Idea] = []
+        shared_ideas: list[Idea] = []
         collaborations = group_repo.get_active_members_for_user(db, user_id)
 
         for collaboration in collaborations:
@@ -42,13 +42,13 @@ class IdeaService:
         user_id: uuid.UUID,
         min_budget: Optional[float] = None,
         max_budget: Optional[float] = None,
-        skills: Optional[List[str]] = None,
+        skills: Optional[list[str]] = None,
         feasibility: Optional[float] = None,
         sort_by: str = "created_at",
         sort_order: str = "desc",
-    ) -> List[Idea]:
+    ) -> list[Idea]:
         """Return accessible ideas after applying filters and sorting."""
-        filtered_items: List[Tuple[Idea, int]] = []
+        filtered_items: list[tuple[Idea, int]] = []
 
         for idea in IdeaService._get_accessible_ideas(db, user_id):
             if idea.is_archived:
@@ -77,9 +77,9 @@ class IdeaService:
 
             filtered_items.append((idea, match_count))
 
-        def sort_key(item: Tuple[Idea, int]) -> Tuple[int, object]:
+        def sort_key(item: tuple[Idea, int]) -> tuple[int, object]:
             idea, match_count = item
-            field_value = getattr(idea, sort_by, getattr(idea, "created_at"))
+            field_value = getattr(idea, sort_by, idea.created_at)
             if field_value is None:
                 field_value = 0
             return match_count, field_value
@@ -91,7 +91,7 @@ class IdeaService:
         return [idea for idea, _ in filtered_items]
 
     @staticmethod
-    def get_archived_user_ideas(db: Session, user_id: uuid.UUID) -> List[Idea]:
+    def get_archived_user_ideas(db: Session, user_id: uuid.UUID) -> list[Idea]:
         """Return only archived ideas accessible to the user."""
         return [
             idea

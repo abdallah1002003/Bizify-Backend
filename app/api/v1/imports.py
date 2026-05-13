@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
@@ -16,7 +16,7 @@ async def upload_document(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Upload a document, extract text, and save it."""
     if not file:
         raise HTTPException(
@@ -41,7 +41,7 @@ async def delete_document(
     document_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Delete a document belonging to the current user."""
     document = import_service.delete_document_for_user(db, document_id, current_user.id)
     if not document:
@@ -58,7 +58,7 @@ async def export_document_for_ai(
     document_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return extracted document text for downstream AI workflows."""
     document = import_service.get_document_for_user(db, document_id, current_user.id)
     if not document:

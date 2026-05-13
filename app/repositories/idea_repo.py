@@ -1,5 +1,5 @@
 import uuid
-from typing import Any, List
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -10,20 +10,20 @@ from app.repositories.base import BaseRepository
 class IdeaRepository(BaseRepository[Idea, Any, Any]):
     """Data-access helpers for ideas."""
 
-    def get_by_owner(self, db: Session, user_id: uuid.UUID) -> List[Idea]:
+    def get_by_owner(self, db: Session, user_id: uuid.UUID) -> list[Idea]:
         """Fetch all ideas owned by a specific user."""
         return db.query(self.model).filter(self.model.owner_id == user_id).all()
 
-    def get_by_business(self, db: Session, business_id: uuid.UUID) -> List[Idea]:
+    def get_by_business(self, db: Session, business_id: uuid.UUID) -> list[Idea]:
         """Fetch all ideas belonging to a specific business."""
         return db.query(self.model).filter(self.model.business_id == business_id).all()
 
     def get_by_ids_in_business(
         self,
         db: Session,
-        idea_ids: List[uuid.UUID],
+        idea_ids: list[uuid.UUID],
         business_id: uuid.UUID,
-    ) -> List[Idea]:
+    ) -> list[Idea]:
         """Fetch ideas by IDs within a single business boundary."""
         return (
             db.query(self.model)

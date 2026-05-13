@@ -1,5 +1,5 @@
 import uuid
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from sqlalchemy.orm import Session, joinedload
 
@@ -18,7 +18,7 @@ class PartnerRequestRepository(BaseRepository[PartnerRequest, Any, Any]):
         *,
         skip: int = 0,
         limit: int = 100,
-    ) -> List[PartnerRequest]:
+    ) -> list[PartnerRequest]:
         return (
             db.query(self.model)
             .options(

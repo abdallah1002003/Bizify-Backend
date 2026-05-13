@@ -7,15 +7,14 @@ from app.api.v1 import (
     billing,
     export,
     groups,
-
     ideas,
     imports,
     marketplace,
     notifications,
+    payment_methods,
     profile,
     settings,
     users,
-    payment_methods,
 )
 
 api_router = APIRouter()

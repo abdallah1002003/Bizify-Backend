@@ -1,6 +1,8 @@
 import json
 import uuid
+
 from fastapi.testclient import TestClient
+
 
 def test_update_user_profile_success(auth_client: TestClient):
     """U-03: Update base user profile successfully"""

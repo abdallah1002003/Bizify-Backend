@@ -1,7 +1,15 @@
-from typing import Any, Dict, List
+from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
@@ -26,7 +34,7 @@ from app.sockets.group_manager import group_manager
 router = APIRouter()
 
 
-def _build_member_response(member: Any) -> Dict[str, Any]:
+def _build_member_response(member: Any) -> dict[str, Any]:
     """Serialize a group member model into the response shape."""
     return {
         "id": member.id,
@@ -50,11 +58,11 @@ def create_group(
     return GroupService.create_team(db, current_user.id, data)
 
 
-@router.get("/groups", response_model=List[GroupResponse])
+@router.get("/groups", response_model=list[GroupResponse])
 def get_groups(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[GroupResponse]:
+) -> list[GroupResponse]:
     """Return groups owned by or shared with the authenticated user."""
     return GroupService.get_user_teams(db, current_user.id)
 
@@ -75,7 +83,7 @@ def delete_group(
     group_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Delete a group the user can manage."""
     GroupService.delete_group(db, group_id, current_user.id)
     return {"message": "Group deleted successfully"}
@@ -87,7 +95,7 @@ def create_invite(
     data: GroupInviteCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create an invite for a group."""
     return GroupService.create_invite(
         db,
@@ -105,7 +113,7 @@ async def process_invite(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Accept a group invite."""
     return await GroupService.process_invite(db, token, current_user.id, background_tasks)
 
@@ -115,7 +123,7 @@ def create_join_request(
     group_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a join request for a group."""
     return GroupService.create_join_request(db, group_id, current_user.id)
 
@@ -127,7 +135,7 @@ async def handle_join_request(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Approve or reject a join request."""
     return await GroupService.handle_join_request(
         db,
@@ -140,12 +148,12 @@ async def handle_join_request(
     )
 
 
-@router.get("/groups/{group_id}/members", response_model=List[GroupMemberResponse])
+@router.get("/groups/{group_id}/members", response_model=list[GroupMemberResponse])
 def get_members(
     group_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[GroupMemberResponse]:
+) -> list[GroupMemberResponse]:
     """Return active members for a group."""
     members = GroupService.get_group_members(db, group_id, current_user.id)
     return [_build_member_response(member) for member in members]
@@ -174,20 +182,20 @@ def remove_member(
     member_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Remove a member from a group."""
     GroupService.remove_group_member(db, member_id, current_user.id)
     return {"message": "Member removed successfully"}
 
 
-@router.get("/groups/{group_id}/messages", response_model=List[GroupMessageResponse])
+@router.get("/groups/{group_id}/messages", response_model=list[GroupMessageResponse])
 def get_group_messages(
     group_id: UUID,
     limit: int = 50,
     offset: int = 0,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[GroupMessageResponse]:
+) -> list[GroupMessageResponse]:
     """Return paginated messages for a group chat."""
     GroupService.get_chat_group_for_user(db, group_id, current_user.id)
     return GroupMessageService.get_group_messages(db, group_id, limit, offset)

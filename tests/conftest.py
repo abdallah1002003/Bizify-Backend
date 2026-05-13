@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import patch
+
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -73,8 +74,9 @@ def auth_client(client: TestClient, db_session):
     Returns a TestClient with a Bearer token already set for a verified test user.
     Also returns the user's email so tests can query the user if needed.
     """
-    from app.models.user import User
     import uuid
+
+    from app.models.user import User
     
     # Generate unique email for the fixture
     email = f"testuser_{uuid.uuid4().hex[:6]}@bizify.com"
@@ -115,8 +117,9 @@ def admin_client(db_session):
     Returns an INDEPENDENT TestClient (its own instance) logged in as an ADMIN.
     Avoids header conflicts when used alongside auth_client in the same test.
     """
-    from app.models.user import User, UserRole
     import uuid
+
+    from app.models.user import User, UserRole
 
     def override_get_db():
         try:

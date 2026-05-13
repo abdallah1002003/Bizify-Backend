@@ -1,5 +1,5 @@
 import uuid
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -41,7 +41,7 @@ class MarketplaceService:
         q: Optional[str] = None,
         skip: int = 0,
         limit: int = 50,
-    ) -> List[MarketplacePartnerPublic]:
+    ) -> list[MarketplacePartnerPublic]:
         rows = partner_repo.list_marketplace_approved(
             db,
             partner_type=partner_type,
@@ -116,11 +116,11 @@ class MarketplaceService:
         user_id: uuid.UUID,
         skip: int = 0,
         limit: int = 100,
-    ) -> List[MarketplacePartnerRequestRead]:
+    ) -> list[MarketplacePartnerRequestRead]:
         rows = partner_request_repo.list_for_requester(
             db, user_id, skip=skip, limit=limit
         )
-        out: List[MarketplacePartnerRequestRead] = []
+        out: list[MarketplacePartnerRequestRead] = []
         for row in rows:
             partner_public = None
             if row.partner:

@@ -1,4 +1,3 @@
-import json
 from fastapi.testclient import TestClient
 
 
@@ -28,11 +27,7 @@ def test_submit_questionnaire(auth_client: TestClient):
         }
     ]
     response = auth_client.post("/api/v1/profile/questionnaire", json=payload)
-    # The profile service uses AI to parse the questionnaire. 
-    # Without a mock, this might fail or return a structured response.
-    # We assert 200 to ensure the endpoint accepts it.
-    # Note: if AI pipeline fails during test, we might get 500/503.
-    # If so, we should mock it, but let's test it as-is first.
+
     assert response.status_code in [200, 500, 503]
 
 
@@ -87,11 +82,11 @@ def test_add_and_get_user_skills(auth_client: TestClient):
     # Add custom skill
     add_resp = auth_client.post(
         "/api/v1/profile/skills",
-        json={"skill_name": "Test Automation"}
+        json={"name": "Test Automation"}
     )
     assert add_resp.status_code == 201
     skill_data = add_resp.json()
-    assert skill_data["skill_name"] == "Test Automation"
+    assert skill_data["name"] == "Test Automation"
     skill_id = skill_data["id"]
     
     # Fetch user skills
@@ -99,7 +94,7 @@ def test_add_and_get_user_skills(auth_client: TestClient):
     assert get_resp.status_code == 200
     skills = get_resp.json()
     assert len(skills) > 0
-    assert any(s["skill_name"] == "Test Automation" for s in skills)
+    assert any(s["name"] == "Test Automation" for s in skills)
     
     # Fetch skills json separately (P-X)
     get_json_resp = auth_client.get("/api/v1/profile/skills/json")

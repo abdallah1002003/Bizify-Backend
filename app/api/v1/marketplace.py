@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -31,7 +31,7 @@ def _parse_partner_type(type_param: Optional[str]) -> Optional[PartnerType]:
 
 @router.get(
     "/partners",
-    response_model=List[MarketplacePartnerPublic],
+    response_model=list[MarketplacePartnerPublic],
     summary="List marketplace partners",
     description=(
         "Returns admin-approved partner profiles for browse/search. "
@@ -52,7 +52,7 @@ def list_marketplace_partners(
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
     _current_user: User = Depends(get_current_user),
-) -> List[MarketplacePartnerPublic]:
+) -> list[MarketplacePartnerPublic]:
     partner_type = _parse_partner_type(partner_type_filter)
     return MarketplaceService.list_partners(
         db, partner_type=partner_type, q=q, skip=skip, limit=limit
@@ -104,7 +104,7 @@ def create_marketplace_partner_request(
 
 @router.get(
     "/requests",
-    response_model=List[MarketplacePartnerRequestRead],
+    response_model=list[MarketplacePartnerRequestRead],
     summary="List my marketplace requests",
 )
 def list_my_marketplace_requests(
@@ -112,7 +112,7 @@ def list_my_marketplace_requests(
     limit: int = Query(100, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[MarketplacePartnerRequestRead]:
+) -> list[MarketplacePartnerRequestRead]:
     return MarketplaceService.list_my_requests(
         db, user_id=current_user.id, skip=skip, limit=limit
     )

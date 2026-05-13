@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from sqlalchemy import and_, delete, or_, update
 from sqlalchemy.orm import Session
@@ -19,7 +19,7 @@ class NotificationRepository(BaseRepository[Notification, Any, Any]):
         user_id: uuid.UUID,
         skip: int = 0,
         limit: int = 20,
-    ) -> List[Notification]:
+    ) -> list[Notification]:
         """Fetch active notifications for a user, newest first."""
         now = datetime.utcnow()
         return (
@@ -55,7 +55,7 @@ class NotificationRepository(BaseRepository[Notification, Any, Any]):
         self,
         db: Session,
         user_id: uuid.UUID,
-        notification_ids: List[uuid.UUID],
+        notification_ids: list[uuid.UUID],
         status: NotificationStatus,
     ) -> int:
         """Update multiple notifications to a given status."""
@@ -89,7 +89,7 @@ class NotificationRepository(BaseRepository[Notification, Any, Any]):
         self,
         db: Session,
         user_id: uuid.UUID,
-        notification_ids: List[uuid.UUID],
+        notification_ids: list[uuid.UUID],
     ) -> int:
         """Delete multiple notifications belonging to the user."""
         if not notification_ids:
@@ -134,7 +134,7 @@ class NotificationRepository(BaseRepository[Notification, Any, Any]):
         self,
         db: Session,
         user_id: uuid.UUID,
-        update_data: Dict[str, Any],
+        update_data: dict[str, Any],
     ) -> NotificationSetting:
         """Update notification settings for a user."""
         settings = self.get_or_create_settings(db, user_id)

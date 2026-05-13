@@ -5,14 +5,12 @@ from app.repositories.business_repo import business_repo
 from app.repositories.document_repo import document_repo
 from app.repositories.export_repo import export_repo
 from app.repositories.group_repo import group_repo
-
 from app.repositories.idea_repo import idea_repo
 from app.repositories.message_repo import message_repo
 from app.repositories.notification_repo import notification_repo
 from app.repositories.partner_repo import partner_repo
 from app.repositories.privacy_repo import privacy_repo
 from app.repositories.profile_repo import profile_repo
-
 from app.repositories.user_repo import user_repo
 
 __all__ = [

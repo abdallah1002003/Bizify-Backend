@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+
 def test_list_notifications(auth_client: TestClient):
     """N-01: List user notifications"""
     response = auth_client.get("/api/v1/notifications/")

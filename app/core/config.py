@@ -56,7 +56,7 @@ class Settings(BaseSettings):
     SUPABASE_BUCKET_NAME: str = "partner-documents"
 
     AI_PIPELINE_BASE_URL: str = "https://bizifyai-production.up.railway.app"
-    AI_PIPELINE_API_KEY: str = "7f986c28-88d1-424d-8622-776ffaff3452"
+    AI_PIPELINE_API_KEY: Optional[str] = None
 
     model_config = SettingsConfigDict(
         env_file=".env",

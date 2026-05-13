@@ -1,11 +1,13 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, String, Boolean
+
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 from app.models.group_member import GroupRole
+
 
 class Group(Base):
     """

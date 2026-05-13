@@ -1,5 +1,5 @@
 import uuid
-from typing import Any, List
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -14,7 +14,7 @@ class MessageRepository(BaseRepository[GroupMessage, Any, Any]):
 
     def get_group_messages(
         self, db: Session, group_id: uuid.UUID, limit: int = 50, offset: int = 0
-    ) -> List[GroupMessage]:
+    ) -> list[GroupMessage]:
         """
         Fetch messages for a specific group with pagination.
         Ordered chronologically (oldest first).

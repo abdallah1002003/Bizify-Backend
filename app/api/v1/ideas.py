@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -12,7 +12,7 @@ from app.services.idea_service import IdeaService
 router = APIRouter()
 
 
-@router.get("/", response_model=List[IdeaRead])
+@router.get("/", response_model=list[IdeaRead])
 def get_ideas(
     min_budget: Optional[float] = Query(None, description="Minimum allowed budget"),
     max_budget: Optional[float] = Query(None, description="Maximum allowed budget"),
@@ -22,7 +22,7 @@ def get_ideas(
     sort_order: str = Query("desc", description="Sort order: asc or desc"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[IdeaRead]:
+) -> list[IdeaRead]:
     """Return the current user's accessible ideas with filters and sorting."""
     if min_budget is not None and max_budget is not None and min_budget > max_budget:
         raise HTTPException(
@@ -53,11 +53,11 @@ def create_idea(
     return IdeaService.create_idea(db, current_user.id, idea_in.title, idea_in.description)
 
 
-@router.get("/archived", response_model=List[IdeaRead])
+@router.get("/archived", response_model=list[IdeaRead])
 def get_archived_ideas(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[IdeaRead]:
+) -> list[IdeaRead]:
     """Return archived ideas accessible to the current user."""
     return IdeaService.get_archived_user_ideas(db=db, user_id=current_user.id)
 
