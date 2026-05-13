@@ -1,3 +1,4 @@
+import json as json_lib
 import logging
 from typing import Any
 
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-_AI_BASE_URL = "https://bizifyai-production.up.railway.app"
+_AI_BASE_URL = settings.AI_PIPELINE_BASE_URL
 _REQUEST_TIMEOUT_SECONDS = 120
 
 
@@ -87,7 +88,9 @@ async def ai_pipeline_proxy(
             prev = path_parts[i - 1] if i > 0 else ""
             known_resources = {
                 "status", "idea", "questionnaire", "profile", "problems",
-                "idea-intake", "customers", "competition", "market-potential", "idea-strategy"
+                "idea-intake", "customers", "competition", "market-potential",
+                "idea-strategy", "business-model", "functions-list",
+                "mvp-planning", "unit-economics", "go-to-market",
             }
             if prev in known_resources:
                 raise HTTPException(
@@ -99,24 +102,24 @@ async def ai_pipeline_proxy(
 
     forwarded_headers = {
         "x-api-key": settings.AI_PIPELINE_API_KEY,
-        "Content-Type": "application/json",
     }
+    if request.method in ("POST", "PUT", "PATCH"):
+        forwarded_headers["Content-Type"] = "application/json"
 
     body_bytes = await request.body()
     body: dict | None = None
 
     if body_bytes:
-        import json
         try:
-            body = json.loads(body_bytes)
+            body = json_lib.loads(body_bytes)
             if isinstance(body, dict):
                 body["user_id"] = user_id
-        except (json.JSONDecodeError, ValueError):
+        except (json_lib.JSONDecodeError, ValueError):
             body = None
 
     try:
         client = httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS)
-        
+
         req = client.build_request(
             method=request.method,
             url=target_url,
