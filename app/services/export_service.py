@@ -14,7 +14,7 @@ from app.models.export_job import ExportJob, ExportStatus
 from app.repositories.export_repo import export_repo
 from app.repositories.idea_repo import idea_repo
 from app.repositories.profile_repo import profile_repo
-from app.repositories.skill_repo import skill_repo
+
 
 
 def _sanitize_for_fpdf(text: str) -> str:
@@ -180,14 +180,9 @@ def process_export_task(job_id: str) -> None:
                 }
 
         if "skills" in job.scope:
-            skills = skill_repo.get_by_user(db, user_id)
-            data_to_export["skills"] = [
-                {
-                    "name": skill.skill_name,
-                    "level": getattr(skill, "declared_level", None),
-                }
-                for skill in skills
-            ]
+            profile = profile_repo.get_by_user_id(db, user_id)
+            skills = profile.skills_json if profile and profile.skills_json else []
+            data_to_export["skills"] = skills
 
         if "ideas" in job.scope:
             ideas = idea_repo.get_by_owner(db, user_id)
