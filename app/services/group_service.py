@@ -199,6 +199,24 @@ class GroupService:
         return list(unique_groups.values())
 
     @staticmethod
+    def _send_invite_email_background(
+        email: str,
+        group_name: str,
+        inviter_email: str,
+        token: str,
+    ) -> None:
+        """Send invite email in background (runs after response is returned)."""
+        try:
+            send_team_invite_email(
+                email,
+                group_name,
+                inviter_email,
+                f"https://bizify.app/join-group?token={token}",
+            )
+        except Exception:
+            logger.exception("Failed to send invite email to %s, invite still created", email)
+
+    @staticmethod
     def create_invite(
         db: Session,
         group_id: uuid.UUID,
@@ -206,6 +224,7 @@ class GroupService:
         email: str,
         role: Optional[GroupRole] = None,
         idea_ids: Optional[list[uuid.UUID]] = None,
+        background_tasks: Optional[BackgroundTasks] = None,
     ) -> dict[str, Any]:
         """Create an invite for a group member."""
         group = group_repo.get_by_id(db, group_id)
@@ -233,15 +252,16 @@ class GroupService:
 
         inviter = user_repo.get(db, invited_by)
         inviter_email = inviter.email if inviter else "Bizify"
-        try:
-            send_team_invite_email(
+        if background_tasks:
+            background_tasks.add_task(
+                GroupService._send_invite_email_background,
                 email,
                 group.name,
                 inviter_email,
-                f"https://bizify.app/join-group?token={token}",
+                token,
             )
-        except Exception:
-            logger.exception("Failed to send invite email to %s, invite still created", email)
+        else:
+            GroupService._send_invite_email_background(email, group.name, inviter_email, token)
 
         return {
             "message": "Invite generated successfully",

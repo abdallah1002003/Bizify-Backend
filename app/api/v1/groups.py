@@ -93,6 +93,7 @@ def delete_group(
 def create_invite(
     group_id: UUID,
     data: GroupInviteCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -104,6 +105,7 @@ def create_invite(
         data.email,
         data.role,
         data.idea_ids,
+        background_tasks,
     )
 
 
