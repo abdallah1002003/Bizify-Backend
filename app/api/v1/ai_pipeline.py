@@ -55,132 +55,87 @@ async def general_chat_stream(
     return StreamingResponse(stream, media_type="text/event-stream")
 
 
-@router.api_route(
-    "/{full_path:path}",
-    methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
-    summary="AI Pipeline Generic Proxy",
-    include_in_schema=False,
-    description=(
-        "A secure, authenticated proxy that forwards any request to the AI pipeline service. "
-        "Validates the user's JWT token, injects the x-api-key, and overrides the user_id "
-        "with the authenticated user's ID to prevent unauthorized access to other users' data."
-    ),
-)
-async def ai_pipeline_proxy(
-    full_path: str,
-    request: Request,
-    current_user: User = Depends(get_current_user),
-) -> StreamingResponse:
-    """
-    Generic proxy to the external AI pipeline service.
-
-    Security guarantees:
-    - JWT must be valid (enforced by get_current_user dependency).
-    - x-api-key is injected server-side (never exposed to the client).
-    - user_id in the request body is always overridden with the authenticated user's ID.
-    - user_id path params are validated to match the authenticated user's ID.
-    """
-    user_id = str(current_user.id)
-
-    path_parts = full_path.split("/")
-    for i, part in enumerate(path_parts):
-        if i > 0 and part and part != user_id:
-            prev = path_parts[i - 1] if i > 0 else ""
-            known_resources = {
-                "status", "idea", "questionnaire", "profile", "problems",
-                "idea-intake", "customers", "competition", "market-potential",
-                "idea-strategy", "business-model", "functions-list",
-                "mvp-planning", "unit-economics", "go-to-market",
-            }
-            if prev in known_resources:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You are not allowed to access another user's pipeline data.",
-                )
-
-    target_url = f"{_AI_BASE_URL}/pipeline/{full_path}"
-
-    forwarded_headers = {
-        "x-api-key": settings.AI_PIPELINE_API_KEY,
-    }
-    if request.method in ("POST", "PUT", "PATCH"):
-        forwarded_headers["Content-Type"] = "application/json"
-
-    body_bytes = await request.body()
-    body: dict | None = None
-
-    if body_bytes:
+async def _forward_get_to_ai(path: str, user_id: str) -> dict:
+    """Helper to fetch data from the external AI pipeline."""
+    target_url = f"{_AI_BASE_URL}/pipeline/{path}/{user_id}"
+    headers = {"x-api-key": settings.AI_PIPELINE_API_KEY}
+    async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS) as client:
         try:
-            body = json_lib.loads(body_bytes)
-            if isinstance(body, dict):
-                body["user_id"] = user_id
-        except (json_lib.JSONDecodeError, ValueError):
-            body = None
+            response = await client.get(target_url, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as exc:
+            raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+        except httpx.RequestError as exc:
+            logger.error("AI pipeline request failed: %s", exc)
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI Service unavailable.")
 
-    try:
-        client = httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS)
 
-        req = client.build_request(
-            method=request.method,
-            url=target_url,
-            headers=forwarded_headers,
-            json=body if body is not None else None,
-            content=body_bytes if body is None and body_bytes else None,
-            params=dict(request.query_params),
-        )
+@router.post("/run", summary="Trigger AI Pipeline")
+async def trigger_pipeline(current_user: User = Depends(get_current_user)):
+    target_url = f"{_AI_BASE_URL}/pipeline/run"
+    headers = {"x-api-key": settings.AI_PIPELINE_API_KEY, "Content-Type": "application/json"}
+    async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS) as client:
+        try:
+            response = await client.post(target_url, headers=headers, json={"user_id": str(current_user.id)})
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as exc:
+            raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+        except httpx.RequestError:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI Service unavailable.")
 
-        logger.info(
-            "Proxying %s /pipeline/%s for user %s",
-            request.method, full_path, user_id,
-        )
 
-        proxy_response = await client.send(req, stream=True)
+@router.get("/customers", summary="Get Customers Analysis")
+async def get_customers(current_user: User = Depends(get_current_user)):
+    return await _forward_get_to_ai("customers", str(current_user.id))
 
-        if proxy_response.is_error:
-            await proxy_response.aread()
-            error_text = proxy_response.text
-            await proxy_response.aclose()
-            await client.aclose()
-            logger.error("AI pipeline returned HTTP %s: %s", proxy_response.status_code, error_text)
-            raise HTTPException(
-                status_code=proxy_response.status_code,
-                detail=f"AI pipeline error: {error_text}",
-            )
 
-        logger.info(
-            "AI pipeline responded %s for /pipeline/%s. Starting stream...",
-            proxy_response.status_code, full_path,
-        )
+@router.get("/competition", summary="Get Competition Analysis")
+async def get_competition(current_user: User = Depends(get_current_user)):
+    return await _forward_get_to_ai("competition", str(current_user.id))
 
-        async def stream_generator():
-            try:
-                async for chunk in proxy_response.aiter_bytes():
-                    yield chunk
-            finally:
-                await proxy_response.aclose()
-                await client.aclose()
 
-        return StreamingResponse(
-            stream_generator(),
-            status_code=proxy_response.status_code,
-            headers={"Content-Type": proxy_response.headers.get("content-type", "text/event-stream")},
-        )
+@router.get("/market-potential", summary="Get Market Potential")
+async def get_market_potential(current_user: User = Depends(get_current_user)):
+    return await _forward_get_to_ai("market-potential", str(current_user.id))
 
-    except httpx.TimeoutException:
-        logger.error("AI pipeline request timed out for /pipeline/%s", full_path)
-        raise HTTPException(
-            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-            detail="The AI pipeline is taking too long to respond. Please try again.",
-        ) from None
-    except httpx.HTTPStatusError as exc:
-        logger.error("AI pipeline returned HTTP %s: %s", exc.response.status_code, exc.response.text)
-        raise HTTPException(
-            status_code=exc.response.status_code,
-            detail=f"AI pipeline error: {exc.response.text}",
-        ) from exc
-    except httpx.RequestError as exc:
-        logger.error("AI pipeline request failed: %s", exc)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Could not reach the AI pipeline. Please try again later.",
-        ) from exc
+
+@router.get("/idea-strategy", summary="Get Idea Strategy")
+async def get_idea_strategy(current_user: User = Depends(get_current_user)):
+    return await _forward_get_to_ai("idea-strategy", str(current_user.id))
+
+
+@router.get("/business-model", summary="Get Business Model")
+async def get_business_model(current_user: User = Depends(get_current_user)):
+    return await _forward_get_to_ai("business-model", str(current_user.id))
+
+
+@router.get("/functions-list", summary="Get Functions List")
+async def get_functions_list(current_user: User = Depends(get_current_user)):
+    return await _forward_get_to_ai("functions-list", str(current_user.id))
+
+
+@router.get("/mvp-planning", summary="Get MVP Planning")
+async def get_mvp_planning(current_user: User = Depends(get_current_user)):
+    return await _forward_get_to_ai("mvp-planning", str(current_user.id))
+
+
+@router.get("/unit-economics", summary="Get Unit Economics")
+async def get_unit_economics(current_user: User = Depends(get_current_user)):
+    return await _forward_get_to_ai("unit-economics", str(current_user.id))
+
+
+@router.get("/go-to-market", summary="Get Go To Market Strategy")
+async def get_go_to_market(current_user: User = Depends(get_current_user)):
+    return await _forward_get_to_ai("go-to-market", str(current_user.id))
+
+
+@router.get("/problems", summary="Get Generated Problems")
+async def get_problems(current_user: User = Depends(get_current_user)):
+    return await _forward_get_to_ai("problems", str(current_user.id))
+
+
+@router.get("/idea", summary="Get Generated Idea")
+async def get_idea(current_user: User = Depends(get_current_user)):
+    return await _forward_get_to_ai("idea", str(current_user.id))
