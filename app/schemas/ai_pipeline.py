@@ -33,5 +33,10 @@ class GeneralChatRequest(BaseModel):
 class GeneralChatResponse(BaseModel):
     """Response schema for the General Chatbot."""
 
-    response: str
-    history: list[dict[str, Any]]
+    reply: str
+    intent: Optional[str] = None
+    section: Optional[str] = None
+    action: Optional[str] = None
+    route_to_trigger: Optional[str] = None
+    trigger_needed: Optional[bool] = None
+    chat_history_length: Optional[int] = None
