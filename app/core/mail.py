@@ -55,7 +55,8 @@ def send_email(
             last_exception = e
 
     logger.error(f"All SMTP attempts failed for {email_to}")
-    raise EmailDeliveryError("Failed to send email after multiple attempts") from last_exception
+    error_details = f"Details: {str(last_exception)}" if last_exception else "No details"
+    raise EmailDeliveryError(f"SMTP Failure. {error_details}") from last_exception
 
 
 def send_otp_email(email_to: str, otp: str) -> None:

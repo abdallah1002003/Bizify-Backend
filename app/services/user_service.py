@@ -147,7 +147,7 @@ class UserService:
             logger.exception("OTP delivery failed for %s", email)
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Unable to send verification code right now. Please try again later.",
+                detail=str(exc),
             ) from exc
         except Exception:
             db.rollback()

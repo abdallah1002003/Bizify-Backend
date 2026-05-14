@@ -116,3 +116,12 @@ def get_session_status(current_user: User = Depends(get_current_user)) -> dict[s
 def session_ping(current_user: User = Depends(get_current_user)) -> dict[str, str]:
     """Keep the current session active."""
     return {"message": "Session kept alive"}
+@router.get("/test-email")
+def test_email(email: str):
+    """Diagnostic endpoint to test SMTP connectivity."""
+    from app.core.mail import send_otp_email
+    try:
+        send_otp_email(email, "123456")
+        return {"message": "Email sent successfully"}
+    except Exception as e:
+        return {"error": str(e)}
