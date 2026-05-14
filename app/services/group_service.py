@@ -1,9 +1,12 @@
+import logging
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from fastapi import BackgroundTasks, HTTPException, status
+
+logger = logging.getLogger(__name__)
 from sqlalchemy.orm import Session
 
 from app.core.cache import cache
@@ -230,12 +233,15 @@ class GroupService:
 
         inviter = user_repo.get(db, invited_by)
         inviter_email = inviter.email if inviter else "Bizify"
-        send_team_invite_email(
-            email,
-            group.name,
-            inviter_email,
-            f"https://bizify.app/join-group?token={token}",
-        )
+        try:
+            send_team_invite_email(
+                email,
+                group.name,
+                inviter_email,
+                f"https://bizify.app/join-group?token={token}",
+            )
+        except Exception:
+            logger.exception("Failed to send invite email to %s, invite still created", email)
 
         return {
             "message": "Invite generated successfully",
