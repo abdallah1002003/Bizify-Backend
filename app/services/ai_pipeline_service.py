@@ -4,6 +4,7 @@ import uuid
 from typing import Any, AsyncGenerator, Optional
 
 import httpx
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -123,9 +124,17 @@ class AIPipelineService:
             "history": history or [],
         }
         async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS) as client:
-            response = await client.post(url, headers=headers, json=body)
-            response.raise_for_status()
-            return response.json()
+            try:
+                response = await client.post(url, headers=headers, json=body)
+                if response.is_error:
+                    logger.error("AI General Chat failed with status %s: %s", response.status_code, response.text)
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as exc:
+                raise HTTPException(status_code=exc.response.status_code, detail=f"AI Chat error: {exc.response.text}")
+            except Exception as exc:
+                logger.exception("AI General Chat failed")
+                raise HTTPException(status_code=500, detail="Internal error communicating with AI Chat")
 
     @staticmethod
     async def general_chat_stream(

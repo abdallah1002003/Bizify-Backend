@@ -30,22 +30,32 @@ def send_email(
     message["To"] = email_to
     message.set_content(html_content, subtype = "html")
 
-    try:
-        if settings.SMTP_PORT == 465:
-            server = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10)
-        else:
-            server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10)
-            if settings.SMTP_TLS:
-                server.starttls()
+    # Try to connect using the configured port, fallback to 465/SSL if 587 fails
+    ports_to_try = [(settings.SMTP_HOST, settings.SMTP_PORT)]
+    if settings.SMTP_PORT != 465:
+        ports_to_try.append((settings.SMTP_HOST, 465))
 
-        with server:
-            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-            server.send_message(message)
+    last_exception = None
+    for host, port in ports_to_try:
+        try:
+            if port == 465:
+                server = smtplib.SMTP_SSL(host, port, timeout=15)
+            else:
+                server = smtplib.SMTP(host, port, timeout=15)
+                if settings.SMTP_TLS:
+                    server.starttls()
             
-            logger.info(f"Successfully sent email to {email_to}")
-    except Exception as e:
-        logger.exception("Failed to send email to %s", email_to)
-        raise EmailDeliveryError("Failed to send email") from e
+            with server:
+                server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+                server.send_message(message)
+                logger.info(f"Successfully sent email to {email_to} via {host}:{port}")
+                return # Success!
+        except Exception as e:
+            logger.warning(f"Failed to send email via {host}:{port}: {e}")
+            last_exception = e
+
+    logger.error(f"All SMTP attempts failed for {email_to}")
+    raise EmailDeliveryError("Failed to send email after multiple attempts") from last_exception
 
 
 def send_otp_email(email_to: str, otp: str) -> None:
