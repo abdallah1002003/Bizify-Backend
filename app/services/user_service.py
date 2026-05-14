@@ -89,12 +89,6 @@ class UserService:
                     commit=False,
                     refresh=False,
                 )
-            UserService.create_otp(
-                db,
-                db_user.id,
-                db_user.email,
-                commit=False,
-            )
             db.commit()
         except Exception:
             db.rollback()
@@ -103,6 +97,12 @@ class UserService:
             raise
 
         db.refresh(db_user)
+
+        UserService.create_otp(
+            db,
+            db_user.id,
+            db_user.email,
+        )
 
         return db_user
 
@@ -135,23 +135,18 @@ class UserService:
             otp_hash=hashed_otp,
             verification_type=v_type,
             expires_at=expires_at,
-            commit=False,
+            commit=True,
         )
 
         try:
             send_otp_email(email, otp)
-            if commit:
-                db.commit()
         except EmailDeliveryError as exc:
-            db.rollback()
-            # Demo/Debug Fallback: Print OTP to logs so it can be seen in Render Dashboard
-            logger.error("DEMO FALLBACK: OTP for %s is %s", email, otp)
+            logger.error("OTP email blocked for %s. OTP %s is saved in DB.", email, otp)
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"SMTP blocked on this server. For demo purposes, your code is: {otp}",
+                detail=f"SMTP blocked. Verification code: {otp}",
             ) from exc
         except Exception:
-            db.rollback()
             raise
 
         return otp
