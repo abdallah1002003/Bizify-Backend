@@ -31,10 +31,14 @@ def send_email(
     message.set_content(html_content, subtype = "html")
 
     try:
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as server:
+        if settings.SMTP_PORT == 465:
+            server = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10)
+        else:
+            server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10)
             if settings.SMTP_TLS:
                 server.starttls()
-            
+
+        with server:
             server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
             server.send_message(message)
             
