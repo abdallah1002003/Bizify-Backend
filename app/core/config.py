@@ -58,6 +58,8 @@ class Settings(BaseSettings):
     AI_PIPELINE_BASE_URL: str = "https://bizifyai-production.up.railway.app"
     AI_PIPELINE_API_KEY: Optional[str] = None
 
+    RESEND_API_KEY: Optional[str] = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,

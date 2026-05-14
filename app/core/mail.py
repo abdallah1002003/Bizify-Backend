@@ -1,6 +1,6 @@
 import logging
-import smtplib
-from email.message import EmailMessage
+
+import httpx
 
 from app.core.config import settings
 
@@ -17,9 +17,46 @@ def send_email(
     html_content: str,
 ) -> None:
     """
-    Generic function to send an email via SMTP.
-    Raise an explicit error when configuration is missing or delivery fails.
+    Send an email via Resend API (preferred) or SMTP (fallback).
     """
+    if settings.RESEND_API_KEY:
+        _send_via_resend(email_to, subject, html_content)
+        return
+
+    _send_via_smtp(email_to, subject, html_content)
+
+
+def _send_via_resend(email_to: str, subject: str, html_content: str) -> None:
+    """Send email using the Resend API."""
+    try:
+        with httpx.Client(timeout=15) as client:
+            response = client.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {settings.RESEND_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "from": settings.EMAILS_FROM_EMAIL or "Bizify <onboarding@resend.dev>",
+                    "to": [email_to],
+                    "subject": subject,
+                    "html": html_content,
+                },
+            )
+            if response.is_error:
+                logger.error("Resend API error: %s %s", response.status_code, response.text)
+                raise EmailDeliveryError(f"Resend error: {response.text}")
+            logger.info("Email sent via Resend to %s", email_to)
+    except httpx.RequestError as exc:
+        logger.error("Resend API unreachable: %s", exc)
+        raise EmailDeliveryError(f"Resend API unreachable: {exc}")
+
+
+def _send_via_smtp(email_to: str, subject: str, html_content: str) -> None:
+    """Send email via SMTP (fallback)."""
+    import smtplib
+    from email.message import EmailMessage
+
     if not settings.SMTP_HOST or not settings.SMTP_USER or not settings.SMTP_PASSWORD:
         logger.error("SMTP settings are incomplete. Email was not sent.")
         raise EmailDeliveryError("SMTP settings are incomplete")
@@ -28,9 +65,8 @@ def send_email(
     message["Subject"] = subject
     message["From"] = settings.EMAILS_FROM_EMAIL or settings.SMTP_USER
     message["To"] = email_to
-    message.set_content(html_content, subtype = "html")
+    message.set_content(html_content, subtype="html")
 
-    # Try to connect using the configured port, fallback to 465/SSL if 587 fails
     ports_to_try = [(settings.SMTP_HOST, settings.SMTP_PORT)]
     if settings.SMTP_PORT != 465:
         ports_to_try.append((settings.SMTP_HOST, 465))
@@ -44,19 +80,17 @@ def send_email(
                 server = smtplib.SMTP(host, port, timeout=15)
                 if settings.SMTP_TLS:
                     server.starttls()
-            
+
             with server:
                 server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
                 server.send_message(message)
-                logger.info(f"Successfully sent email to {email_to} via {host}:{port}")
-                return # Success!
+                logger.info("Email sent via SMTP %s:%s to %s", host, port, email_to)
+                return
         except Exception as e:
-            logger.warning(f"Failed to send email via {host}:{port}: {e}")
+            logger.warning("SMTP %s:%s failed: %s", host, port, e)
             last_exception = e
 
-    logger.error(f"All SMTP attempts failed for {email_to}")
-    error_details = f"Details: {str(last_exception)}" if last_exception else "No details"
-    raise EmailDeliveryError(f"SMTP Failure. {error_details}") from last_exception
+    raise EmailDeliveryError("All SMTP attempts failed") from last_exception
 
 
 def send_otp_email(email_to: str, otp: str) -> None:

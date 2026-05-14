@@ -141,10 +141,10 @@ class UserService:
         try:
             send_otp_email(email, otp)
         except EmailDeliveryError as exc:
-            logger.error("OTP email blocked for %s. OTP %s is saved in DB.", email, otp)
+            logger.error("Email delivery failed for %s. OTP %s is saved in DB.", email, otp)
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"SMTP blocked. Verification code: {otp}",
+                detail=f"Could not send email. Verification code: {otp}",
             ) from exc
         except Exception:
             raise
