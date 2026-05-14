@@ -31,7 +31,7 @@ def send_email(
     message.set_content(html_content, subtype = "html")
 
     try:
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as server:
             if settings.SMTP_TLS:
                 server.starttls()
             
