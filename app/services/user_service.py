@@ -144,10 +144,11 @@ class UserService:
                 db.commit()
         except EmailDeliveryError as exc:
             db.rollback()
-            logger.exception("OTP delivery failed for %s", email)
+            # Demo/Debug Fallback: Print OTP to logs so it can be seen in Render Dashboard
+            logger.error("DEMO FALLBACK: OTP for %s is %s", email, otp)
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=str(exc),
+                detail=f"SMTP blocked on this server. For demo purposes, your code is: {otp}",
             ) from exc
         except Exception:
             db.rollback()
