@@ -57,33 +57,43 @@ async def general_chat_stream(
 
 async def _forward_get_to_ai(path: str, user_id: str) -> dict:
     """Helper to fetch data from the external AI pipeline."""
+    if not settings.AI_PIPELINE_API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI_PIPELINE_API_KEY not configured on server.",
+        )
     target_url = f"{_AI_BASE_URL}/pipeline/{path}/{user_id}"
     headers = {"x-api-key": settings.AI_PIPELINE_API_KEY}
-    async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS) as client:
-        try:
+    try:
+        async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS) as client:
             response = await client.get(target_url, headers=headers)
             response.raise_for_status()
             return response.json()
-        except httpx.HTTPStatusError as exc:
-            raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
-        except httpx.RequestError as exc:
-            logger.error("AI pipeline request failed: %s", exc)
-            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI Service unavailable.")
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+    except httpx.RequestError as exc:
+        logger.error("AI pipeline request failed: %s", exc)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI Service unavailable.")
 
 
 @router.post("/run", summary="Trigger AI Pipeline")
 async def trigger_pipeline(current_user: User = Depends(get_current_user)):
+    if not settings.AI_PIPELINE_API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI_PIPELINE_API_KEY not configured on server.",
+        )
     target_url = f"{_AI_BASE_URL}/pipeline/run"
     headers = {"x-api-key": settings.AI_PIPELINE_API_KEY, "Content-Type": "application/json"}
-    async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS) as client:
-        try:
+    try:
+        async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS) as client:
             response = await client.post(target_url, headers=headers, json={"user_id": str(current_user.id)})
             response.raise_for_status()
             return response.json()
-        except httpx.HTTPStatusError as exc:
-            raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
-        except httpx.RequestError:
-            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI Service unavailable.")
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+    except httpx.RequestError:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI Service unavailable.")
 
 
 @router.get("/customers", summary="Get Customers Analysis")

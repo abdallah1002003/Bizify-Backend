@@ -107,34 +107,60 @@ class AIPipelineService:
             }
 
     @staticmethod
+    async def _call_ai_api(
+        method: str,
+        path: str,
+        json_body: Optional[dict] = None,
+    ) -> dict:
+        """Make an HTTP request to the external AI pipeline and return parsed JSON."""
+        if not settings.AI_PIPELINE_API_KEY:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="AI_PIPELINE_API_KEY not configured on server.",
+            )
+        url = f"{_AI_PIPELINE_URL.rsplit('/run', 1)[0]}/{path}"
+        headers = {
+            "x-api-key": settings.AI_PIPELINE_API_KEY,
+            "Content-Type": "application/json",
+        }
+        try:
+            async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS) as client:
+                response = await client.request(method, url, headers=headers, json=json_body)
+                if response.is_error:
+                    logger.error("AI API %s failed: %s %s", path, response.status_code, response.text)
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPStatusError as exc:
+            raise HTTPException(
+                status_code=exc.response.status_code,
+                detail=f"AI {path} error: {exc.response.text}",
+            )
+        except httpx.RequestError as exc:
+            logger.error("AI API %s unreachable: %s", path, exc)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"AI {path} service unreachable.",
+            )
+        except Exception as exc:
+            logger.exception("AI API %s failed", path)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Internal error during AI {path}.",
+            )
+
+    @staticmethod
     async def general_chat(
         user_id: uuid.UUID,
         message: str,
         history: Optional[list[dict[str, Any]]] = None,
     ) -> dict[str, Any]:
         """Send a message to the General Chatbot and return the response."""
-        url = f"{_AI_PIPELINE_URL.rsplit('/run', 1)[0]}/general-chat"
-        headers = {
-            "x-api-key": settings.AI_PIPELINE_API_KEY,
-            "Content-Type": "application/json",
-        }
         body = {
             "user_id": str(user_id),
             "message": message,
             "history": history or [],
         }
-        async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS) as client:
-            try:
-                response = await client.post(url, headers=headers, json=body)
-                if response.is_error:
-                    logger.error("AI General Chat failed with status %s: %s", response.status_code, response.text)
-                response.raise_for_status()
-                return response.json()
-            except httpx.HTTPStatusError as exc:
-                raise HTTPException(status_code=exc.response.status_code, detail=f"AI Chat error: {exc.response.text}")
-            except Exception as exc:
-                logger.exception("AI General Chat failed")
-                raise HTTPException(status_code=500, detail="Internal error communicating with AI Chat")
+        return await AIPipelineService._call_ai_api("POST", "general-chat", body)
 
     @staticmethod
     async def general_chat_stream(
@@ -143,6 +169,11 @@ class AIPipelineService:
         history: Optional[list[dict[str, Any]]] = None,
     ) -> AsyncGenerator[bytes, None]:
         """Stream a response from the General Chatbot."""
+        if not settings.AI_PIPELINE_API_KEY:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="AI_PIPELINE_API_KEY not configured on server.",
+            )
         url = f"{_AI_PIPELINE_URL.rsplit('/run', 1)[0]}/general-chat/stream"
         headers = {
             "x-api-key": settings.AI_PIPELINE_API_KEY,
@@ -153,8 +184,26 @@ class AIPipelineService:
             "message": message,
             "history": history or [],
         }
-        async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS) as client:
-            async with client.stream("POST", url, headers=headers, json=body) as response:
-                response.raise_for_status()
-                async for chunk in response.aiter_bytes():
-                    yield chunk
+        try:
+            async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS) as client:
+                async with client.stream("POST", url, headers=headers, json=body) as response:
+                    response.raise_for_status()
+                    async for chunk in response.aiter_bytes():
+                        yield chunk
+        except httpx.HTTPStatusError as exc:
+            raise HTTPException(
+                status_code=exc.response.status_code,
+                detail=f"AI stream error: {exc.response.text}",
+            )
+        except httpx.RequestError as exc:
+            logger.error("AI stream unreachable: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="AI stream service unreachable.",
+            )
+        except Exception as exc:
+            logger.exception("AI stream failed")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Internal error during AI stream.",
+            )
