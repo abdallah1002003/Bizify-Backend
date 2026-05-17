@@ -12,6 +12,8 @@ from app.core.database import SessionLocal
 from app.models.user import User, UserRole
 from app.repositories.admin_repo import security_repo
 from app.repositories.auth_repo import auth_repo
+from app.repositories.billing_repo import subscription_repo
+from app.repositories.usage_repo import usage_repo
 from app.repositories.user_repo import user_repo
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
@@ -144,3 +146,45 @@ class RoleChecker:
 
 
 get_current_admin_user = RoleChecker([UserRole.ADMIN])
+
+
+def check_ai_usage(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> User:
+    """
+    Dependency that enforces AI usage limits based on the user's active plan.
+    - Checks if the user's plan has `ai_analysis` set to True.
+    - Checks if the user has remaining AI requests (respects `ai_requests` limit in plan if present).
+    - If within limit, increments the counter and allows the request.
+    - If limit exceeded or AI is not allowed, raises HTTP 403 or 429.
+    """
+    # 1. Check User's Active Subscription
+    sub = subscription_repo.get_active_by_user(db, current_user.id)
+    features = {}
+    if sub and sub.plan and sub.plan.features_json:
+        features = sub.plan.features_json
+
+    if features.get("ai_analysis") is False:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your current plan does not include AI analysis features. Please upgrade your plan.",
+        )
+
+    plan_limit = features.get("ai_requests")
+    
+    within_limit, record = usage_repo.check_limit(db, current_user.id)
+    
+    active_limit = plan_limit if plan_limit is not None else (record.limit_value or 100)
+    
+    if (record.used or 0) >= active_limit:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=(
+                f"AI request limit reached ({(record.used or 0)}/{active_limit}). "
+                "Please upgrade your plan or wait for your limit to reset."
+            ),
+        )
+
+    usage_repo.increment(db, current_user.id)
+    return current_user

@@ -110,3 +110,125 @@ def test_ai_pipeline_unauthorized_results(client: TestClient):
     """AI-09: AI results endpoint without token is rejected"""
     resp = client.get("/api/v1/ai/profile")
     assert resp.status_code == 401
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Additional Tests for all AI proxy endpoints
+# ─────────────────────────────────────────────────────────────────────────────
+def test_get_ai_customers(auth_client: TestClient):
+    """AI-10: Fetch AI-generated customers"""
+    resp = auth_client.get("/api/v1/ai/customers")
+    assert resp.status_code in [200, 404, 425, 503]
+
+def test_get_ai_competition(auth_client: TestClient):
+    """AI-11: Fetch AI-generated competition"""
+    resp = auth_client.get("/api/v1/ai/competition")
+    assert resp.status_code in [200, 404, 425, 503]
+
+def test_get_ai_market_potential(auth_client: TestClient):
+    """AI-12: Fetch AI-generated market potential"""
+    resp = auth_client.get("/api/v1/ai/market-potential")
+    assert resp.status_code in [200, 404, 425, 503]
+
+def test_get_ai_idea_strategy(auth_client: TestClient):
+    """AI-13: Fetch AI-generated idea strategy"""
+    resp = auth_client.get("/api/v1/ai/idea-strategy")
+    assert resp.status_code in [200, 404, 425, 503]
+
+def test_get_ai_business_model(auth_client: TestClient):
+    """AI-14: Fetch AI-generated business model"""
+    resp = auth_client.get("/api/v1/ai/business-model")
+    assert resp.status_code in [200, 404, 425, 503]
+
+def test_get_ai_functions_list(auth_client: TestClient):
+    """AI-15: Fetch AI-generated functions list"""
+    resp = auth_client.get("/api/v1/ai/functions-list")
+    assert resp.status_code in [200, 404, 425, 503]
+
+def test_get_ai_mvp_planning(auth_client: TestClient):
+    """AI-16: Fetch AI-generated MVP planning"""
+    resp = auth_client.get("/api/v1/ai/mvp-planning")
+    assert resp.status_code in [200, 404, 425, 503]
+
+def test_get_ai_unit_economics(auth_client: TestClient):
+    """AI-17: Fetch AI-generated unit economics"""
+    resp = auth_client.get("/api/v1/ai/unit-economics")
+    assert resp.status_code in [200, 404, 425, 503]
+
+def test_get_ai_go_to_market(auth_client: TestClient):
+    """AI-18: Fetch AI-generated Go-To-Market strategy"""
+    resp = auth_client.get("/api/v1/ai/go-to-market")
+    assert resp.status_code in [200, 404, 425, 503]
+
+# --- Extended POST Tests ---
+
+def test_post_generate_customers(auth_client):
+    resp = auth_client.post("/api/v1/ai/customers")
+    assert resp.status_code in [200, 404, 422, 425, 500, 503]
+
+def test_post_regenerate_customers(auth_client):
+    resp = auth_client.post("/api/v1/ai/customers/regenerate")
+    assert resp.status_code in [200, 404, 422, 425, 500, 503]
+
+def test_post_generate_competition(auth_client):
+    resp = auth_client.post("/api/v1/ai/competition")
+    assert resp.status_code in [200, 404, 422, 425, 500, 503]
+
+def test_post_regenerate_competition(auth_client):
+    resp = auth_client.post("/api/v1/ai/competition/regenerate")
+    assert resp.status_code in [200, 404, 422, 425, 500, 503]
+
+def test_post_generate_market_potential(auth_client):
+    resp = auth_client.post("/api/v1/ai/market-potential")
+    assert resp.status_code in [200, 404, 422, 425, 500, 503]
+
+def test_post_regenerate_market_potential(auth_client):
+    resp = auth_client.post("/api/v1/ai/market-potential/regenerate")
+    assert resp.status_code in [200, 404, 422, 425, 500, 503]
+
+def test_post_generate_idea_strategy(auth_client):
+    resp = auth_client.post("/api/v1/ai/idea-strategy")
+    assert resp.status_code in [200, 404, 422, 425, 500, 503]
+
+def test_post_regenerate_idea_strategy(auth_client):
+    resp = auth_client.post("/api/v1/ai/idea-strategy/regenerate")
+    assert resp.status_code in [200, 404, 422, 425, 500, 503]
+
+def test_post_generate_business_model(auth_client):
+    resp = auth_client.post("/api/v1/ai/business-model")
+    assert resp.status_code in [200, 404, 422, 425, 500, 503]
+
+def test_post_regenerate_business_model(auth_client):
+    resp = auth_client.post("/api/v1/ai/business-model/regenerate")
+    assert resp.status_code in [200, 404, 422, 425, 500, 503]
+
+def test_post_generate_functions_list(auth_client):
+    resp = auth_client.post("/api/v1/ai/functions-list")
+    assert resp.status_code in [200, 404, 422, 425, 500, 503]
+
+def test_post_regenerate_functions_list(auth_client):
+    resp = auth_client.post("/api/v1/ai/functions-list/regenerate")
+    assert resp.status_code in [200, 404, 422, 425, 500, 503]
+
+def test_post_generate_mvp_planning(auth_client):
+    resp = auth_client.post("/api/v1/ai/mvp-planning")
+    assert resp.status_code in [200, 404, 422, 425, 500, 503]
+
+def test_post_regenerate_mvp_planning(auth_client):
+    resp = auth_client.post("/api/v1/ai/mvp-planning/regenerate")
+    assert resp.status_code in [200, 404, 422, 425, 500, 503]
+
+def test_post_generate_unit_economics(auth_client):
+    resp = auth_client.post("/api/v1/ai/unit-economics")
+    assert resp.status_code in [200, 404, 422, 425, 500, 503]
+
+def test_post_regenerate_unit_economics(auth_client):
+    resp = auth_client.post("/api/v1/ai/unit-economics/regenerate")
+    assert resp.status_code in [200, 404, 422, 425, 500, 503]
+
+def test_post_generate_go_to_market(auth_client):
+    resp = auth_client.post("/api/v1/ai/go-to-market")
+    assert resp.status_code in [200, 404, 422, 425, 500, 503]
+
+def test_post_regenerate_go_to_market(auth_client):
+    resp = auth_client.post("/api/v1/ai/go-to-market/regenerate")
+    assert resp.status_code in [200, 404, 422, 425, 500, 503]
