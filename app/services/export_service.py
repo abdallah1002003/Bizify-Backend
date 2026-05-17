@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Optional
 
+from fastapi import HTTPException
 from docx import Document
 from fpdf import FPDF
 from sqlalchemy.orm import Session
@@ -131,8 +132,15 @@ class ExportService:
                 "status": ExportStatus.PENDING,
             },
         )
-        task = process_export_task.delay(str(job.id))
-        return export_repo.update(db, db_obj=job, obj_in={"task_id": task.id})
+        try:
+            task = process_export_task.delay(str(job.id))
+            return export_repo.update(db, db_obj=job, obj_in={"task_id": task.id})
+        except Exception as e:
+            export_repo.update_status(db, job, ExportStatus.FAILED)
+            raise HTTPException(
+                status_code=503,
+                detail="Export service is currently unavailable. Please try again later."
+            )
 
     @staticmethod
     def cancel_export(db: Session, job_id: uuid.UUID, user_id: uuid.UUID) -> bool:

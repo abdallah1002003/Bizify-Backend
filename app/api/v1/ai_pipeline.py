@@ -96,6 +96,16 @@ async def trigger_pipeline(current_user: User = Depends(get_current_user)):
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI Service unavailable.")
 
 
+@router.get("/status", summary="Get Pipeline Status")
+async def get_status(current_user: User = Depends(get_current_user)):
+    return await _forward_get_to_ai("status", str(current_user.id))
+
+
+@router.get("/profile", summary="Get Profile Results")
+async def get_profile(current_user: User = Depends(get_current_user)):
+    return await _forward_get_to_ai("profile", str(current_user.id))
+
+
 @router.get("/customers", summary="Get Customers Analysis")
 async def get_customers(current_user: User = Depends(get_current_user)):
     return await _forward_get_to_ai("customers", str(current_user.id))

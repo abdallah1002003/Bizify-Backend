@@ -24,10 +24,14 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 @pytest.fixture(scope="session", autouse=True)
 def mock_global_services():
     """
-    Globally mock email delivery and DB compatibility tasks to prevent hangs.
+    Globally mock email delivery, DB compatibility tasks, export task, and Supabase client
+    to prevent hangs and failures during testing.
     """
     with patch("app.services.user_service.send_otp_email"), \
-         patch("app.core.database.ensure_sqlite_compatibility_schema"):
+         patch("app.core.database.ensure_sqlite_compatibility_schema"), \
+         patch("app.services.partner_service.create_client", return_value=None), \
+         patch("app.services.export_service.process_export_task.delay") as mock_delay:
+        mock_delay.return_value.id = "mock_task_id"
         yield
 
 

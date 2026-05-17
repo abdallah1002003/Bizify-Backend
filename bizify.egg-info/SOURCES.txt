@@ -13,7 +13,6 @@ tests/test_auth.py
 tests/test_billing.py
 tests/test_export.py
 tests/test_groups.py
-tests/test_guidance.py
 tests/test_health.py
 tests/test_ideas.py
 tests/test_import.py

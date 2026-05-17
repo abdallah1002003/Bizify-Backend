@@ -3,6 +3,8 @@ from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+import sys
+
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
@@ -61,7 +63,7 @@ class Settings(BaseSettings):
     RESEND_API_KEY: Optional[str] = None
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=None if "pytest" in sys.modules else ".env",
         case_sensitive=True,
         extra="ignore",
     )

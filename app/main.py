@@ -21,6 +21,9 @@ async def lifespan(app: FastAPI):
         print(" Database connected successfully!")
     except Exception as e:
         print(f" Database connection failed: {e}")
+        import sys
+        if "pytest" not in sys.modules:
+            raise RuntimeError("Database connection failed. Aborting startup.")
 
     yield
 
