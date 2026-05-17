@@ -2,15 +2,14 @@
 Seed script — inserts the default Bizify subscription plans into the DB.
 Run once:  python scripts/seed_plans.py
 """
-import sys
 import os
+import sys
 
 # Make sure the app package is importable
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.database import SessionLocal
-from app.models.plan   import Plan
-
+from app.models.plan import Plan
 
 PLANS = [
     {

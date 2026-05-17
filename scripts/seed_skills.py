@@ -3,13 +3,14 @@ Seed script: inserts default skill categories and their predefined skills.
 Run once after migration:
     python3 scripts/seed_skills.py
 """
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.database import SessionLocal
-from app.models.skill_category import SkillCategory
 from app.models.predefined_skill import PredefinedSkill
+from app.models.skill_category import SkillCategory
 
 SKILL_DATA = {
     "Technology & Engineering": [

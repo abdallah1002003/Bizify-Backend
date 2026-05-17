@@ -38,8 +38,6 @@ from app.models.group_associations import (
 )
 from app.models.group_invite import GroupInvite, GroupInviteStatus
 from app.models.group_join_request import GroupJoinRequest, GroupJoinRequestStatus
-
-
 from app.models.group_member import GroupMember, GroupMemberStatus, GroupRole
 from app.models.group_message import GroupMessage
 from app.models.notification import DeliveryStatus, Notification, NotificationStatus

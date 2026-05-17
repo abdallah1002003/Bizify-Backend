@@ -1,12 +1,12 @@
 import asyncio
 import json
-import uuid
 
 from app.core.database import SessionLocal
 from app.core.security import get_password_hash
 from app.models.user import User
 from app.models.user_profile import UserProfile
 from app.utils.questionnaire_storage import merge_questionnaire
+
 
 async def create_demo_users():
     db = SessionLocal()
@@ -87,8 +87,8 @@ async def create_demo_users():
     print("Demo accounts created.")
     
     # Now run the AI pipeline for both
+
     from app.services.ai_pipeline_service import AIPipelineService
-    import httpx
     
     print("\nRunning AI Pipeline for Creative Demo...")
     try:

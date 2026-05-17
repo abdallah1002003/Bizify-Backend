@@ -7,29 +7,29 @@
   All passwords: password123
 ==============================================================
 """
+import logging
 import os
+import secrets
 import sys
 import uuid
-import logging
-import secrets
 from datetime import datetime, timedelta, timezone
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.database import SessionLocal
 from app.core.security import get_password_hash
-from app.models.user import User, UserRole
-from app.models.user_profile import UserProfile, GuideStatus
-from app.models.user_skill import UserSkill
 from app.models.business import Business, BusinessStage
+from app.models.group import Group
+from app.models.group_invite import GroupInvite, GroupInviteStatus
+from app.models.group_member import GroupMember, GroupMemberStatus, GroupRole
+from app.models.group_message import GroupMessage
 from app.models.idea import Idea, IdeaStatus
 from app.models.notification import Notification
-from app.models.partner_profile import PartnerProfile, PartnerType, ApprovalStatus
-from app.models.group import Group
-from app.models.group_member import GroupMember, GroupRole, GroupMemberStatus
-from app.models.group_message import GroupMessage
-from app.models.group_invite import GroupInvite, GroupInviteStatus
+from app.models.partner_profile import ApprovalStatus, PartnerProfile, PartnerType
 from app.models.plan import Plan
+from app.models.user import User, UserRole
+from app.models.user_profile import GuideStatus, UserProfile
+from app.models.user_skill import UserSkill
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -300,7 +300,7 @@ def seed():
                 id=uuid.uuid4(), user_id=s.id,
                 partner_type=PartnerType.SUPPLIER,
                 company_name=name,
-                description=f"Leading supplier in the tech industry.",
+                description="Leading supplier in the tech industry.",
                 services_json={"services": ["Wholesale", "Bulk Supply", "Custom Orders"]},
                 experience_json={"years": 5, "industries": ["Technology"]},
                 documents_json={"files": []},

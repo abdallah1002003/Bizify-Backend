@@ -1,5 +1,4 @@
 import os
-import sys
 
 # Force a local database for an isolated smoke check.
 os.environ["DATABASE_URL"] = "sqlite:///./sql_app.db"

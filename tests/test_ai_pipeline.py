@@ -46,7 +46,7 @@ def test_ai_pipeline_no_profile(auth_client: TestClient):
 # ─────────────────────────────────────────────────────────────────────────────
 def test_get_ai_pipeline_status(auth_client: TestClient):
     """AI-03: Check AI pipeline progress status (real deployed AI)"""
-    resp = auth_client.get(f"/api/v1/ai/status")
+    resp = auth_client.get("/api/v1/ai/status")
     # 200 = status found; 404 = pipeline not yet started for this user; 503 = service unavailable (no key)
     assert resp.status_code in [200, 404, 503], (
         f"Unexpected status {resp.status_code}: {resp.text}"
@@ -60,7 +60,7 @@ def test_get_ai_pipeline_status(auth_client: TestClient):
 # ─────────────────────────────────────────────────────────────────────────────
 def test_get_ai_pipeline_results(auth_client: TestClient):
     """AI-04: Fetch completed AI profile analysis results (real deployed AI)"""
-    resp = auth_client.get(f"/api/v1/ai/profile")
+    resp = auth_client.get("/api/v1/ai/profile")
     # 200 = results exist; 404 = not found; 425 = pipeline not yet run; 503 = service unavailable
     assert resp.status_code in [200, 404, 425, 503], (
         f"Unexpected status {resp.status_code}: {resp.text}"
@@ -72,7 +72,7 @@ def test_get_ai_pipeline_results(auth_client: TestClient):
 # ─────────────────────────────────────────────────────────────────────────────
 def test_get_ai_problems(auth_client: TestClient):
     """AI-05: Fetch AI-generated problems for this user (real deployed AI)"""
-    resp = auth_client.get(f"/api/v1/ai/problems")
+    resp = auth_client.get("/api/v1/ai/problems")
     # 425 = pipeline hasn't started yet for this user; 503 = service unavailable
     assert resp.status_code in [200, 404, 425, 503], (
         f"Unexpected status {resp.status_code}: {resp.text}"
@@ -84,7 +84,7 @@ def test_get_ai_problems(auth_client: TestClient):
 # ─────────────────────────────────────────────────────────────────────────────
 def test_get_ai_idea(auth_client: TestClient):
     """AI-06: Fetch AI-generated business idea for this user (real deployed AI)"""
-    resp = auth_client.get(f"/api/v1/ai/idea")
+    resp = auth_client.get("/api/v1/ai/idea")
     # 425 = pipeline hasn't started yet for this user; 503 = service unavailable
     assert resp.status_code in [200, 404, 425, 503], (
         f"Unexpected status {resp.status_code}: {resp.text}"

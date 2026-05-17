@@ -4,8 +4,8 @@ import uuid
 from datetime import datetime
 from typing import Any, Optional
 
-from fastapi import HTTPException
 from docx import Document
+from fastapi import HTTPException
 from fpdf import FPDF
 from sqlalchemy.orm import Session
 
@@ -135,7 +135,7 @@ class ExportService:
         try:
             task = process_export_task.delay(str(job.id))
             return export_repo.update(db, db_obj=job, obj_in={"task_id": task.id})
-        except Exception as e:
+        except Exception:
             export_repo.update_status(db, job, ExportStatus.FAILED)
             raise HTTPException(
                 status_code=503,

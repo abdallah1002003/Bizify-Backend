@@ -6,7 +6,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import HTTPException, UploadFile, status
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.mail import EmailDeliveryError, send_otp_email
@@ -14,7 +13,6 @@ from app.core.security import get_password_hash, verify_password
 from app.models.user import User, UserRole
 from app.models.verification import VerificationType
 from app.repositories.auth_repo import auth_repo
-from app.repositories.partner_repo import partner_repo
 from app.repositories.user_repo import user_repo
 from app.schemas.partner_profile import PartnerProfileCreate, PartnerProfileRegistration
 from app.schemas.user import UserCreate

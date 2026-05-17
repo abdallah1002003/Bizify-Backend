@@ -1,9 +1,8 @@
+import sys
 from typing import Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
-import sys
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""

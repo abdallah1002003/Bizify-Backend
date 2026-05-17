@@ -1,7 +1,8 @@
 import asyncio
 import logging
 import uuid
-from typing import Any, AsyncGenerator, Optional
+from collections.abc import AsyncGenerator
+from typing import Any, Optional
 
 import httpx
 from fastapi import HTTPException, status
@@ -141,7 +142,7 @@ class AIPipelineService:
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail=f"AI {path} service unreachable.",
             )
-        except Exception as exc:
+        except Exception:
             logger.exception("AI API %s failed", path)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -201,7 +202,7 @@ class AIPipelineService:
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="AI stream service unreachable.",
             )
-        except Exception as exc:
+        except Exception:
             logger.exception("AI stream failed")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

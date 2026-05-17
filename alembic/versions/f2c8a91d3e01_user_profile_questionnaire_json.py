@@ -8,9 +8,11 @@ Create Date: 2026-05-13
 from __future__ import annotations
 
 import json
-from typing import Any, Sequence, Union
+from collections.abc import Sequence
+from typing import Any, Union
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "f2c8a91d3e01"

@@ -9,7 +9,13 @@ from app.api.dependencies import get_current_user, get_db, oauth2_scheme
 from app.core import google_client
 from app.core.config import settings
 from app.models.user import User
-from app.schemas.user import GoogleCallbackRequest, OTPResendRequest, OTPVerify, Token, PasswordResetRequest
+from app.schemas.user import (
+    GoogleCallbackRequest,
+    OTPResendRequest,
+    OTPVerify,
+    PasswordResetRequest,
+    Token,
+)
 from app.services.auth_service import AuthService
 
 router = APIRouter()
