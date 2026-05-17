@@ -33,42 +33,51 @@ def _parse_json_col(value: Any) -> Any:
 
 
 def upgrade() -> None:
-    op.add_column(
-        "user_profiles",
-        sa.Column("questionnaire_json", sa.JSON(), nullable=True),
-    )
     conn = op.get_bind()
-    rows = conn.execute(
-        sa.text(
-            "SELECT id, interests_json, preferences_json, risk_profile_json, "
-            "background_json, personality_json, personalization_profile "
-            "FROM user_profiles"
-        )
-    ).mappings().all()
+    inspector = sa.inspect(conn)
+    up_cols = [c["name"] for c in inspector.get_columns("user_profiles")]
 
-    for row in rows:
-        qj = {
-            "user_profile": _parse_json_col(row["background_json"]) or {},
-            "career_profile": _parse_json_col(row["personality_json"]) or {},
-            "interests": _parse_json_col(row["interests_json"]),
-            "preferences": _parse_json_col(row["preferences_json"]),
-            "risk_profile": _parse_json_col(row["risk_profile_json"]),
-            "personalization_profile": row["personalization_profile"],
-        }
-        conn.execute(
+    # Add questionnaire_json only if it doesn't exist yet (may have been applied manually)
+    if "questionnaire_json" not in up_cols:
+        op.add_column(
+            "user_profiles",
+            sa.Column("questionnaire_json", sa.JSON(), nullable=True),
+        )
+        # Migrate data from old columns into the new JSON column
+        rows = conn.execute(
             sa.text(
-                "UPDATE user_profiles SET questionnaire_json = :qj WHERE id = :id"
-            ),
-            {"qj": qj, "id": row["id"]},
-        )
+                "SELECT id, interests_json, preferences_json, risk_profile_json, "
+                "background_json, personality_json, personalization_profile "
+                "FROM user_profiles"
+            )
+        ).mappings().all()
 
-    with op.batch_alter_table("user_profiles") as batch_op:
-        batch_op.drop_column("interests_json")
-        batch_op.drop_column("preferences_json")
-        batch_op.drop_column("risk_profile_json")
-        batch_op.drop_column("background_json")
-        batch_op.drop_column("personality_json")
-        batch_op.drop_column("personalization_profile")
+        for row in rows:
+            qj = {
+                "user_profile": _parse_json_col(row["background_json"]) or {},
+                "career_profile": _parse_json_col(row["personality_json"]) or {},
+                "interests": _parse_json_col(row["interests_json"]),
+                "preferences": _parse_json_col(row["preferences_json"]),
+                "risk_profile": _parse_json_col(row["risk_profile_json"]),
+                "personalization_profile": row["personalization_profile"],
+            }
+            conn.execute(
+                sa.text(
+                    "UPDATE user_profiles SET questionnaire_json = :qj WHERE id = :id"
+                ),
+                {"qj": qj, "id": row["id"]},
+            )
+
+    # Drop old columns only if they still exist
+    old_columns = [
+        "interests_json", "preferences_json", "risk_profile_json",
+        "background_json", "personality_json", "personalization_profile",
+    ]
+    cols_to_drop = [c for c in old_columns if c in up_cols]
+    if cols_to_drop:
+        with op.batch_alter_table("user_profiles") as batch_op:
+            for col in cols_to_drop:
+                batch_op.drop_column(col)
 
 
 def downgrade() -> None:

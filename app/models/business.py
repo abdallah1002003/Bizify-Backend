@@ -51,8 +51,7 @@ class Business(Base):
 
     owner = relationship("User", back_populates = "businesses")
     converted_idea = relationship("Idea", foreign_keys = [idea_id])
-    # A generic "groups" relationship that replaces previous direct collaborators
-    groups = relationship("Group", back_populates = "business", cascade="all, delete-orphan", uselist = False)
+    groups = relationship("Group", back_populates = "business", cascade="all, delete-orphan")
     roadmap = relationship("BusinessRoadmap", back_populates = "business", uselist = False)
     partner_requests = relationship("PartnerRequest", back_populates = "business")
     embeddings = relationship("Embedding", back_populates = "business")

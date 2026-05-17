@@ -9,7 +9,7 @@ from app.api.dependencies import get_current_user, get_db, oauth2_scheme
 from app.core import google_client
 from app.core.config import settings
 from app.models.user import User
-from app.schemas.user import GoogleCallbackRequest, OTPResendRequest, OTPVerify, Token
+from app.schemas.user import GoogleCallbackRequest, OTPResendRequest, OTPVerify, Token, PasswordResetRequest
 from app.services.auth_service import AuthService
 
 router = APIRouter()
@@ -69,26 +69,24 @@ def resend_verification_otp(
 
 
 @router.post("/forgot-password")
-def forgot_password(email: str, db: Session = Depends(get_db)) -> dict[str, str]:
+def forgot_password(data: OTPResendRequest, db: Session = Depends(get_db)) -> dict[str, str]:
     """Send a password reset code if the email exists."""
-    return AuthService.forgot_password(db, email)
+    return AuthService.forgot_password(db, data.email)
 
 
 @router.post("/verify-reset-code")
-def verify_reset_code(email: str, otp_code: str, db: Session = Depends(get_db)) -> dict[str, str]:
+def verify_reset_code(data: OTPVerify, db: Session = Depends(get_db)) -> dict[str, str]:
     """Verify a password reset code before allowing the user to type a new password."""
-    return AuthService.verify_reset_code(db, email, otp_code)
+    return AuthService.verify_reset_code(db, data.email, data.otp_code)
 
 
 @router.post("/reset-password")
 def reset_password(
-    email: str,
-    otp_code: str,
-    new_password: str,
+    data: PasswordResetRequest,
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
     """Reset a password using an OTP code."""
-    return AuthService.reset_password(db, email, otp_code, new_password)
+    return AuthService.reset_password(db, data.email, data.otp_code, data.new_password)
 
 
 @router.get("/session-status")

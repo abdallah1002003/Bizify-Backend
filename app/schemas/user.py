@@ -164,3 +164,13 @@ class OTPResendRequest(BaseModel):
     """
 
     email: EmailStr
+
+
+class PasswordResetRequest(BaseModel):
+    """
+    Pydantic model for resetting a password.
+    """
+
+    email: EmailStr
+    otp_code: str
+    new_password: str
