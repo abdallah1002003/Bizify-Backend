@@ -36,6 +36,34 @@ _REQUEST_TIMEOUT_SECONDS = 120
 
 
 @router.post(
+    "/chat",
+    summary="Chatbot",
+    description="Send a message to the AI chatbot and get a response.",
+    tags=["AI - Chat"],
+)
+async def chat(
+    payload: dict[str, Any],
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    payload["user_id"] = str(current_user.id)
+    return await _forward_post_to_ai("chat", payload=payload)
+
+
+@router.post(
+    "/chat/stream",
+    summary="Chatbot Stream",
+    description="Send a message to the AI chatbot and receive a streaming SSE response.",
+    tags=["AI - Chat"],
+)
+async def chat_stream(
+    payload: dict[str, Any],
+    current_user: User = Depends(get_current_user),
+):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_stream_to_ai("chat/stream", payload=payload)
+
+
+@router.post(
     "/general-chat",
     response_model=GeneralChatResponse,
     summary="General Chatbot",
