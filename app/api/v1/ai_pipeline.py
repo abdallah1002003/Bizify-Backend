@@ -31,6 +31,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(dependencies=[Depends(check_ai_usage)])
 
+# System endpoints that must NOT require a subscription check
+_system_router = APIRouter()
+
 _AI_BASE_URL = settings.AI_PIPELINE_BASE_URL
 _REQUEST_TIMEOUT_SECONDS = 120
 
@@ -128,7 +131,7 @@ async def _forward_post_to_ai(path: str, user_id: str | None = None, payload: di
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="AI_PIPELINE_API_KEY not configured on server.",
         )
-    target_url = f"{_AI_BASE_URL}/pipeline/{path}/{user_id}" if user_id else f"{_AI_BASE_URL}/pipeline/{path}" if user_id else f"{_AI_BASE_URL}/pipeline/{path}"
+    target_url = f"{_AI_BASE_URL}/pipeline/{path}/{user_id}" if user_id else f"{_AI_BASE_URL}/pipeline/{path}"
     headers = {"x-api-key": settings.AI_PIPELINE_API_KEY, "Content-Type": "application/json"}
     try:
         async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS) as client:
@@ -268,14 +271,17 @@ async def regenerate_customers(current_user: User = Depends(get_current_user)):
 
 @router.post("/customers/regenerate-custom", summary="Regenerate Customers Custom", response_model=dict, tags=["AI - Customers"])
 async def regenerate_custom_customers(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_post_to_ai(f"customers/{current_user.id}/regenerate-custom", payload=payload)
 
 @router.post("/customers/chat", summary="Chat Customers", response_model=dict, tags=["AI - Customers"])
 async def chat_customers(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_post_to_ai(f"customers/{current_user.id}/chat", payload=payload)
 
 @router.post("/customers/chat/stream", summary="Chat Customers Stream", tags=["AI - Customers"])
 async def chat_stream_customers(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_stream_to_ai(f"customers/{current_user.id}/chat/stream", payload=payload)
 
 # ==========================================
@@ -291,14 +297,17 @@ async def regenerate_competition(current_user: User = Depends(get_current_user))
 
 @router.post("/competition/regenerate-custom", summary="Regenerate Competition Custom", response_model=dict, tags=["AI - Competition"])
 async def regenerate_custom_competition(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_post_to_ai(f"competition/{current_user.id}/regenerate-custom", payload=payload)
 
 @router.post("/competition/chat", summary="Chat Competition", response_model=dict, tags=["AI - Competition"])
 async def chat_competition(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_post_to_ai(f"competition/{current_user.id}/chat", payload=payload)
 
 @router.post("/competition/chat/stream", summary="Chat Competition Stream", tags=["AI - Competition"])
 async def chat_stream_competition(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_stream_to_ai(f"competition/{current_user.id}/chat/stream", payload=payload)
 
 # ==========================================
@@ -314,14 +323,17 @@ async def regenerate_market_potential(current_user: User = Depends(get_current_u
 
 @router.post("/market-potential/regenerate-custom", summary="Regenerate MarketPotential Custom", response_model=dict, tags=["AI - Market Potential"])
 async def regenerate_custom_market_potential(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_post_to_ai(f"market-potential/{current_user.id}/regenerate-custom", payload=payload)
 
 @router.post("/market-potential/chat", summary="Chat MarketPotential", response_model=dict, tags=["AI - Market Potential"])
 async def chat_market_potential(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_post_to_ai(f"market-potential/{current_user.id}/chat", payload=payload)
 
 @router.post("/market-potential/chat/stream", summary="Chat MarketPotential Stream", tags=["AI - Market Potential"])
 async def chat_stream_market_potential(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_stream_to_ai(f"market-potential/{current_user.id}/chat/stream", payload=payload)
 
 # ==========================================
@@ -337,14 +349,17 @@ async def regenerate_idea_strategy(current_user: User = Depends(get_current_user
 
 @router.post("/idea-strategy/regenerate-custom", summary="Regenerate IdeaStrategy Custom", response_model=dict, tags=["AI - Idea Strategy"])
 async def regenerate_custom_idea_strategy(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_post_to_ai(f"idea-strategy/{current_user.id}/regenerate-custom", payload=payload)
 
 @router.post("/idea-strategy/chat", summary="Chat IdeaStrategy", response_model=dict, tags=["AI - Idea Strategy"])
 async def chat_idea_strategy(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_post_to_ai(f"idea-strategy/{current_user.id}/chat", payload=payload)
 
 @router.post("/idea-strategy/chat/stream", summary="Chat IdeaStrategy Stream", tags=["AI - Idea Strategy"])
 async def chat_stream_idea_strategy(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_stream_to_ai(f"idea-strategy/{current_user.id}/chat/stream", payload=payload)
 
 # ==========================================
@@ -360,14 +375,17 @@ async def regenerate_business_model(current_user: User = Depends(get_current_use
 
 @router.post("/business-model/regenerate-custom", summary="Regenerate BusinessModel Custom", response_model=dict, tags=["AI - Business Model"])
 async def regenerate_custom_business_model(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_post_to_ai(f"business-model/{current_user.id}/regenerate-custom", payload=payload)
 
 @router.post("/business-model/chat", summary="Chat BusinessModel", response_model=dict, tags=["AI - Business Model"])
 async def chat_business_model(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_post_to_ai(f"business-model/{current_user.id}/chat", payload=payload)
 
 @router.post("/business-model/chat/stream", summary="Chat BusinessModel Stream", tags=["AI - Business Model"])
 async def chat_stream_business_model(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_stream_to_ai(f"business-model/{current_user.id}/chat/stream", payload=payload)
 
 # ==========================================
@@ -383,14 +401,17 @@ async def regenerate_functions_list(current_user: User = Depends(get_current_use
 
 @router.post("/functions-list/regenerate-custom", summary="Regenerate FunctionsList Custom", response_model=dict, tags=["AI - Functions List"])
 async def regenerate_custom_functions_list(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_post_to_ai(f"functions-list/{current_user.id}/regenerate-custom", payload=payload)
 
 @router.post("/functions-list/chat", summary="Chat FunctionsList", response_model=dict, tags=["AI - Functions List"])
 async def chat_functions_list(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_post_to_ai(f"functions-list/{current_user.id}/chat", payload=payload)
 
 @router.post("/functions-list/chat/stream", summary="Chat FunctionsList Stream", tags=["AI - Functions List"])
 async def chat_stream_functions_list(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_stream_to_ai(f"functions-list/{current_user.id}/chat/stream", payload=payload)
 
 # ==========================================
@@ -406,14 +427,17 @@ async def regenerate_mvp_planning(current_user: User = Depends(get_current_user)
 
 @router.post("/mvp-planning/regenerate-custom", summary="Regenerate MvpPlanning Custom", response_model=dict, tags=["AI - MVP Planning"])
 async def regenerate_custom_mvp_planning(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_post_to_ai(f"mvp-planning/{current_user.id}/regenerate-custom", payload=payload)
 
 @router.post("/mvp-planning/chat", summary="Chat MvpPlanning", response_model=dict, tags=["AI - MVP Planning"])
 async def chat_mvp_planning(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_post_to_ai(f"mvp-planning/{current_user.id}/chat", payload=payload)
 
 @router.post("/mvp-planning/chat/stream", summary="Chat MvpPlanning Stream", tags=["AI - MVP Planning"])
 async def chat_stream_mvp_planning(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_stream_to_ai(f"mvp-planning/{current_user.id}/chat/stream", payload=payload)
 
 # ==========================================
@@ -429,14 +453,17 @@ async def regenerate_unit_economics(current_user: User = Depends(get_current_use
 
 @router.post("/unit-economics/regenerate-custom", summary="Regenerate UnitEconomics Custom", response_model=dict, tags=["AI - Unit Economics"])
 async def regenerate_custom_unit_economics(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_post_to_ai(f"unit-economics/{current_user.id}/regenerate-custom", payload=payload)
 
 @router.post("/unit-economics/chat", summary="Chat UnitEconomics", response_model=dict, tags=["AI - Unit Economics"])
 async def chat_unit_economics(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_post_to_ai(f"unit-economics/{current_user.id}/chat", payload=payload)
 
 @router.post("/unit-economics/chat/stream", summary="Chat UnitEconomics Stream", tags=["AI - Unit Economics"])
 async def chat_stream_unit_economics(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_stream_to_ai(f"unit-economics/{current_user.id}/chat/stream", payload=payload)
 
 # ==========================================
@@ -452,21 +479,24 @@ async def regenerate_go_to_market(current_user: User = Depends(get_current_user)
 
 @router.post("/go-to-market/regenerate-custom", summary="Regenerate GoToMarket Custom", response_model=dict, tags=["AI - Go To Market"])
 async def regenerate_custom_go_to_market(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_post_to_ai(f"go-to-market/{current_user.id}/regenerate-custom", payload=payload)
 
 @router.post("/go-to-market/chat", summary="Chat GoToMarket", response_model=dict, tags=["AI - Go To Market"])
 async def chat_go_to_market(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_post_to_ai(f"go-to-market/{current_user.id}/chat", payload=payload)
 
 @router.post("/go-to-market/chat/stream", summary="Chat GoToMarket Stream", tags=["AI - Go To Market"])
 async def chat_stream_go_to_market(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_stream_to_ai(f"go-to-market/{current_user.id}/chat/stream", payload=payload)
 
-@router.get("/health", summary="Health", tags=["AI - System"])
+@_system_router.get("/health", summary="Health", tags=["AI - System"])
 async def get_health():
     return await _forward_get_to_ai("health", "")
 
-@router.get("/version-check", summary="Version Check", tags=["AI - System"])
+@_system_router.get("/version-check", summary="Version Check", tags=["AI - System"])
 async def get_version_check():
     return await _forward_get_to_ai("version-check", "")
 
@@ -484,6 +514,7 @@ async def rerun_problems(current_user: User = Depends(get_current_user)):
 
 @router.post("/idea-intake", summary="Idea Intake", tags=["AI - Idea Intake"])
 async def idea_intake(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_post_to_ai("idea-intake", payload=payload)
 
 @router.post("/idea-intake/run-problems", summary="Idea Intake Run Problems", tags=["AI - Idea Intake"])
@@ -492,6 +523,7 @@ async def idea_intake_run_problems(payload: dict[str, Any], current_user: User =
 
 @router.post("/idea-intake/start-chat", summary="Idea Intake Start Chat", tags=["AI - Idea Intake"])
 async def idea_intake_start_chat(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_post_to_ai("idea-intake/start-chat", payload=payload)
 
 @router.get("/idea-intake", summary="Get Idea Intake", tags=["AI - Idea Intake"])
@@ -500,4 +532,5 @@ async def get_idea_intake(current_user: User = Depends(get_current_user)):
 
 @router.post("/explain", summary="Explain", tags=["AI - General Chat"])
 async def explain(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
     return await _forward_post_to_ai("explain", payload=payload)

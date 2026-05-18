@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs grep -l \"user_profile\\\\|UserProfile\")",
+      "Bash(xargs grep -l \"ai_pipeline_service\\\\|AIPipelineService\")",
+      "Bash(xargs grep -l \"questionnaire_json\")",
+      "Bash(xargs cat)",
+      "Bash(xargs grep -A 20 \"check_ai_usage\")",
+      "Read(//c/BIDT/GP/**)",
+      "Bash(find c:/BIDT/GP -name \"__init__.py\" -path \"*/routes/*\" 2>/dev/null | head -10)",
+      "Bash(xargs grep -n \"skills\")",
+      "Bash(grep -v \"get_\\\\|health\\\\|version\\\\|stream\\\\|status\\\\|questionnaire\\\\|profile\\\\|problems\\\\|idea$\\\\|run$\\\\|rerun\")",
+      "Bash(Get-ChildItem -Path \"c:/BIDT/GP/Bizify-Backend\" -Recurse -Directory)",
+      "Bash(Select-Object -First 30 FullName)",
+      "Bash(python -c ' *)"
+    ]
+  }
+}
