@@ -12,7 +12,7 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-_AI_PIPELINE_URL = "https://bizifyai-production.up.railway.app/pipeline/run"
+_AI_PIPELINE_URL = f"{settings.AI_PIPELINE_BASE_URL}/pipeline/run"
 _REQUEST_TIMEOUT_SECONDS = 120
 
 
