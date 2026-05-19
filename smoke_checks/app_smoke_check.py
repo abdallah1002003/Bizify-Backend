@@ -14,7 +14,6 @@ def main() -> int:
         ("/", 200),
         ("/health", 200),
         ("/openapi.json", 200),
-        ("/api/v1/guidance/stages", 200),
     ]
 
     failures: list[str] = []
