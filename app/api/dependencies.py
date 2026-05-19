@@ -94,11 +94,10 @@ def get_current_user(
 
     now = datetime.now(timezone.utc)
     last_activity = user.last_activity
-    if last_activity is None:
-        # First authenticated request — treat as just-active, no timeout
-        last_activity = now
-    elif last_activity.tzinfo is None:
+    if last_activity and last_activity.tzinfo is None:
         last_activity = last_activity.replace(tzinfo=timezone.utc)
+    else:
+        last_activity = last_activity or now
 
     if now - last_activity > timedelta(minutes=settings.SESSION_TIMEOUT_MINUTES):
         raise HTTPException(
@@ -187,6 +186,5 @@ def check_ai_usage(
             ),
         )
 
-    # Usage is incremented by _forward_post_to_ai after the AI call succeeds,
-    # so failed AI calls never consume quota.
+    usage_repo.increment(db, current_user.id)
     return current_user

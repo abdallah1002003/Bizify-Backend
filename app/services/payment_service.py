@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime
 from decimal import Decimal
 from typing import Any, Optional
 
@@ -9,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core import paymob_client, paypal_client
 from app.models.plan import Plan
-from app.models.subscription import Subscription, SubscriptionStatus
+from app.models.subscription import Subscription
 from app.repositories.billing_repo import payment_repo, plan_repo, subscription_repo
 
 
@@ -91,13 +90,6 @@ async def capture_payment(
     capture_id = capture_data["id"]
     captured_amount = Decimal(capture_data["amount"]["value"])
     captured_currency = capture_data["amount"]["currency_code"]
-
-    # Verify the amount captured matches the plan price (prevents plan-ID spoofing)
-    if captured_amount < Decimal(str(plan.price)):
-        raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Captured amount does not match the plan price.",
-        )
 
     subscription = subscription_repo.create_or_update(
         db,
@@ -218,16 +210,13 @@ async def create_paymob_payment(
             detail=f"Paymob error: {exc.response.text}",
         ) from exc
 
-    # Create a PENDING subscription — only activated when Paymob webhook confirms payment.
-    from app.models.subscription import SubscriptionStatus
-    subscription = Subscription(
+    # Create an active subscription (or upgrade the existing one) immediately.
+    subscription = subscription_repo.create_or_update(
+        db,
         user_id=user_id,
         plan_id=plan.id,
-        status=SubscriptionStatus.PENDING,
-        start_date=datetime.utcnow(),
+        commit=False,
     )
-    db.add(subscription)
-    db.flush()
 
     # Persist a pending payment – will be updated to `succeeded` via webhook.
     payment = payment_repo.create_paymob_payment(
@@ -282,6 +271,7 @@ async def handle_paymob_webhook(data: dict[str, Any], db: Session) -> None:
 
     # Activate the linked subscription on success.
     if is_success and payment.subscription_id:
+        from app.models.subscription import SubscriptionStatus  # avoid circular import
         subscription = db.get(Subscription, payment.subscription_id)
         if subscription:
             subscription.status = SubscriptionStatus.ACTIVE

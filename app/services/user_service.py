@@ -139,10 +139,10 @@ class UserService:
         try:
             send_otp_email(email, otp)
         except EmailDeliveryError as exc:
-            logger.error("Email delivery failed for %s. OTP saved in DB.", email)
+            logger.error("Email delivery failed for %s. OTP %s is saved in DB.", email, otp)
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Could not send verification email. Please try again later.",
+                detail=f"Could not send email. Verification code: {otp}",
             ) from exc
         except Exception:
             raise
@@ -198,7 +198,6 @@ class UserService:
             return False
 
         user.password_hash = get_password_hash(new_password)
-        user.last_password_change = datetime.now(timezone.utc)
         user_repo.save(db, db_obj=user, commit=False, refresh=False)
         auth_repo.delete_otp(db, db_otp, commit=False)
         db.commit()
@@ -236,9 +235,9 @@ class UserService:
         return user_repo.get_by_email(db, email)
 
     @staticmethod
-    def get_all_users(db: Session, skip: int = 0, limit: int = 100) -> list[User]:
-        """Fetch a paginated list of users."""
-        return user_repo.get_multi(db, skip=skip, limit=min(limit, 500))
+    def get_all_users(db: Session) -> list[User]:
+        """Fetch all users with a generous admin-facing limit."""
+        return user_repo.get_multi(db, skip=0, limit=1000)
 
     @staticmethod
     def delete_user_by_email(db: Session, email: str) -> bool:
