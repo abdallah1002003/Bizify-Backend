@@ -4,4 +4,3 @@ pydantic-settings
 alembic
 python-dotenv
 supabase
-slowapi

@@ -12,8 +12,7 @@
       "Bash(grep -v \"get_\\\\|health\\\\|version\\\\|stream\\\\|status\\\\|questionnaire\\\\|profile\\\\|problems\\\\|idea$\\\\|run$\\\\|rerun\")",
       "Bash(Get-ChildItem -Path \"c:/BIDT/GP/Bizify-Backend\" -Recurse -Directory)",
       "Bash(Select-Object -First 30 FullName)",
-      "Bash(python -c ' *)",
-      "Bash(Get-ChildItem -Path \"c:\\\\BIDT\\\\GP\\\\Bizify-Backend\\\\app\\\\repositories\" -File)"
+      "Bash(python -c ' *)"
     ]
   }
 }

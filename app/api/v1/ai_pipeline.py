@@ -1,5 +1,4 @@
 import logging
-import uuid
 from typing import Any
 
 import httpx
@@ -8,12 +7,23 @@ from fastapi.responses import StreamingResponse
 
 from app.api.dependencies import check_ai_usage, get_current_user
 from app.core.config import settings
-from app.core.database import SessionLocal
 from app.models.user import User
-from app.repositories.usage_repo import usage_repo
 from app.schemas.ai_pipeline import (
     GeneralChatRequest,
     GeneralChatResponse,
+    AIPipelineStatusResponse,
+    AIProfileResponse,
+    AICustomersResponse,
+    AICompetitionResponse,
+    AIMarketPotentialResponse,
+    AIIdeaStrategyResponse,
+    AIBusinessModelResponse,
+    AIFunctionsListResponse,
+    AIMVPPlanningResponse,
+    AIUnitEconomicsResponse,
+    AIGoToMarketResponse,
+    AIProblemsResponse,
+    AIIdeaResponse,
 )
 from app.services.ai_pipeline_service import AIPipelineService
 
@@ -133,11 +143,7 @@ async def _forward_get_to_ai(path: str, user_id: str) -> dict:
 
 
 async def _forward_post_to_ai(path: str, user_id: str | None = None, payload: dict[str, Any] | None = None) -> dict:
-    """Helper to post data to the external AI pipeline.
-
-    Usage quota is incremented ONLY after the AI service returns a success
-    response, so network errors and AI-side failures never consume quota.
-    """
+    """Helper to post data to the external AI pipeline."""
     if not settings.AI_PIPELINE_API_KEY:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -149,18 +155,6 @@ async def _forward_post_to_ai(path: str, user_id: str | None = None, payload: di
         async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS) as client:
             response = await client.post(target_url, headers=headers, json=payload or {})
             response.raise_for_status()
-
-            # Increment usage only after a confirmed success.
-            # user_id comes from the URL path param; fall back to the payload field
-            # that the backend injected from the authenticated user's JWT.
-            effective_uid = user_id or (payload or {}).get("user_id")
-            if effective_uid:
-                try:
-                    with SessionLocal() as db:
-                        usage_repo.increment(db, uuid.UUID(str(effective_uid)))
-                except Exception:
-                    logger.warning("Failed to increment AI usage for user %s", effective_uid)
-
             return response.json()
     except httpx.HTTPStatusError as exc:
         raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
@@ -224,57 +218,59 @@ async def trigger_pipeline(current_user: User = Depends(get_current_user)):
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI Service unavailable.")
 
 
-@router.get("/status", summary="Get Pipeline Status", tags=["AI - System"])
+@router.get("/status", summary="Get Pipeline Status", response_model=AIPipelineStatusResponse, tags=["AI - System"])
 async def get_status(current_user: User = Depends(get_current_user)):
     return await _forward_get_to_ai("status", str(current_user.id))
 
 
-@router.get("/profile", summary="Get Profile Results", tags=["AI - Profile"])
+@router.get("/profile", summary="Get Profile Results", response_model=AIProfileResponse, tags=["AI - Profile"])
 async def get_profile(current_user: User = Depends(get_current_user)):
     return await _forward_get_to_ai("profile", str(current_user.id))
 
 
-@router.get("/customers", summary="Get Customers Analysis", tags=["AI - Customers"])
+@router.get("/customers", summary="Get Customers Analysis", response_model=AICustomersResponse, tags=["AI - Customers"])
 async def get_customers(current_user: User = Depends(get_current_user)):
     return await _forward_get_to_ai("customers", str(current_user.id))
 
 
-@router.get("/competition", summary="Get Competition Analysis", tags=["AI - Competition"])
+@router.get("/competition", summary="Get Competition Analysis", response_model=AICompetitionResponse, tags=["AI - Competition"])
 async def get_competition(current_user: User = Depends(get_current_user)):
     return await _forward_get_to_ai("competition", str(current_user.id))
 
 
-@router.get("/market-potential", summary="Get Market Potential", tags=["AI - Market Potential"])
+@router.get("/market-potential", summary="Get Market Potential", response_model=AIMarketPotentialResponse, tags=["AI - Market Potential"])
 async def get_market_potential(current_user: User = Depends(get_current_user)):
     return await _forward_get_to_ai("market-potential", str(current_user.id))
 
 
-@router.get("/idea-strategy", summary="Get Idea Strategy", tags=["AI - Idea Strategy"])
+@router.get("/idea-strategy", summary="Get Idea Strategy", response_model=AIIdeaStrategyResponse, tags=["AI - Idea Strategy"])
 async def get_idea_strategy(current_user: User = Depends(get_current_user)):
     return await _forward_get_to_ai("idea-strategy", str(current_user.id))
 
 
-@router.get("/business-model", summary="Get Business Model", tags=["AI - Business Model"])
+@router.get("/business-model", summary="Get Business Model", response_model=AIBusinessModelResponse, tags=["AI - Business Model"])
 async def get_business_model(current_user: User = Depends(get_current_user)):
     return await _forward_get_to_ai("business-model", str(current_user.id))
 
 
-@router.get("/functions-list", summary="Get Functions List", tags=["AI - Functions List"])
+@router.get("/functions-list", summary="Get Functions List", response_model=AIFunctionsListResponse, tags=["AI - Functions List"])
 async def get_functions_list(current_user: User = Depends(get_current_user)):
     return await _forward_get_to_ai("functions-list", str(current_user.id))
 
 
-@router.get("/mvp-planning", summary="Get MVP Planning", tags=["AI - MVP Planning"])
+@router.get("/mvp-planning", summary="Get MVP Planning", response_model=AIMVPPlanningResponse, tags=["AI - MVP Planning"])
 async def get_mvp_planning(current_user: User = Depends(get_current_user)):
     return await _forward_get_to_ai("mvp-planning", str(current_user.id))
 
 
-@router.get("/unit-economics", summary="Get Unit Economics", tags=["AI - Unit Economics"])
+@router.get("/unit-economics", summary="Get Unit Economics", response_model=AIUnitEconomicsResponse, tags=["AI - Unit Economics"])
 async def get_unit_economics(current_user: User = Depends(get_current_user)):
+    # The external endpoint might return 'unit-economics' instead of 'economics', so mapping might be needed if they don't match exactly.
+    # We will assume it returns {"economics": ...} based on the schema, or we allow flexible validation.
     return await _forward_get_to_ai("unit-economics", str(current_user.id))
 
 
-@router.get("/go-to-market", summary="Get Go To Market Strategy", tags=["AI - Go To Market"])
+@router.get("/go-to-market", summary="Get Go To Market Strategy", response_model=AIGoToMarketResponse, tags=["AI - Go To Market"])
 async def get_go_to_market(current_user: User = Depends(get_current_user)):
     return await _forward_get_to_ai("go-to-market", str(current_user.id))
 

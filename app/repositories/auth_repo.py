@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -7,36 +7,14 @@ from sqlalchemy.orm import Session
 from app.models.token_blacklist import TokenBlacklist
 from app.models.verification import AccountVerification, VerificationType
 
-# Tokens are valid for 7 days; no point keeping blacklist entries longer
-_BLACKLIST_TTL_DAYS = 8
-
 
 class AuthRepository:
     """Data-access helpers for authentication state and OTP records."""
 
     def is_token_blacklisted(self, db: Session, token: str) -> bool:
-        """Return whether a JWT has already been blacklisted (ignores expired entries)."""
-        cutoff = datetime.now(timezone.utc) - timedelta(days=_BLACKLIST_TTL_DAYS)
-        result = (
-            db.query(TokenBlacklist)
-            .filter(
-                TokenBlacklist.token == token,
-                TokenBlacklist.blacklisted_at >= cutoff,
-            )
-            .first()
-        )
+        """Return whether a JWT has already been blacklisted."""
+        result = db.query(TokenBlacklist).filter(TokenBlacklist.token == token).first()
         return result is not None
-
-    def purge_expired(self, db: Session) -> int:
-        """Delete blacklist entries older than the token TTL. Call periodically."""
-        cutoff = datetime.now(timezone.utc) - timedelta(days=_BLACKLIST_TTL_DAYS)
-        deleted = (
-            db.query(TokenBlacklist)
-            .filter(TokenBlacklist.blacklisted_at < cutoff)
-            .delete(synchronize_session=False)
-        )
-        db.commit()
-        return deleted
 
     def blacklist_token(
         self,
