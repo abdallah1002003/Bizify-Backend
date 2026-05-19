@@ -72,6 +72,11 @@ async def general_chat(
         message=request.message,
         history=request.history,
     )
+    try:
+        with SessionLocal() as db:
+            usage_repo.increment(db, current_user.id)
+    except Exception:
+        logger.warning("Failed to increment AI usage for user %s", current_user.id)
     return result
 
 
@@ -85,12 +90,25 @@ async def general_chat_stream(
     request: GeneralChatRequest,
     current_user: User = Depends(get_current_user),
 ) -> StreamingResponse:
-    stream = AIPipelineService.general_chat_stream(
-        user_id=current_user.id,
-        message=request.message,
-        history=request.history,
-    )
-    return StreamingResponse(stream, media_type="text/event-stream")
+    user_id = current_user.id
+
+    async def _stream_with_usage():
+        incremented = False
+        async for chunk in AIPipelineService.general_chat_stream(
+            user_id=user_id,
+            message=request.message,
+            history=request.history,
+        ):
+            if not incremented:
+                try:
+                    with SessionLocal() as db:
+                        usage_repo.increment(db, user_id)
+                except Exception:
+                    logger.warning("Failed to increment AI usage for user %s", user_id)
+                incremented = True
+            yield chunk
+
+    return StreamingResponse(_stream_with_usage(), media_type="text/event-stream")
 
 
 async def _forward_get_to_ai(path: str, user_id: str) -> dict:
@@ -159,12 +177,22 @@ async def _forward_stream_to_ai(path: str, payload: dict[str, Any] | None = None
         )
     target_url = f"{_AI_BASE_URL}/pipeline/{path}"
     headers = {"x-api-key": settings.AI_PIPELINE_API_KEY, "Content-Type": "application/json"}
-    
+
     async def stream_generator():
         try:
             async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS) as client:
                 async with client.stream("POST", target_url, headers=headers, json=payload or {}) as response:
                     response.raise_for_status()
+
+                    # Increment usage once the AI accepts the stream (first successful response).
+                    effective_uid = (payload or {}).get("user_id")
+                    if effective_uid:
+                        try:
+                            with SessionLocal() as db:
+                                usage_repo.increment(db, uuid.UUID(str(effective_uid)))
+                        except Exception:
+                            logger.warning("Failed to increment AI usage for user %s", effective_uid)
+
                     async for chunk in response.aiter_bytes():
                         yield chunk
         except httpx.HTTPStatusError as exc:
@@ -172,7 +200,7 @@ async def _forward_stream_to_ai(path: str, payload: dict[str, Any] | None = None
         except httpx.RequestError as exc:
             logger.error("AI stream unreachable: %s", exc)
             raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI stream service unreachable.")
-            
+
     return StreamingResponse(stream_generator(), media_type="text/event-stream")
 
 

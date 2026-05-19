@@ -10,6 +10,9 @@
 
 | Date | What changed | Why it matters to the frontend |
 |------|-------------|-------------------------------|
+| 2026-05-19 | **`tokens_used` added to all streaming chat `done` events** | Every `{"type": "done"}` SSE event now includes `"tokens_used": <number>` — use it to show the user how many tokens each reply consumed |
+| 2026-05-19 | **`tokens_used` added to `POST /ai/chat` response** | The non-streaming idea chat response now includes `"tokens_used": <number>` at the top level |
+| 2026-05-19 | **Usage quota now correctly counted for streaming and general-chat** | Previously `*/chat/stream` and `/general-chat` endpoints did not increment the usage counter — they now do. Quota display will be more accurate. |
 | 2026-05-18 | **Rate limiting added** to all auth endpoints | Frontend must handle `429 Too Many Requests` from `/auth/*` endpoints; show "try again in a moment" |
 | 2026-05-18 | **Usage quota: GET requests no longer consume quota** | Reading `/ai/customers`, `/ai/business-model`, etc. is now free; only POST (generate/chat/regenerate) counts |
 | 2026-05-18 | **AI GET endpoint response schemas removed** | The Swagger docs no longer show response schemas for GET AI endpoints — use the shapes documented in this file instead |
@@ -293,6 +296,7 @@ interface SSEReplaceEvent {
 
 interface SSEDoneEvent {
   type: "done";
+  tokens_used: number;        // always present — Groq tokens consumed by this reply
   intent?: string;
   action?: string;
   route_to_trigger?: null;
@@ -1135,9 +1139,12 @@ Content-Type: application/json
 {
   "user_id": "550e8400...",
   "reply": "Sure! Here's a revised version...",
-  "chat_history_length": 2
+  "chat_history_length": 2,
+  "tokens_used": 847
 }
 ```
+
+> `tokens_used` is the total Groq token count (prompt + completion) for this reply. Use it to display per-message token cost in the UI.
 
 ---
 
@@ -1743,6 +1750,9 @@ await streamChatMessage(
   (meta) => {
     if (meta.action === "ran_sections") {
       refreshSection(meta.section); // reload the generated section
+    }
+    if (meta.tokens_used) {
+      showTokenCount(meta.tokens_used); // e.g. "Reply used 847 tokens"
     }
   }
 );
