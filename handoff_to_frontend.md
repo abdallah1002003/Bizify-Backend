@@ -10,9 +10,12 @@
 
 | Date | What changed | Why it matters to the frontend |
 |------|-------------|-------------------------------|
+| 2026-05-19 | **`SubscriptionStatus.PENDING` added** — Paymob checkout now creates a PENDING subscription, activated by webhook | After `POST /billing/paymob/subscribe` the subscription is `PENDING` not `ACTIVE`; poll `GET /billing/subscription` for `status: "ACTIVE"` before unlocking AI |
+| 2026-05-19 | **AI pipeline "not ready" errors changed from 425 → 409** | All errors like "pipeline not ready", "idea not ready", "prerequisites missing" now return `409 Conflict` instead of `425 Too Early`. Update your error handlers. |
 | 2026-05-19 | **`tokens_used` added to all streaming chat `done` events** | Every `{"type": "done"}` SSE event now includes `"tokens_used": <number>` — use it to show the user how many tokens each reply consumed |
 | 2026-05-19 | **`tokens_used` added to `POST /ai/chat` response** | The non-streaming idea chat response now includes `"tokens_used": <number>` at the top level |
 | 2026-05-19 | **Usage quota now correctly counted for streaming and general-chat** | Previously `*/chat/stream` and `/general-chat` endpoints did not increment the usage counter — they now do. Quota display will be more accurate. |
+| 2026-05-19 | **Freemium confirmed: 100 free AI requests without a subscription** | Users with no active subscription can use AI up to 100 times. Only users on plans with `ai_analysis: false` are blocked outright. |
 | 2026-05-18 | **Rate limiting added** to all auth endpoints | Frontend must handle `429 Too Many Requests` from `/auth/*` endpoints; show "try again in a moment" |
 | 2026-05-18 | **Usage quota: GET requests no longer consume quota** | Reading `/ai/customers`, `/ai/business-model`, etc. is now free; only POST (generate/chat/regenerate) counts |
 | 2026-05-18 | **AI GET endpoint response schemas removed** | The Swagger docs no longer show response schemas for GET AI endpoints — use the shapes documented in this file instead |
@@ -274,6 +277,44 @@ interface GeneralChatResponse {
   chat_history_length: number;
 }
 ```
+
+### Subscription
+
+```typescript
+type SubscriptionStatus = "PENDING" | "ACTIVE" | "CANCELED";
+
+interface Subscription {
+  id: string;                          // UUID
+  user_id: string;                     // UUID
+  plan_id: string;                     // UUID
+  status: SubscriptionStatus;
+  start_date: string;                  // ISO datetime
+  end_date: string | null;
+  paypal_subscription_id: string | null;
+}
+
+interface Plan {
+  id: string;                          // UUID
+  name: string;
+  price: number;                       // decimal
+  features_json: {
+    ai_analysis: boolean;
+    ai_requests?: number;              // monthly request cap; absent = 100 (default)
+    [key: string]: any;
+  };
+  is_active: boolean;
+}
+```
+
+**`status` values and what they mean:**
+
+| Status | Meaning | AI access? |
+|--------|---------|------------|
+| `PENDING` | Payment initiated (Paymob card flow) but not yet confirmed | No — poll until `ACTIVE` |
+| `ACTIVE` | Subscription live and payment confirmed | Yes |
+| `CANCELED` | User or admin cancelled | No |
+
+---
 
 ### SSE Stream Token Event
 
@@ -1874,9 +1915,8 @@ await streamChatMessage(
 | `401` | Unauthorized | Missing, invalid, or expired token; token revoked after password reset or account suspension |
 | `403` | Forbidden | No subscription, AI feature disabled on plan, or non-admin accessing admin route |
 | `404` | Not Found | Resource doesn't exist or section not generated yet |
-| `409` | Conflict | Email already registered |
+| `409` | Conflict | Email already registered **or AI pipeline prerequisites not met** (idea/problems not ready — previously 425, now standardised to 409) |
 | `422` | Unprocessable Entity | Request body fails Pydantic validation (wrong types, missing fields) |
-| `425` | Too Early | AI pipeline prerequisites not met (idea/problems not ready) |
 | `429` | Too Many Requests | Two distinct causes: (1) **Auth rate limit** — too many requests per IP on `/auth/*`; (2) **AI quota** — monthly AI request limit reached on `/ai/*` |
 | `500` | Internal Server Error | Unexpected server error (DB crash, unhandled exception) |
 | `502` | Bad Gateway | PayPal or Paymob API returned an error |
@@ -1913,8 +1953,8 @@ try {
   } else if (error.status === 403) {
     // No subscription or AI feature not in plan
     showUpgradeModal();
-  } else if (error.status === 425) {
-    // Pipeline prerequisites not ready
+  } else if (error.status === 409 && isAIEndpoint(url)) {
+    // AI pipeline prerequisites not ready (previously 425, now 409)
     showToast("Please generate prerequisite sections first.");
   } else if (error.status === 429) {
     const msg = error.body?.detail ?? error.body?.error ?? "";
@@ -1923,6 +1963,13 @@ try {
     } else {
       showToast("AI request limit reached. Upgrade your plan for more.");
       showUpgradeModal();
+    }
+  } else if (error.status === 409) {
+    // Either: email already taken (auth) OR AI prerequisites not met
+    if (isAIEndpoint(url)) {
+      showToast("Please generate prerequisite sections first.");
+    } else {
+      showToast("This action conflicts with existing data.");
     }
   } else if (error.status === 422) {
     // Validation error — show field-level errors
@@ -2112,26 +2159,33 @@ if (error.status === 429 && isAuthEndpoint(url)) {
 
 ---
 
-### ⚠️ WARNING 15: Paymob payment — subscription is PENDING until the webhook fires
+### ⚠️ WARNING 15: Paymob payment — subscription is `PENDING` until webhook confirms
 
 After calling `POST /api/v1/billing/paymob/subscribe`:
-1. The backend creates a **PENDING** subscription (not yet active)
-2. Returns an `iframe_url` — render it in an `<iframe>` so the user can enter card details
-3. Paymob processes the payment and fires a webhook to the backend
-4. The backend webhook handler sets the subscription to **ACTIVE**
+1. Backend creates a subscription with `status: "PENDING"` (not yet active)
+2. Returns `{ iframe_url, payment_id, subscription_id, paymob_order_id }` — render `iframe_url` inside an `<iframe>`
+3. User enters card details inside the iframe
+4. Paymob fires a webhook to the backend on transaction completion
+5. Backend sets subscription `status` to `"ACTIVE"`
 
-**The user does NOT have AI access between steps 2 and 4.** Do not assume the subscription is active as soon as the iframe loads. After the iframe closes (Paymob redirects on success/failure), call `GET /api/v1/billing/subscription` to check if the subscription is now active before allowing access.
+**The user has NO AI access while `status === "PENDING"`** — `GET /api/v1/ai/*` returns `403`. After the iframe redirects (success or failure), poll `GET /api/v1/billing/subscription` until `status: "ACTIVE"` before unlocking the UI.
 
 ```typescript
-// After Paymob iframe closes:
-const checkSubscription = async () => {
-  const sub = await api.get('/billing/subscription');
-  if (sub.status === 'active') {
-    allowAIAccess();
-  } else {
-    showToast("Payment is being processed. Please wait a moment.");
-    setTimeout(checkSubscription, 3000); // retry after 3s
+// After Paymob iframe closes/redirects:
+const pollForActivation = async (maxRetries = 20) => {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const sub = await api.get('/billing/subscription');
+      if (sub.status === 'ACTIVE') {       // ← uppercase "ACTIVE"
+        allowAIAccess();
+        return;
+      }
+    } catch (e) {
+      // 404 = still PENDING or failed; keep polling
+    }
+    await new Promise(r => setTimeout(r, 3000));
   }
+  showToast("Payment confirmation is taking longer than expected. Please refresh.");
 };
 ```
 

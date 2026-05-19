@@ -471,4 +471,62 @@ Additionally, GET requests (reading previously generated data) consumed quota ev
 
 ---
 
-*Last updated: 2026-05-18*
+---
+
+## Post-2026-05-18 Fixes (detected during 2026-05-19 full audit)
+
+---
+
+### Fix 6.1 — `SubscriptionStatus.PENDING` missing from enum (crash on Paymob payment)
+
+**File:** `Bizify-Backend/app/models/subscription.py`, new migration `b2c3d4e5f6a1_add_pending_subscription_status.py`
+
+**Severity:** CRITICAL
+
+**Problem:**
+Fix 3.3 added `status=SubscriptionStatus.PENDING` to the Paymob payment flow, but `PENDING` was never added to the `SubscriptionStatus` enum. The enum only had `ACTIVE` and `CANCELED`. Every Paymob checkout attempt would raise `AttributeError: 'PENDING' is not a valid SubscriptionStatus` at runtime.
+
+**Fix:**
+- Added `PENDING = "PENDING"` to `SubscriptionStatus` in `app/models/subscription.py`
+- New Alembic migration `b2c3d4e5f6a1` adds the value to the PostgreSQL enum type: `ALTER TYPE subscriptionstatus ADD VALUE IF NOT EXISTS 'PENDING'`
+
+**Action required:** Run `alembic upgrade head`.
+
+---
+
+### Fix 6.2 — Syntax errors in three AI agent files (already self-healed)
+
+**Files:** `bizifyAI/agents/EightBusinessModel.py`, `bizifyAI/agents/ElevenUnitEconomicsAgent.py`, `bizifyAI/agents/SixMaketPotential.py`
+
+**Problem detected, then found already fixed:**
+A syntax check at the start of the audit found "expected 'except' or 'finally' block" in all three files. On reading the files, they were already corrected — the `chat_*` functions had been moved to module level and the `try/except` blocks properly closed. The errors existed in an intermediate state during a refactor and were self-corrected before this audit ran a second check.
+
+**Current state:** All three files pass syntax check. No action needed.
+
+---
+
+### New features detected (AI service) — documentation only
+
+These features were added by the team and are already working. No fixes needed.
+
+| Feature | Files | What it does |
+|---------|-------|-------------|
+| **Tavily search integration** | `agents/config.py`, `agents/search_pipeline.py`, all agent files | Replaces Serper+BS4 with Tavily API for richer, pre-cleaned search results. Falls back to Serper if `TAVILY_API_KEY` is not set. Add `TAVILY_API_KEY=tvly-...` to AI service `.env`. |
+| **Groq extraction model** | `agents/config.py` | `GROQ_EXTRACTION_MODEL = "llama-3.1-8b-instant"` — fast/cheap model used only for structured JSON extraction from search results; main analysis still uses `GROQ_MODEL`. |
+| **`tokens_used` in responses** | `routes/dependencies.py` (SSE `done` event), `routes/pipeline.py` (`/pipeline/chat`) | Every streaming `done` event now includes `"tokens_used": <number>`. Non-streaming `/pipeline/chat` includes it at the top level. |
+| **Real questionnaire in idea-intake start-chat** | `routes/idea_intake.py`, `orchestrator/orchestrator.py`, `agents/ThreeIdeaIntakeAgent.py` | `_build_questionnaire_for_problem_discovery` now accepts an optional `real_questionnaire` dict. Returning users who completed onboarding get their real founder profile injected into problem discovery instead of hardcoded defaults. |
+| **Usage increment for general-chat and streams** | `Bizify-Backend/app/api/v1/ai_pipeline.py` | `general_chat` and `general_chat_stream` now increment the usage counter after a successful response. Streaming routes increment on first chunk. |
+
+---
+
+### Noted (design, not bugs)
+
+| Item | Status |
+|------|--------|
+| Users with NO subscription get 100 free AI requests (freemium) | Intentional — `AI_REQUEST_DEFAULT_LIMIT = 100` in `usage_repo.py` |
+| `stream_options={"include_usage": True}` in SSE helper | Groq may silently ignore unsupported params; code gracefully handles `chunk.usage = None` → `tokens_used: 0` |
+| `purge_expired()` on token blacklist never called | Must be triggered by a scheduled job or startup task — not wired up yet |
+
+---
+
+*Last updated: 2026-05-19*

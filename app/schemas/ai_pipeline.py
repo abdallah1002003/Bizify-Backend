@@ -40,6 +40,7 @@ class GeneralChatResponse(BaseModel):
     route_to_trigger: Optional[str] = None
     trigger_needed: Optional[bool] = None
     chat_history_length: Optional[int] = None
+    tokens_used: Optional[int] = None
 
 # --- New AI Pipeline Response Models ---
 
@@ -79,8 +80,11 @@ class AIGoToMarketResponse(BaseModel):
     go_to_market: dict[str, Any]
 
 class AIProblemsResponse(BaseModel):
-    problems: list[dict[str, Any]]
+    # The AI service returns the full problems result object (dict), not a list.
+    # Shape: {"problems": [...], "customer_segments": [...], "source_mode": "..."}
+    problems: dict[str, Any]
 
 class AIIdeaResponse(BaseModel):
-    current_idea: dict[str, Any]
-    score: Optional[float] = None
+    # current_idea is plain formatted text, not a JSON object.
+    current_idea: str
+    chat_history: Optional[list] = None
