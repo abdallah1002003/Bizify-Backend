@@ -6,6 +6,19 @@
 
 ---
 
+## Changelog
+
+| Date | What changed | Why it matters to the frontend |
+|------|-------------|-------------------------------|
+| 2026-05-18 | **Rate limiting added** to all auth endpoints | Frontend must handle `429 Too Many Requests` from `/auth/*` endpoints; show "try again in a moment" |
+| 2026-05-18 | **Usage quota: GET requests no longer consume quota** | Reading `/ai/customers`, `/ai/business-model`, etc. is now free; only POST (generate/chat/regenerate) counts |
+| 2026-05-18 | **AI GET endpoint response schemas removed** | The Swagger docs no longer show response schemas for GET AI endpoints — use the shapes documented in this file instead |
+| 2026-05-18 | **Paymob payment flow: subscription is now PENDING until webhook** | After calling `POST /billing/paymob/subscribe`, the user does NOT immediately have AI access. Frontend must poll or wait for confirmation before unlocking AI features |
+| 2026-05-18 | **Password reset now invalidates all existing tokens** | After a successful password reset, all devices are logged out. Frontend should redirect to login after `POST /auth/reset-password` returns success |
+| 2026-05-18 | **`test-email` endpoint is now admin-only and hidden from Swagger** | No frontend action needed — endpoint was never meant to be called by the frontend |
+
+---
+
 ## Table of Contents
 
 1. [Architecture Overview](#1-architecture-overview)
@@ -336,6 +349,27 @@ Content-Type: application/json
 
 ---
 
+### Rate Limits on Auth Endpoints
+
+All auth endpoints are rate-limited per IP address. Exceeding the limit returns `429 Too Many Requests`.
+
+| Endpoint | Limit |
+|----------|-------|
+| `POST /auth/login` | 10 / minute |
+| `POST /auth/google/callback` | 10 / minute |
+| `POST /auth/verify-otp` | 10 / minute |
+| `POST /auth/resend-verification-otp` | **3 / minute** |
+| `POST /auth/forgot-password` | **3 / minute** |
+| `POST /auth/verify-reset-code` | 10 / minute |
+| `POST /auth/reset-password` | 5 / minute |
+
+**429 response shape:**
+```json
+{ "error": "Rate limit exceeded: 3 per 1 minute" }
+```
+
+---
+
 ### Login
 
 ```http
@@ -464,6 +498,9 @@ Content-Type: application/json
   "new_password": "NewPassword1!"
 }
 ```
+
+> **Token invalidation:** A successful password reset sets `last_password_change` on the user record. All previously issued tokens (other devices, sessions) are immediately invalidated on their next request. **The frontend should clear the stored token and redirect to login after this call succeeds**, even if the user is already logged in on the device initiating the reset.
+
 
 ---
 
@@ -977,10 +1014,16 @@ Base path: `/api/v1/ai/`
 > - `Authorization: Bearer <token>`
 > - User must have an active subscription with `ai_analysis: true` feature
 > - **Error `403`** if no AI access: `{"detail": "Your current plan does not include AI analysis features."}`
-> - **Error `429`** if limit exceeded: `{"detail": "AI request limit reached."}`
+> - **Error `429`** if monthly limit exceeded: `{"detail": "AI request limit reached (N/M). Please upgrade your plan or wait for your limit to reset."}`
 
 > **CRITICAL:** The frontend **never** sends `user_id` in the request body.
 > The backend injects it automatically from the JWT token.
+
+> **Quota rules (updated 2026-05-18):**
+> - Only **POST** requests (generate, regenerate, chat) consume quota
+> - **GET** requests (reading saved sections) are **free** — do not consume quota
+> - **Failed AI calls** (AI service down, timeout, AI-side error) are **free** — quota is only charged on a confirmed `2xx` success
+> - The quota counter is per-user and per-plan (not per-IP)
 
 ---
 
@@ -1811,22 +1854,40 @@ await streamChatMessage(
 
 ### HTTP status codes
 
-| Code | Meaning | Common cause |
+| Code | Meaning | Common causes |
 |------|---------|-------------|
 | `200` | OK | Successful GET/POST |
 | `201` | Created | Registration successful |
 | `202` | Accepted | Async pipeline started |
 | `204` | No Content | Skill deleted |
-| `400` | Bad Request | Invalid input (e.g. min_budget > max_budget) |
-| `401` | Unauthorized | Missing/invalid/expired token |
-| `403` | Forbidden | No subscription or AI feature not in plan |
-| `404` | Not Found | Resource doesn't exist |
+| `400` | Bad Request | Invalid input (e.g. min_budget > max_budget); invalid/expired OTP |
+| `401` | Unauthorized | Missing, invalid, or expired token; token revoked after password reset or account suspension |
+| `403` | Forbidden | No subscription, AI feature disabled on plan, or non-admin accessing admin route |
+| `404` | Not Found | Resource doesn't exist or section not generated yet |
 | `409` | Conflict | Email already registered |
-| `422` | Unprocessable Entity | Request body fails Pydantic validation |
-| `425` | Too Early | Pipeline prerequisites not met |
-| `429` | Too Many Requests | AI usage limit exceeded |
-| `500` | Internal Server Error | Unexpected server error |
-| `503` | Service Unavailable | AI_PIPELINE_API_KEY not configured |
+| `422` | Unprocessable Entity | Request body fails Pydantic validation (wrong types, missing fields) |
+| `425` | Too Early | AI pipeline prerequisites not met (idea/problems not ready) |
+| `429` | Too Many Requests | Two distinct causes: (1) **Auth rate limit** — too many requests per IP on `/auth/*`; (2) **AI quota** — monthly AI request limit reached on `/ai/*` |
+| `500` | Internal Server Error | Unexpected server error (DB crash, unhandled exception) |
+| `502` | Bad Gateway | PayPal or Paymob API returned an error |
+| `503` | Service Unavailable | `AI_PIPELINE_API_KEY` not configured, or AI service unreachable |
+
+### Distinguishing the two `429` sources
+
+```typescript
+// Check the detail message to know which 429 it is:
+if (error.status === 429) {
+  const msg = error.body?.detail ?? error.body?.error ?? "";
+  if (msg.includes("Rate limit exceeded")) {
+    // Auth rate limit (per IP, per minute) — auth endpoint throttle
+    showToast("Too many attempts. Please wait a moment and try again.");
+  } else {
+    // AI monthly quota exhausted
+    showToast("AI request limit reached. Upgrade your plan for more.");
+    showUpgradeModal();
+  }
+}
+```
 
 ### Frontend error handling pattern
 
@@ -1836,21 +1897,28 @@ try {
   handleSuccess(data);
 } catch (error) {
   if (error.status === 401) {
-    // Token expired → redirect to login
+    // Token expired, revoked, or invalidated (e.g. after password reset)
     clearToken();
     router.push("/login");
   } else if (error.status === 403) {
-    // No AI access → show upgrade plan modal
+    // No subscription or AI feature not in plan
     showUpgradeModal();
   } else if (error.status === 425) {
-    // Prerequisites not ready
-    showToast("Please generate prerequisite sections first");
+    // Pipeline prerequisites not ready
+    showToast("Please generate prerequisite sections first.");
   } else if (error.status === 429) {
-    // Limit exceeded
-    showToast("AI request limit reached. Upgrade your plan for more.");
+    const msg = error.body?.detail ?? error.body?.error ?? "";
+    if (msg.includes("Rate limit exceeded")) {
+      showToast("Too many attempts. Please wait a moment and try again.");
+    } else {
+      showToast("AI request limit reached. Upgrade your plan for more.");
+      showUpgradeModal();
+    }
   } else if (error.status === 422) {
-    // Validation error → show field errors
+    // Validation error — show field-level errors
     showFieldErrors(error.body.detail);
+  } else if (error.status === 502 || error.status === 503) {
+    showToast("Payment or AI service is temporarily unavailable. Please try again.");
   } else {
     showToast("Something went wrong. Please try again.");
   }
@@ -1882,16 +1950,18 @@ All AI endpoints accept `user_id` in the body internally, but the **backend inje
 
 Recommended polling interval: **3 seconds**. Timeout after **5 minutes** and show an error.
 
-### ⚠️ WARNING 4: Backend response schemas don't match the AI service
+### ⚠️ WARNING 4: Swagger response schemas for AI GET endpoints are removed — use this doc
 
-The `response_model` annotations in the backend's AI routes are incomplete/wrong (they were placeholder schemas). The actual data returned by the backend is the **raw JSON from the AI service**, not validated through these schemas. This means:
+The incorrect `response_model` annotations on GET AI endpoints (e.g. `AICustomersResponse`, `AIMVPPlanningResponse`) have been removed from the backend. They showed wrong shapes (e.g. `customers: list` when the actual value is a `dict`). The AI GET endpoints now return the raw JSON from the AI service.
 
-- `GET /api/v1/ai/status` returns the full pipeline status object (not just `{status, progress, message}`)
-- `GET /api/v1/ai/customers` returns `{ user_id, customers: {...customer_analysis_dict...}, chat_history: [] }` — `customers` is a **dict**, not a list
-- `GET /api/v1/ai/competition` returns `{ user_id, competition: {...}, chat_history: [] }`
-- `GET /api/v1/ai/idea` returns `{ user_id, current_idea: string, chat_history: [] }` — `current_idea` is a **string**, not a dict/object
+Use the shapes documented in this file:
 
-**Use the TypeScript interfaces in this document, not the Swagger schema definitions.**
+- `GET /api/v1/ai/status` → full `PipelineStatus` object (13+ fields)
+- `GET /api/v1/ai/customers` → `{ user_id, customers: {...dict...}, chat_history: [] }` — `customers` is a **dict**, not a list
+- `GET /api/v1/ai/competition` → `{ user_id, competition: {...dict...}, chat_history: [] }`
+- `GET /api/v1/ai/idea` → `{ user_id, current_idea: string, chat_history: [] }` — `current_idea` is **plain text**, not JSON
+
+**Never trust Swagger for GET AI endpoint shapes. Use the TypeScript interfaces in Section 4.**
 
 ### ⚠️ WARNING 5: No refresh token — redirect to login on 401
 
@@ -2006,119 +2076,215 @@ Any unrecognised `field` value is silently ignored (not saved). Missing question
 
 ---
 
-## Appendix: Complete API Endpoint List
+### ⚠️ WARNING 14: Auth endpoints are rate-limited — handle 429 gracefully
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/api/v1/auth/google/url` | No | Get Google OAuth URL |
-| POST | `/api/v1/auth/google/callback` | No | Google OAuth callback |
-| POST | `/api/v1/auth/login` | No | Email/password login (form-encoded) |
-| POST | `/api/v1/auth/logout` | Yes | Revoke token |
-| POST | `/api/v1/auth/verify-otp` | No | Verify email OTP |
-| POST | `/api/v1/auth/resend-verification-otp` | No | Resend OTP |
-| POST | `/api/v1/auth/forgot-password` | No | Request password reset |
-| POST | `/api/v1/auth/verify-reset-code` | No | Verify reset OTP |
-| POST | `/api/v1/auth/reset-password` | No | Set new password |
-| GET | `/api/v1/auth/session-status` | Yes | Check session time remaining |
-| POST | `/api/v1/auth/ping` | Yes | Keep session alive |
-| POST | `/api/v1/users/register` | No | Register new user |
-| GET | `/api/v1/profile/` | Yes | Get my profile |
-| POST | `/api/v1/profile/questionnaire` | Yes | Submit questionnaire |
-| GET | `/api/v1/profile/questionnaire` | Yes | Get questionnaire data |
-| POST | `/api/v1/profile/complete` | Yes | Finalize onboarding |
-| POST | `/api/v1/profile/skip` | Yes | Skip questionnaire |
-| POST | `/api/v1/profile/restart` | Yes | Reset questionnaire |
-| GET | `/api/v1/profile/skills` | Yes | List skills |
-| POST | `/api/v1/profile/skills` | Yes | Add skill |
-| DELETE | `/api/v1/profile/skills/{skill_id}` | Yes | Delete skill |
-| GET | `/api/v1/profile/skills/json` | Yes | Raw skills JSON |
-| POST | `/api/v1/profile/skills/json` | Yes | Save skills JSON |
-| GET | `/api/v1/profile/skills/search` | Yes | Search predefined skills |
-| GET | `/api/v1/profile/skill-categories` | Yes | List skill categories |
-| GET | `/api/v1/ideas/` | Yes | List ideas (with filters) |
-| POST | `/api/v1/ideas/` | Yes | Create idea |
-| GET | `/api/v1/ideas/archived` | Yes | List archived ideas |
-| PATCH | `/api/v1/ideas/{idea_id}/archive` | Yes | Archive idea |
-| PATCH | `/api/v1/ideas/{idea_id}/unarchive` | Yes | Unarchive idea |
-| GET | `/api/v1/ai/health` | No | AI service health check |
-| GET | `/api/v1/ai/version-check` | No | AI service version |
-| POST | `/api/v1/ai/run` | Yes+Sub | Trigger AI pipeline |
-| GET | `/api/v1/ai/status` | Yes+Sub | Get pipeline status |
-| GET | `/api/v1/ai/idea` | Yes+Sub | Get generated idea |
-| POST | `/api/v1/ai/chat` | Yes+Sub | Chat about idea |
-| POST | `/api/v1/ai/chat/stream` | Yes+Sub | Stream chat about idea |
-| POST | `/api/v1/ai/general-chat` | Yes+Sub | General AI assistant |
-| POST | `/api/v1/ai/general-chat/stream` | Yes+Sub | Stream general AI assistant |
-| POST | `/api/v1/ai/explain` | Yes+Sub | Explain a section |
-| POST | `/api/v1/ai/idea-intake` | Yes+Sub | Structure user's raw idea |
-| POST | `/api/v1/ai/idea-intake/run-problems` | Yes+Sub | Start problem discovery |
-| POST | `/api/v1/ai/idea-intake/start-chat` | Yes+Sub | Start idea chat (returning user) |
-| GET | `/api/v1/ai/idea-intake` | Yes+Sub | Get idea intake data |
-| GET | `/api/v1/ai/profile` | Yes+Sub | Get profile analysis |
-| GET | `/api/v1/ai/problems` | Yes+Sub | Get discovered problems |
-| GET | `/api/v1/ai/questionnaire` | Yes+Sub | Get questionnaire from AI |
-| POST | `/api/v1/ai/rerun/profile` | Yes+Sub | Re-run profile analysis |
-| POST | `/api/v1/ai/rerun/problems` | Yes+Sub | Re-run problem discovery |
-| POST | `/api/v1/ai/customers` | Yes+Sub | Generate customer analysis |
-| GET | `/api/v1/ai/customers` | Yes+Sub | Get customer analysis |
-| POST | `/api/v1/ai/customers/regenerate` | Yes+Sub | Regenerate customers |
-| POST | `/api/v1/ai/customers/regenerate-custom` | Yes+Sub | Regenerate with custom prompt |
-| POST | `/api/v1/ai/customers/chat` | Yes+Sub | Chat about customers |
-| POST | `/api/v1/ai/customers/chat/stream` | Yes+Sub | Stream customers chat |
-| POST | `/api/v1/ai/competition` | Yes+Sub | Generate competition analysis |
-| GET | `/api/v1/ai/competition` | Yes+Sub | Get competition analysis |
-| POST | `/api/v1/ai/competition/regenerate` | Yes+Sub | Regenerate competition |
-| POST | `/api/v1/ai/competition/regenerate-custom` | Yes+Sub | Custom regenerate |
-| POST | `/api/v1/ai/competition/chat` | Yes+Sub | Chat about competition |
-| POST | `/api/v1/ai/competition/chat/stream` | Yes+Sub | Stream competition chat |
-| POST | `/api/v1/ai/market-potential` | Yes+Sub | Generate market potential |
-| GET | `/api/v1/ai/market-potential` | Yes+Sub | Get market potential |
-| POST | `/api/v1/ai/market-potential/regenerate` | Yes+Sub | Regenerate |
-| POST | `/api/v1/ai/market-potential/regenerate-custom` | Yes+Sub | Custom regenerate |
-| POST | `/api/v1/ai/market-potential/chat` | Yes+Sub | Chat |
-| POST | `/api/v1/ai/market-potential/chat/stream` | Yes+Sub | Stream chat |
-| POST | `/api/v1/ai/idea-strategy` | Yes+Sub | Generate idea strategy |
-| GET | `/api/v1/ai/idea-strategy` | Yes+Sub | Get idea strategy |
-| POST | `/api/v1/ai/idea-strategy/regenerate` | Yes+Sub | Regenerate |
-| POST | `/api/v1/ai/idea-strategy/regenerate-custom` | Yes+Sub | Custom regenerate |
-| POST | `/api/v1/ai/idea-strategy/chat` | Yes+Sub | Chat |
-| POST | `/api/v1/ai/idea-strategy/chat/stream` | Yes+Sub | Stream chat |
-| POST | `/api/v1/ai/business-model` | Yes+Sub | Generate business model |
-| GET | `/api/v1/ai/business-model` | Yes+Sub | Get business model |
-| POST | `/api/v1/ai/business-model/regenerate` | Yes+Sub | Regenerate |
-| POST | `/api/v1/ai/business-model/regenerate-custom` | Yes+Sub | Custom regenerate |
-| POST | `/api/v1/ai/business-model/chat` | Yes+Sub | Chat |
-| POST | `/api/v1/ai/business-model/chat/stream` | Yes+Sub | Stream chat |
-| POST | `/api/v1/ai/functions-list` | Yes+Sub | Generate functions list |
-| GET | `/api/v1/ai/functions-list` | Yes+Sub | Get functions list |
-| POST | `/api/v1/ai/functions-list/regenerate` | Yes+Sub | Regenerate |
-| POST | `/api/v1/ai/functions-list/regenerate-custom` | Yes+Sub | Custom regenerate |
-| POST | `/api/v1/ai/functions-list/chat` | Yes+Sub | Chat |
-| POST | `/api/v1/ai/functions-list/chat/stream` | Yes+Sub | Stream chat |
-| POST | `/api/v1/ai/mvp-planning` | Yes+Sub | Generate MVP plan |
-| GET | `/api/v1/ai/mvp-planning` | Yes+Sub | Get MVP plan |
-| POST | `/api/v1/ai/mvp-planning/regenerate` | Yes+Sub | Regenerate |
-| POST | `/api/v1/ai/mvp-planning/regenerate-custom` | Yes+Sub | Custom regenerate |
-| POST | `/api/v1/ai/mvp-planning/chat` | Yes+Sub | Chat |
-| POST | `/api/v1/ai/mvp-planning/chat/stream` | Yes+Sub | Stream chat |
-| POST | `/api/v1/ai/unit-economics` | Yes+Sub | Generate unit economics |
-| GET | `/api/v1/ai/unit-economics` | Yes+Sub | Get unit economics |
-| POST | `/api/v1/ai/unit-economics/regenerate` | Yes+Sub | Regenerate |
-| POST | `/api/v1/ai/unit-economics/regenerate-custom` | Yes+Sub | Custom regenerate |
-| POST | `/api/v1/ai/unit-economics/chat` | Yes+Sub | Chat |
-| POST | `/api/v1/ai/unit-economics/chat/stream` | Yes+Sub | Stream chat |
-| POST | `/api/v1/ai/go-to-market` | Yes+Sub | Generate GTM plan |
-| GET | `/api/v1/ai/go-to-market` | Yes+Sub | Get GTM plan |
-| POST | `/api/v1/ai/go-to-market/regenerate` | Yes+Sub | Regenerate |
-| POST | `/api/v1/ai/go-to-market/regenerate-custom` | Yes+Sub | Custom regenerate |
-| POST | `/api/v1/ai/go-to-market/chat` | Yes+Sub | Chat |
-| POST | `/api/v1/ai/go-to-market/chat/stream` | Yes+Sub | Stream chat |
+All `/api/v1/auth/*` endpoints are now throttled per IP:
+
+- `forgot-password` and `resend-verification-otp`: **3 requests/minute**
+- `login`: **10 requests/minute**
+- Others: 5–10 requests/minute
+
+When the limit is exceeded the server returns:
+```json
+HTTP 429
+{ "error": "Rate limit exceeded: 3 per 1 minute" }
+```
+
+The frontend must catch this and show a friendly message — never silently retry in a tight loop or the user stays locked out.
+
+```typescript
+// Recommended UX
+if (error.status === 429 && isAuthEndpoint(url)) {
+  showToast("Too many attempts. Please wait 60 seconds and try again.");
+  startCountdown(60);   // disable the button for 60s
+}
+```
+
+---
+
+### ⚠️ WARNING 15: Paymob payment — subscription is PENDING until the webhook fires
+
+After calling `POST /api/v1/billing/paymob/subscribe`:
+1. The backend creates a **PENDING** subscription (not yet active)
+2. Returns an `iframe_url` — render it in an `<iframe>` so the user can enter card details
+3. Paymob processes the payment and fires a webhook to the backend
+4. The backend webhook handler sets the subscription to **ACTIVE**
+
+**The user does NOT have AI access between steps 2 and 4.** Do not assume the subscription is active as soon as the iframe loads. After the iframe closes (Paymob redirects on success/failure), call `GET /api/v1/billing/subscription` to check if the subscription is now active before allowing access.
+
+```typescript
+// After Paymob iframe closes:
+const checkSubscription = async () => {
+  const sub = await api.get('/billing/subscription');
+  if (sub.status === 'active') {
+    allowAIAccess();
+  } else {
+    showToast("Payment is being processed. Please wait a moment.");
+    setTimeout(checkSubscription, 3000); // retry after 3s
+  }
+};
+```
+
+---
+
+### ⚠️ WARNING 16: Password reset invalidates all tokens on all devices
+
+After `POST /api/v1/auth/reset-password` returns `200`, **every token previously issued to this user becomes invalid** — including the token on the device that initiated the reset. If the user is logged in while resetting their password:
+
+1. Clear `access_token` from storage immediately after success
+2. Redirect to login
+3. Do not attempt any further API calls with the old token
+
+```typescript
+const resetPassword = async (email, otp, newPassword) => {
+  await api.post('/auth/reset-password', { email, otp_code: otp, new_password: newPassword });
+  // ← ALL tokens now invalid
+  clearToken();           // remove from localStorage / memory
+  router.push('/login');  // force re-login on all devices
+};
+```
+
+---
+
+## Appendix: Complete API Endpoint List
 
 **Auth column key:**
 - `No` — no token required
 - `Yes` — requires `Authorization: Bearer <token>`
-- `Yes+Sub` — requires token AND active subscription with AI feature
+- `Yes+Sub` — requires token AND active subscription with `ai_analysis: true`
+- `RL` — rate-limited per IP (see Warning 14 for limits)
+
+| Method | Path | Auth | RL | Description |
+|--------|------|------|----|-------------|
+| GET | `/api/v1/auth/google/url` | No | — | Get Google OAuth URL |
+| POST | `/api/v1/auth/google/callback` | No | ✓ | Google OAuth callback |
+| POST | `/api/v1/auth/login` | No | ✓ | Email/password login (**form-encoded, not JSON**) |
+| POST | `/api/v1/auth/logout` | Yes | — | Revoke token |
+| POST | `/api/v1/auth/verify-otp` | No | ✓ | Verify email OTP |
+| POST | `/api/v1/auth/resend-verification-otp` | No | ✓ | Resend OTP (3/min) |
+| POST | `/api/v1/auth/forgot-password` | No | ✓ | Request password reset (3/min) |
+| POST | `/api/v1/auth/verify-reset-code` | No | ✓ | Verify reset OTP |
+| POST | `/api/v1/auth/reset-password` | No | ✓ | Set new password (**invalidates all tokens**) |
+| GET | `/api/v1/auth/session-status` | Yes | — | Check session time remaining |
+| POST | `/api/v1/auth/ping` | Yes | — | Keep session alive |
+| POST | `/api/v1/users/register` | No | — | Register new user |
+| GET | `/api/v1/profile/` | Yes | — | Get my profile |
+| POST | `/api/v1/profile/questionnaire` | Yes | — | Submit questionnaire answers |
+| GET | `/api/v1/profile/questionnaire` | Yes | — | Get saved questionnaire JSON |
+| POST | `/api/v1/profile/complete` | Yes | — | Finalize onboarding (**then call `/ai/run`**) |
+| POST | `/api/v1/profile/skip` | Yes | — | Skip questionnaire |
+| POST | `/api/v1/profile/restart` | Yes | — | Reset questionnaire |
+| GET | `/api/v1/profile/skills` | Yes | — | List skills |
+| POST | `/api/v1/profile/skills` | Yes | — | Add a skill |
+| DELETE | `/api/v1/profile/skills/{skill_id}` | Yes | — | Delete a skill |
+| GET | `/api/v1/profile/skills/json` | Yes | — | Raw skills JSON |
+| POST | `/api/v1/profile/skills/json` | Yes | — | Save raw skills JSON |
+| GET | `/api/v1/profile/skills/search?q=` | Yes | — | Search predefined skills |
+| GET | `/api/v1/profile/skill-categories` | Yes | — | List skill categories |
+| GET | `/api/v1/ideas/` | Yes | — | List ideas (with filters) |
+| POST | `/api/v1/ideas/` | Yes | — | Create idea |
+| GET | `/api/v1/ideas/archived` | Yes | — | List archived ideas |
+| PATCH | `/api/v1/ideas/{idea_id}/archive` | Yes | — | Archive idea |
+| PATCH | `/api/v1/ideas/{idea_id}/unarchive` | Yes | — | Unarchive idea |
+| GET | `/api/v1/billing/plans` | No | — | List all active subscription plans |
+| POST | `/api/v1/billing/paypal/subscribe` | Yes | — | Create PayPal order for a plan |
+| POST | `/api/v1/billing/paypal/capture` | Yes | — | Capture PayPal payment (activates subscription) |
+| GET | `/api/v1/billing/subscription` | Yes | — | Get user's active subscription |
+| DELETE | `/api/v1/billing/subscription` | Yes | — | Cancel active subscription |
+| POST | `/api/v1/billing/paypal/webhook` | No | — | PayPal webhook (called by PayPal, not frontend) |
+| POST | `/api/v1/billing/paymob/subscribe` | Yes | — | Initiate Paymob card payment — returns `iframe_url` |
+| POST | `/api/v1/billing/paymob/webhook` | No | — | Paymob webhook — activates subscription on confirmed payment |
+| GET | `/api/v1/groups` | Yes | — | List groups |
+| POST | `/api/v1/groups` | Yes | — | Create group |
+| PATCH | `/api/v1/groups/{group_id}` | Yes | — | Update group |
+| DELETE | `/api/v1/groups/{group_id}` | Yes | — | Delete group |
+| POST | `/api/v1/groups/{group_id}/invites` | Yes | — | Invite a user to group |
+| POST | `/api/v1/groups/invites/accept` | Yes | — | Accept group invite |
+| POST | `/api/v1/groups/{group_id}/join-requests` | Yes | — | Request to join a group |
+| POST | `/api/v1/groups/join-requests/{id}/handle` | Yes | — | Approve or reject join request |
+| GET | `/api/v1/groups/{group_id}/members` | Yes | — | List group members |
+| PATCH | `/api/v1/groups/members/{member_id}` | Yes | — | Update member role |
+| DELETE | `/api/v1/groups/members/{member_id}` | Yes | — | Remove member from group |
+| GET | `/api/v1/groups/{group_id}/messages` | Yes | — | Get group messages |
+| WS | `/api/v1/groups/{group_id}/ws?token=` | Yes | — | Real-time group chat (WebSocket) |
+| GET | `/api/v1/notifications/` | Yes | — | Get notifications |
+| GET | `/api/v1/export/` | Yes | — | List export jobs |
+| POST | `/api/v1/export/` | Yes | — | Start data export |
+| GET | `/api/v1/ai/health` | No | — | AI service health check (no subscription needed) |
+| GET | `/api/v1/ai/version-check` | No | — | AI service version (no subscription needed) |
+| POST | `/api/v1/ai/run` | Yes+Sub | — | Trigger AI pipeline (async — poll status) |
+| GET | `/api/v1/ai/status` | Yes+Sub | — | Get pipeline status (**free — no quota**) |
+| GET | `/api/v1/ai/idea` | Yes+Sub | — | Get generated idea text (**free — no quota**) |
+| POST | `/api/v1/ai/chat` | Yes+Sub | — | Chat about idea (quota: yes) |
+| POST | `/api/v1/ai/chat/stream` | Yes+Sub | — | Stream chat about idea (quota: yes) |
+| POST | `/api/v1/ai/general-chat` | Yes+Sub | — | General AI assistant (quota: yes) |
+| POST | `/api/v1/ai/general-chat/stream` | Yes+Sub | — | Stream general AI assistant (quota: yes) |
+| POST | `/api/v1/ai/explain` | Yes+Sub | — | Explain a section (quota: yes) |
+| POST | `/api/v1/ai/idea-intake` | Yes+Sub | — | Structure user's raw idea (quota: yes) |
+| POST | `/api/v1/ai/idea-intake/run-problems` | Yes+Sub | — | Start problem discovery (async) |
+| POST | `/api/v1/ai/idea-intake/start-chat` | Yes+Sub | — | Start idea chat — returning user flow |
+| GET | `/api/v1/ai/idea-intake` | Yes+Sub | — | Get idea intake data (**free**) |
+| GET | `/api/v1/ai/profile` | Yes+Sub | — | Get profile analysis (**free**) |
+| GET | `/api/v1/ai/problems` | Yes+Sub | — | Get discovered problems (**free**) |
+| GET | `/api/v1/ai/questionnaire` | Yes+Sub | — | Get questionnaire from AI (**free**) |
+| POST | `/api/v1/ai/rerun/profile` | Yes+Sub | — | Re-run profile analysis (quota: yes) |
+| POST | `/api/v1/ai/rerun/problems` | Yes+Sub | — | Re-run problem discovery (quota: yes) |
+| POST | `/api/v1/ai/customers` | Yes+Sub | — | Generate customer analysis (quota: yes) |
+| GET | `/api/v1/ai/customers` | Yes+Sub | — | Get customer analysis (**free**) |
+| POST | `/api/v1/ai/customers/regenerate` | Yes+Sub | — | Regenerate (quota: yes) |
+| POST | `/api/v1/ai/customers/regenerate-custom` | Yes+Sub | — | Regenerate with custom prompt (quota: yes) |
+| POST | `/api/v1/ai/customers/chat` | Yes+Sub | — | Chat (quota: yes) |
+| POST | `/api/v1/ai/customers/chat/stream` | Yes+Sub | — | Stream chat (quota: yes) |
+| POST | `/api/v1/ai/competition` | Yes+Sub | — | Generate competition analysis (quota: yes) |
+| GET | `/api/v1/ai/competition` | Yes+Sub | — | Get competition analysis (**free**) |
+| POST | `/api/v1/ai/competition/regenerate` | Yes+Sub | — | Regenerate (quota: yes) |
+| POST | `/api/v1/ai/competition/regenerate-custom` | Yes+Sub | — | Regenerate with custom prompt (quota: yes) |
+| POST | `/api/v1/ai/competition/chat` | Yes+Sub | — | Chat (quota: yes) |
+| POST | `/api/v1/ai/competition/chat/stream` | Yes+Sub | — | Stream chat (quota: yes) |
+| POST | `/api/v1/ai/market-potential` | Yes+Sub | — | Generate market potential (quota: yes) |
+| GET | `/api/v1/ai/market-potential` | Yes+Sub | — | Get market potential (**free**) |
+| POST | `/api/v1/ai/market-potential/regenerate` | Yes+Sub | — | Regenerate (quota: yes) |
+| POST | `/api/v1/ai/market-potential/regenerate-custom` | Yes+Sub | — | Custom regenerate (quota: yes) |
+| POST | `/api/v1/ai/market-potential/chat` | Yes+Sub | — | Chat (quota: yes) |
+| POST | `/api/v1/ai/market-potential/chat/stream` | Yes+Sub | — | Stream chat (quota: yes) |
+| POST | `/api/v1/ai/idea-strategy` | Yes+Sub | — | Generate idea strategy (quota: yes) |
+| GET | `/api/v1/ai/idea-strategy` | Yes+Sub | — | Get idea strategy (**free**) |
+| POST | `/api/v1/ai/idea-strategy/regenerate` | Yes+Sub | — | Regenerate (quota: yes) |
+| POST | `/api/v1/ai/idea-strategy/regenerate-custom` | Yes+Sub | — | Custom regenerate (quota: yes) |
+| POST | `/api/v1/ai/idea-strategy/chat` | Yes+Sub | — | Chat (quota: yes) |
+| POST | `/api/v1/ai/idea-strategy/chat/stream` | Yes+Sub | — | Stream chat (quota: yes) |
+| POST | `/api/v1/ai/business-model` | Yes+Sub | — | Generate business model (quota: yes) |
+| GET | `/api/v1/ai/business-model` | Yes+Sub | — | Get business model (**free**) |
+| POST | `/api/v1/ai/business-model/regenerate` | Yes+Sub | — | Regenerate (quota: yes) |
+| POST | `/api/v1/ai/business-model/regenerate-custom` | Yes+Sub | — | Custom regenerate (quota: yes) |
+| POST | `/api/v1/ai/business-model/chat` | Yes+Sub | — | Chat (quota: yes) |
+| POST | `/api/v1/ai/business-model/chat/stream` | Yes+Sub | — | Stream chat (quota: yes) |
+| POST | `/api/v1/ai/functions-list` | Yes+Sub | — | Generate functions list (quota: yes) |
+| GET | `/api/v1/ai/functions-list` | Yes+Sub | — | Get functions list (**free**) |
+| POST | `/api/v1/ai/functions-list/regenerate` | Yes+Sub | — | Regenerate (quota: yes) |
+| POST | `/api/v1/ai/functions-list/regenerate-custom` | Yes+Sub | — | Custom regenerate (quota: yes) |
+| POST | `/api/v1/ai/functions-list/chat` | Yes+Sub | — | Chat (quota: yes) |
+| POST | `/api/v1/ai/functions-list/chat/stream` | Yes+Sub | — | Stream chat (quota: yes) |
+| POST | `/api/v1/ai/mvp-planning` | Yes+Sub | — | Generate MVP plan (quota: yes) |
+| GET | `/api/v1/ai/mvp-planning` | Yes+Sub | — | Get MVP plan (**free**) |
+| POST | `/api/v1/ai/mvp-planning/regenerate` | Yes+Sub | — | Regenerate (quota: yes) |
+| POST | `/api/v1/ai/mvp-planning/regenerate-custom` | Yes+Sub | — | Custom regenerate (quota: yes) |
+| POST | `/api/v1/ai/mvp-planning/chat` | Yes+Sub | — | Chat (quota: yes) |
+| POST | `/api/v1/ai/mvp-planning/chat/stream` | Yes+Sub | — | Stream chat (quota: yes) |
+| POST | `/api/v1/ai/unit-economics` | Yes+Sub | — | Generate unit economics (quota: yes) |
+| GET | `/api/v1/ai/unit-economics` | Yes+Sub | — | Get unit economics (**free**) |
+| POST | `/api/v1/ai/unit-economics/regenerate` | Yes+Sub | — | Regenerate (quota: yes) |
+| POST | `/api/v1/ai/unit-economics/regenerate-custom` | Yes+Sub | — | Custom regenerate (quota: yes) |
+| POST | `/api/v1/ai/unit-economics/chat` | Yes+Sub | — | Chat (quota: yes) |
+| POST | `/api/v1/ai/unit-economics/chat/stream` | Yes+Sub | — | Stream chat (quota: yes) |
+| POST | `/api/v1/ai/go-to-market` | Yes+Sub | — | Generate GTM plan (quota: yes) |
+| GET | `/api/v1/ai/go-to-market` | Yes+Sub | — | Get GTM plan (**free**) |
+| POST | `/api/v1/ai/go-to-market/regenerate` | Yes+Sub | — | Regenerate (quota: yes) |
+| POST | `/api/v1/ai/go-to-market/regenerate-custom` | Yes+Sub | — | Custom regenerate (quota: yes) |
+| POST | `/api/v1/ai/go-to-market/chat` | Yes+Sub | — | Chat (quota: yes) |
+| POST | `/api/v1/ai/go-to-market/chat/stream` | Yes+Sub | — | Stream chat (quota: yes) |
 
 ---
 
-*This document was generated from the actual source code of Bizify-Backend and bizifyAI. Last updated: 2026-05-18.*
+*This document was generated from the actual source code of Bizify-Backend and bizifyAI.*
+*Last updated: 2026-05-18 — see Changelog at the top for all post-initial changes.*
