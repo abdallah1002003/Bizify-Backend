@@ -142,7 +142,7 @@ class UserService:
             logger.error("Email delivery failed for %s. OTP %s is saved in DB.", email, otp)
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"Could not send email. Verification code: {otp}",
+                detail="Could not send email.",
             ) from exc
         except Exception:
             raise
