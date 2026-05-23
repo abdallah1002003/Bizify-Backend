@@ -56,25 +56,25 @@ class AICustomersResponse(BaseModel):
     customers: list[dict[str, Any]]
 
 class AICompetitionResponse(BaseModel):
-    competitors: list[dict[str, Any]]
+    competition: dict[str, Any]
 
 class AIMarketPotentialResponse(BaseModel):
     market_potential: dict[str, Any]
 
 class AIIdeaStrategyResponse(BaseModel):
-    strategy: dict[str, Any]
+    idea_strategy: dict[str, Any]
 
 class AIBusinessModelResponse(BaseModel):
     business_model: dict[str, Any]
 
 class AIFunctionsListResponse(BaseModel):
-    functions: list[dict[str, Any]]
+    functions_list: dict[str, Any]
 
 class AIMVPPlanningResponse(BaseModel):
-    mvp: dict[str, Any]
+    mvp_planning: dict[str, Any]
 
 class AIUnitEconomicsResponse(BaseModel):
-    economics: dict[str, Any]
+    unit_economics: dict[str, Any]
 
 class AIGoToMarketResponse(BaseModel):
     go_to_market: dict[str, Any]

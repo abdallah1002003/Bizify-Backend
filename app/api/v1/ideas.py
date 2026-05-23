@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, get_db
 from app.models.user import User
-from app.schemas.idea import IdeaCreate, IdeaRead
+from app.schemas.idea import IdeaCreate, IdeaRead, IdeaUpdate
 from app.services.idea_service import IdeaService
 
 router = APIRouter()
@@ -62,6 +62,16 @@ def get_archived_ideas(
     return IdeaService.get_archived_user_ideas(db=db, user_id=current_user.id)
 
 
+@router.get("/{idea_id}", response_model=IdeaRead)
+def get_idea(
+    idea_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> IdeaRead:
+    """Return a single idea the user can access."""
+    return IdeaService.get_idea(db=db, idea_id=idea_id, user_id=current_user.id)
+
+
 @router.patch("/{idea_id}/archive", response_model=IdeaRead)
 def archive_idea(
     idea_id: UUID,
@@ -80,3 +90,25 @@ def unarchive_idea(
 ) -> IdeaRead:
     """Restore an archived business idea."""
     return IdeaService.unarchive_idea(db=db, idea_id=idea_id, user_id=current_user.id)
+
+
+@router.patch("/{idea_id}", response_model=IdeaRead)
+def update_idea(
+    idea_id: UUID,
+    idea_in: IdeaUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> IdeaRead:
+    """Update an idea owned by the authenticated user."""
+    updates = idea_in.model_dump(exclude_unset=True)
+    return IdeaService.update_idea(db=db, idea_id=idea_id, user_id=current_user.id, updates=updates)
+
+
+@router.delete("/{idea_id}", status_code=204)
+def delete_idea(
+    idea_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Permanently delete an idea owned by the authenticated user."""
+    IdeaService.delete_idea(db=db, idea_id=idea_id, user_id=current_user.id)
