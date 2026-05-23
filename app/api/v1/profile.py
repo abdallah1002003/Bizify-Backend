@@ -80,25 +80,72 @@ def get_my_profile(
 
 
 
-PREDEFINED_SKILLS = [
-    "Python", "JavaScript", "TypeScript", "React", "Node.js",
-    "SQL", "NoSQL", "Docker", "Kubernetes", "AWS",
-    "Machine Learning", "Data Analysis", "Project Management",
-    "Digital Marketing", "Business Development", "UI/UX Design",
-    "Mobile Development", "DevOps", "Blockchain", "AI",
-]
+# Maps each category to its predefined skills pool
+CATEGORY_SKILLS: dict[str, list[str]] = {
+    "Programming & Development": [
+        "Python", "JavaScript", "TypeScript", "React", "Vue.js", "Angular",
+        "Node.js", "SQL", "NoSQL", "MongoDB", "PostgreSQL", "REST APIs", "GraphQL",
+        "Docker", "Kubernetes", "AWS", "Azure", "Git", "CI/CD",
+        "Mobile Development", "iOS Development", "Android Development",
+        "DevOps", "Microservices", "System Design", "Blockchain",
+    ],
+    "Data & Analytics": [
+        "Data Analysis", "SQL", "Python", "R", "Excel", "Power BI", "Tableau",
+        "Data Visualization", "Statistics", "ETL", "Big Data", "Apache Spark",
+        "Data Engineering", "Business Intelligence", "A/B Testing", "Google Analytics",
+    ],
+    "Design & UX": [
+        "UI/UX Design", "Figma", "Adobe XD", "Photoshop", "Illustrator",
+        "User Research", "Wireframing", "Prototyping", "Brand Design",
+        "Graphic Design", "Motion Design", "Design Systems", "Product Design",
+    ],
+    "Marketing & Sales": [
+        "Digital Marketing", "SEO", "SEM", "Google Ads", "Social Media Marketing",
+        "Content Marketing", "Email Marketing", "Copywriting", "Brand Strategy",
+        "Sales", "CRM", "HubSpot", "Lead Generation", "Growth Hacking",
+        "Affiliate Marketing", "Market Research",
+    ],
+    "Business & Management": [
+        "Business Development", "Project Management", "Product Management",
+        "Strategy", "Business Analysis", "Agile", "Scrum", "Operations Management",
+        "Change Management", "Leadership", "Negotiation", "Stakeholder Management",
+        "Business Planning",
+    ],
+    "Finance & Accounting": [
+        "Financial Analysis", "Accounting", "Bookkeeping", "Financial Modeling",
+        "Excel", "QuickBooks", "Budgeting", "Forecasting", "Taxation",
+        "Auditing", "Investment Analysis", "Valuation", "Cash Flow Management",
+        "Financial Reporting", "Risk Management",
+    ],
+    "Operations & Logistics": [
+        "Supply Chain Management", "Logistics", "Inventory Management",
+        "Process Improvement", "Lean", "Six Sigma", "Quality Assurance",
+        "Procurement", "Vendor Management", "ERP Systems", "SAP",
+        "Warehouse Management",
+    ],
+    "Customer Support": [
+        "Customer Service", "CRM", "Zendesk", "Intercom", "Technical Support",
+        "Client Relations", "Communication", "Problem Solving",
+        "Conflict Resolution", "Salesforce", "Customer Success", "Account Management",
+    ],
+    "AI & Machine Learning": [
+        "Machine Learning", "Deep Learning", "Neural Networks", "NLP",
+        "Computer Vision", "TensorFlow", "PyTorch", "Scikit-learn",
+        "Data Science", "AI", "LLMs", "Prompt Engineering", "MLOps",
+        "Reinforcement Learning", "Statistical Modeling", "Python",
+    ],
+}
 
+# Flat deduplicated list for global search (no category filter)
+PREDEFINED_SKILLS: list[str] = sorted(
+    {skill for skills in CATEGORY_SKILLS.values() for skill in skills}
+)
 
-SKILL_CATEGORIES = [
-    "Programming & Development", "Data & Analytics", "Design & UX",
-    "Marketing & Sales", "Business & Management", "Finance & Accounting",
-    "Operations & Logistics", "Customer Support", "AI & Machine Learning",
-]
+SKILL_CATEGORIES: list[str] = list(CATEGORY_SKILLS.keys())
 
 
 @router.get("/skill-categories")
 def list_skill_categories(
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[str]:
     """Return predefined skill categories."""
@@ -118,13 +165,37 @@ def list_user_skills(
 @router.get("/skills/search")
 def search_predefined_skills(
     q: str = "",
-    db: Session = Depends(get_db),
+    category: str = "",
     current_user: User = Depends(get_current_user),
 ) -> list[str]:
-    """Search predefined skills by keyword."""
+    """Search predefined skills by keyword, optionally filtered by category."""
+    pool = CATEGORY_SKILLS.get(category, PREDEFINED_SKILLS) if category else PREDEFINED_SKILLS
     if not q:
-        return PREDEFINED_SKILLS
-    return [s for s in PREDEFINED_SKILLS if q.lower() in s.lower()]
+        return pool
+    return [s for s in pool if q.lower() in s.lower()]
+
+
+@router.get("/skills/json")
+def get_skills_json(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[dict[str, Any]]:
+    """Return the raw skills JSON data for the current user."""
+    profile = ProfileService.get_or_create_profile(db, current_user.id)
+    return profile.skills_json or []
+
+
+@router.post("/skills/json")
+def update_skills_json(
+    skills: list[dict[str, Any]] = Body(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[dict[str, Any]]:
+    """Save the raw skills JSON data for the current user."""
+    profile = ProfileService.get_or_create_profile(db, current_user.id)
+    profile.skills_json = skills
+    db.commit()
+    return profile.skills_json or []
 
 
 @router.post("/skills", status_code=status.HTTP_201_CREATED)
@@ -133,14 +204,14 @@ def add_user_skill(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
-    """Add a custom skill for the current user."""
+    """Add a skill for the current user."""
     skill_name = body.get("skill_name") or body.get("name")
     if not skill_name:
         raise HTTPException(status_code=400, detail="skill_name or name is required")
 
     profile = ProfileService.get_or_create_profile(db, current_user.id)
     skills = list(profile.skills_json or [])
-    new_skill = {"id": str(uuid4()), "name": skill_name, "rating": 3}
+    new_skill = {"id": str(uuid4()), "name": str(skill_name), "rating": 3}
     skills.append(new_skill)
     profile.skills_json = skills
     db.commit()
@@ -162,26 +233,3 @@ def delete_user_skill(
     profile.skills_json = updated
     db.commit()
     return None
-
-
-@router.get("/skills/json")
-def get_skills_json(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> Any:
-    """Return the raw skills JSON data for the current user."""
-    profile = ProfileService.get_or_create_profile(db, current_user.id)
-    return profile.skills_json or {}
-
-
-@router.post("/skills/json")
-def update_skills_json(
-    skills: dict[str, Any] = Body(...),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> Any:
-    """Save the raw skills JSON data for the current user."""
-    profile = ProfileService.get_or_create_profile(db, current_user.id)
-    profile.skills_json = skills
-    db.commit()
-    return profile.skills_json or {}
