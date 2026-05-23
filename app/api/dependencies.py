@@ -149,15 +149,14 @@ get_current_admin_user = RoleChecker([UserRole.ADMIN])
 
 
 def check_ai_usage(
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> User:
     """
     Dependency that enforces AI usage limits based on the user's active plan.
-    - Checks if the user's plan has `ai_analysis` set to True.
-    - Checks if the user has remaining AI requests (respects `ai_requests` limit in plan if present).
-    - If within limit, increments the counter and allows the request.
-    - If limit exceeded or AI is not allowed, raises HTTP 403 or 429.
+    - GET requests (reading cached results) are free and never consume quota.
+    - Only POST/PUT/PATCH requests (generating new AI content) consume quota.
     """
     # 1. Check User's Active Subscription
     sub = subscription_repo.get_active_by_user(db, current_user.id)
@@ -171,12 +170,16 @@ def check_ai_usage(
             detail="Your current plan does not include AI analysis features. Please upgrade your plan.",
         )
 
+    # GET requests only read cached data — never count against quota
+    if request.method == "GET":
+        return current_user
+
     plan_limit = features.get("ai_requests")
-    
+
     within_limit, record = usage_repo.check_limit(db, current_user.id)
-    
+
     active_limit = plan_limit if plan_limit is not None else (record.limit_value or 100)
-    
+
     if (record.used or 0) >= active_limit:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
