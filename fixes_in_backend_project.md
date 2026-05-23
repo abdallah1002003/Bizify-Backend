@@ -529,4 +529,122 @@ These features were added by the team and are already working. No fixes needed.
 
 ---
 
-*Last updated: 2026-05-19*
+---
+
+## Production Error Fixes — 2026-05-23
+
+Three live production errors diagnosed from Railway logs and fixed across both backend and AI service.
+
+---
+
+### Fix 7.1 — `invalid input value for enum sessiontype: "general_bot"` (DB crash on every general chat)
+
+**Files:**
+- `Bizify-Backend/app/models/ai/chat_session.py`
+- `Bizify-Backend/alembic/versions/c3d4e5f6a1b2_add_general_bot_session_type.py` *(new)*
+- `bizifyAI/db/crud.py`
+
+**Severity:** HIGH — general chat history was never saved for any user
+
+**Problem:**
+The AI service's `crud.py` tried to insert `session_type="general_bot"` (lowercase) into `chat_sessions`. But the PostgreSQL `sessiontype` enum only had: `IDEA_CHAT`, `BUSINESS_CHAT`, `STAGE_CHAT`, `GENERAL`. The value `"general_bot"` was rejected by the database on every message turn. The error was caught and swallowed (non-fatal), so requests returned 200 OK — but zero chat history was ever persisted.
+
+**Fix (3 parts):**
+
+1. Added `GENERAL_BOT = "GENERAL_BOT"` to `SessionType` enum in `app/models/ai/chat_session.py`
+2. Created Alembic migration `c3d4e5f6a1b2` that runs:
+   ```sql
+   ALTER TYPE sessiontype ADD VALUE IF NOT EXISTS 'GENERAL_BOT';
+   ```
+3. Changed all 3 occurrences of `"general_bot"` → `"GENERAL_BOT"` in `bizifyAI/db/crud.py` (`get_or_create_general_bot_session` and `get_general_bot_history`)
+
+**DB action completed:** SQL ran directly in Supabase SQL Editor on 2026-05-23.
+
+---
+
+### Fix 7.2 — `AttributeError: 'list' object has no attribute 'get'` in `OneProfileAnalysis.py` (pipeline crash for new users)
+
+**Files:**
+- `bizifyAI/agents/generalBot.py`
+- `bizifyAI/agents/OneProfileAnalysis.py`
+
+**Severity:** CRITICAL — the new-user pipeline (profile → problems → idea) crashed for every user whose questionnaire was stored as a raw list
+
+**Problem:**
+When a new user asked the general bot for an idea, `_run_new_user_pipeline_inline()` called `crud.get_questionnaire_from_profile()` which reads `user_profiles.questionnaire_json` from the database. For some production users this field contained the raw `QuestionnaireAnswer` list that the frontend submits (`[{field: "Q_q1", choices: [...], multi: false}, ...]`) instead of the processed `{user_profile: {...}, career_profile: {...}}` dict. The raw list was passed directly to `run_profile_analysis()`, which called `questionnaire.get("user_profile", {})` — crashing because lists don't have `.get()`.
+
+**Fix (2 parts):**
+
+1. **`agents/generalBot.py`** — Added `_normalize_questionnaire(raw)` helper function that:
+   - Returns the raw value unchanged if it's already a dict (normal case)
+   - Converts a list of `QuestionnaireAnswer` objects → `{user_profile: {...}, career_profile: {...}}` dict using the same field mapping as `profile_service.submit_full_questionnaire()` in the backend
+   - Added guard in `_run_new_user_pipeline_inline()`: if normalization yields no usable `user_profile`, returns a friendly message instead of crashing
+
+2. **`agents/OneProfileAnalysis.py`** — Added type guard before line 39:
+   ```python
+   if not isinstance(questionnaire, dict):
+       raise ValueError(f"questionnaire must be a dict — got {type(questionnaire).__name__}")
+   ```
+   Gives a clear, readable error if a non-dict ever reaches this function in the future.
+
+---
+
+### Fix 7.3 — 5 AI GET endpoints would return 500 (wrong response schema field names)
+
+**File:** `Bizify-Backend/app/schemas/ai_pipeline.py`
+
+**Severity:** HIGH — Competition, Idea Strategy, Functions List, MVP Planning, and Unit Economics GET endpoints would crash with a response validation error
+
+**Problem:**
+The backend's Pydantic response schemas had field names that didn't match what the AI service actually returns. FastAPI validates the response dict against the `response_model` — if a required field is missing, it raises a 500 `ResponseValidationError`. The AI service routes return the data under snake_case keys matching the section name, but the schemas used different abbreviated names:
+
+| Schema class | Wrong field (was) | Correct field (fixed to) |
+|---|---|---|
+| `AICompetitionResponse` | `competitors: list` | `competition: dict` |
+| `AIIdeaStrategyResponse` | `strategy: dict` | `idea_strategy: dict` |
+| `AIFunctionsListResponse` | `functions: list` | `functions_list: dict` |
+| `AIMVPPlanningResponse` | `mvp: dict` | `mvp_planning: dict` |
+| `AIUnitEconomicsResponse` | `economics: dict` | `unit_economics: dict` |
+
+**Fix:**
+All 5 schema classes updated to use the correct field names. The frontend's `useAiPipeline.ts` `SECTION_RESPONSE_KEYS` was already using the correct keys — only the backend schemas were wrong.
+
+---
+
+### Fix 7.4 — `TAVILY_API_KEY` missing from Railway AI service environment
+
+**File:** Railway environment variables (AI service)
+
+**Severity:** MEDIUM — all agents fell back to Serper search (lower quality results)
+
+**Problem:**
+`TAVILY_API_KEY` and `GROQ_EXTRACTION_MODEL` were in the local `.env` file but were never added to the Railway production environment. Every search triggered the fallback path.
+
+**Fix:**
+Added both variables to the Railway AI service environment:
+- `TAVILY_API_KEY = tvly-dev-...`
+- `GROQ_EXTRACTION_MODEL = llama-3.1-8b-instant`
+
+---
+
+## Files Changed — 2026-05-23
+
+### `Bizify-Backend` (backend)
+
+| File | Change |
+|---|---|
+| `app/models/ai/chat_session.py` | Added `GENERAL_BOT = "GENERAL_BOT"` to `SessionType` enum |
+| `app/schemas/ai_pipeline.py` | Fixed field names in 5 response schemas (competition, idea_strategy, functions_list, mvp_planning, unit_economics) |
+| `alembic/versions/c3d4e5f6a1b2_add_general_bot_session_type.py` | **NEW** — migration to add `GENERAL_BOT` to PostgreSQL `sessiontype` enum |
+
+### `bizifyAI` (AI service)
+
+| File | Change |
+|---|---|
+| `agents/generalBot.py` | Added `_normalize_questionnaire()` + guard in `_run_new_user_pipeline_inline()` to handle raw list questionnaire format |
+| `agents/OneProfileAnalysis.py` | Added type guard before `questionnaire.get()` call |
+| `db/crud.py` | Changed `"general_bot"` → `"GENERAL_BOT"` in all 3 places |
+
+---
+
+*Last updated: 2026-05-23*
