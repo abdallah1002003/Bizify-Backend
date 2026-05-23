@@ -108,6 +108,18 @@ class GroupRepository(BaseRepository[Group, Any, Any]):
             .first()
         )
 
+    def get_group_invites(self, db: Session, group_id: uuid.UUID) -> list[GroupInvite]:
+        """Fetch all invites for a group."""
+        return db.query(GroupInvite).filter(GroupInvite.group_id == group_id).all()
+
+    def get_group_join_requests(self, db: Session, group_id: uuid.UUID) -> list[GroupJoinRequest]:
+        """Fetch all join requests for a group."""
+        return (
+            db.query(GroupJoinRequest)
+            .filter(GroupJoinRequest.group_id == group_id)
+            .all()
+        )
+
     def get_pending_invite_by_token(self, db: Session, token: str) -> Optional[GroupInvite]:
         """Fetch a pending invite using its secret token."""
         return (

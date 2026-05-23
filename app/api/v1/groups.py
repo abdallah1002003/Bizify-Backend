@@ -19,6 +19,8 @@ from app.models.user import User
 from app.schemas.group import (
     GroupCreate,
     GroupInviteCreate,
+    GroupInviteResponse,
+    GroupJoinRequestResponse,
     GroupMemberResponse,
     GroupMemberUpdate,
     GroupResponse,
@@ -65,6 +67,23 @@ def get_groups(
 ) -> list[GroupResponse]:
     """Return groups owned by or shared with the authenticated user."""
     return GroupService.get_user_teams(db, current_user.id)
+
+
+@router.get("/groups/{group_id}", response_model=GroupResponse)
+def get_group(
+    group_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> GroupResponse:
+    """Return a single group the user can access."""
+    group = group_repo.get_by_id(db, group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    is_owner = group.business.owner_id == current_user.id
+    is_member = group_repo.is_active_member(db, group_id, current_user.id)
+    if not is_owner and not is_member:
+        raise HTTPException(status_code=403, detail="Access denied")
+    return group
 
 
 @router.patch("/groups/{group_id}", response_model=GroupResponse)
@@ -159,6 +178,65 @@ def get_members(
     """Return active members for a group."""
     members = GroupService.get_group_members(db, group_id, current_user.id)
     return [_build_member_response(member) for member in members]
+
+
+@router.get("/groups/{group_id}/members/{member_id}", response_model=GroupMemberResponse)
+def get_member(
+    group_id: UUID,
+    member_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> GroupMemberResponse:
+    """Return a single group member."""
+    group = group_repo.get_by_id(db, group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    GroupService.get_group_members(db, group_id, current_user.id)
+    member = group_repo.get_member_by_id(db, member_id)
+    if not member or member.group_id != group_id:
+        raise HTTPException(status_code=404, detail="Member not found")
+    return _build_member_response(member)
+
+
+@router.get("/groups/{group_id}/invites", response_model=list[GroupInviteResponse])
+def get_group_invites(
+    group_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[GroupInviteResponse]:
+    """Return all invites for a group (admin only)."""
+    group = group_repo.get_by_id(db, group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    GroupService._ensure_group_admin(group, current_user.id)
+    return group_repo.get_group_invites(db, group_id)
+
+
+@router.get("/groups/{group_id}/join-requests", response_model=list[GroupJoinRequestResponse])
+def get_group_join_requests(
+    group_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[GroupJoinRequestResponse]:
+    """Return all join requests for a group (admin only)."""
+    group = group_repo.get_by_id(db, group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    GroupService._ensure_group_admin(group, current_user.id)
+    requests = group_repo.get_group_join_requests(db, group_id)
+    return [
+        {
+            "id": r.id,
+            "group_id": r.group_id,
+            "user_id": r.user_id,
+            "email": r.user.email,
+            "role": r.role,
+            "status": r.status,
+            "created_at": r.created_at,
+            "accessible_ideas": r.accessible_ideas or [],
+        }
+        for r in requests
+    ]
 
 
 @router.patch("/groups/members/{member_id}", response_model=GroupMemberResponse)

@@ -77,12 +77,11 @@ async def general_chat(
     request: GeneralChatRequest,
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
-    result = await AIPipelineService.general_chat(
+    return await AIPipelineService.general_chat(
         user_id=current_user.id,
         message=request.message,
         history=request.history,
     )
-    return result
 
 
 @router.post(
@@ -95,12 +94,15 @@ async def general_chat_stream(
     request: GeneralChatRequest,
     current_user: User = Depends(get_current_user),
 ) -> StreamingResponse:
-    stream = AIPipelineService.general_chat_stream(
-        user_id=current_user.id,
-        message=request.message,
-        history=request.history,
-    )
-    return StreamingResponse(stream, media_type="text/event-stream")
+    async def _stream():
+        async for chunk in AIPipelineService.general_chat_stream(
+            user_id=current_user.id,
+            message=request.message,
+            history=request.history,
+        ):
+            yield chunk
+
+    return StreamingResponse(_stream(), media_type="text/event-stream")
 
 
 async def _forward_get_to_ai(path: str, user_id: str) -> dict:
@@ -153,7 +155,7 @@ async def _forward_stream_to_ai(path: str, payload: dict[str, Any] | None = None
         )
     target_url = f"{_AI_BASE_URL}/pipeline/{path}"
     headers = {"x-api-key": settings.AI_PIPELINE_API_KEY, "Content-Type": "application/json"}
-    
+
     async def stream_generator():
         try:
             async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS) as client:
@@ -166,7 +168,7 @@ async def _forward_stream_to_ai(path: str, payload: dict[str, Any] | None = None
         except httpx.RequestError as exc:
             logger.error("AI stream unreachable: %s", exc)
             raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI stream service unreachable.")
-            
+
     return StreamingResponse(stream_generator(), media_type="text/event-stream")
 
 

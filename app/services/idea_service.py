@@ -100,6 +100,42 @@ class IdeaService:
         ]
 
     @staticmethod
+    def get_idea(db: Session, idea_id: uuid.UUID, user_id: uuid.UUID) -> Idea:
+        """Return a single idea the user can access."""
+        idea = idea_repo.get(db, id=idea_id)
+        if not idea:
+            raise HTTPException(status_code=404, detail="Idea not found")
+        accessible_ids = {i.id for i in IdeaService._get_accessible_ideas(db, user_id)}
+        if idea_id not in accessible_ids:
+            raise HTTPException(status_code=403, detail="Not authorized to access this idea")
+        return idea
+
+    @staticmethod
+    def update_idea(
+        db: Session,
+        idea_id: uuid.UUID,
+        user_id: uuid.UUID,
+        updates: dict,
+    ) -> Idea:
+        """Update an idea the user owns."""
+        idea = idea_repo.get(db, id=idea_id)
+        if not idea:
+            raise HTTPException(status_code=404, detail="Idea not found")
+        if idea.owner_id != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized to modify this idea")
+        return idea_repo.update(db, db_obj=idea, obj_in=updates)
+
+    @staticmethod
+    def delete_idea(db: Session, idea_id: uuid.UUID, user_id: uuid.UUID) -> None:
+        """Delete an idea the user owns."""
+        idea = idea_repo.get(db, id=idea_id)
+        if not idea:
+            raise HTTPException(status_code=404, detail="Idea not found")
+        if idea.owner_id != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized to delete this idea")
+        idea_repo.remove(db, id=idea_id)
+
+    @staticmethod
     def create_idea(
         db: Session,
         user_id: uuid.UUID,

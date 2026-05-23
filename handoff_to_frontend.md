@@ -6,6 +6,62 @@
 
 ---
 
+## Changelog
+
+> **Legend:** 🔴 Frontend action required &nbsp;|&nbsp; 🟢 No frontend action — internal improvement
+
+### 2026-05-19 — AI Quality & Architecture Overhaul
+
+#### 🔴 Breaking / Frontend Action Required
+
+| What changed | What the frontend must do |
+|---|---|
+| **`SubscriptionStatus.PENDING` added** — Paymob checkout now creates a PENDING subscription, activated by webhook | After `POST /billing/paymob/subscribe` the subscription is `PENDING` not `ACTIVE`; poll `GET /billing/subscription` for `status: "ACTIVE"` before unlocking AI |
+| **AI pipeline "not ready" errors changed from 425 → 409** | All errors like "pipeline not ready", "idea not ready", "prerequisites missing" now return `409 Conflict` instead of `425 Too Early`. Update every error handler that checks for 425. |
+| **Input validation enforced on all AI chat endpoints** | `message` max 10,000 chars, `history` max 100 turns, `custom_prompt` max 5,000 chars. Exceeding returns `422`. Truncate/validate before sending. |
+| **`tokens_used` added to all streaming chat `done` events** | Every `{"type": "done"}` SSE event now includes `"tokens_used": <number>`. Use it to show per-reply token cost. |
+| **`tokens_used` added to `POST /ai/chat` and `POST /ai/general-chat` responses** | Both non-streaming endpoints now return `"tokens_used": <number>` at the top level. |
+| **Usage quota now correctly counted for streaming + `/general-chat`** | Previously these endpoints did not increment the usage counter — they now do. Users will reach their limit faster than before. Update quota display logic. |
+| **Freemium confirmed: 100 free AI requests without a subscription** | Users with no active subscription get 100 free AI requests. Only plans with `ai_analysis: false` are blocked outright with `403`. |
+
+#### 🟢 Internal — No Frontend Action Required
+
+| What changed | What improved (no API change) |
+|---|---|
+| **Web search upgraded from Serper + BeautifulSoup → Tavily API** | All 12 section agents now use Tavily (purpose-built for AI agents) instead of Google Serper + manual HTML scraping. Results are pre-cleaned, more relevant, and more reliable. Same response shape. |
+| **Per-agent domain filtering added** | Each agent now searches authoritative domains for its topic (e.g. market sizing → Statista/McKinsey, competition → Crunchbase/G2, unit economics → SaaStr/Baremetrics). Higher quality sources cited in results. |
+| **LLM extraction layer added between search and analysis** | Raw web content is now processed by a fast Groq extraction model before reaching the main analysis model. The main LLM gets structured data points instead of raw text. Analysis quality improved significantly. |
+| **Intent classification in General Chat upgraded to pure LLM** | Replaced fragile keyword matching (which misclassified "I'm not sure yet" as decline) with full LLM classification. Bot now correctly handles ambiguous phrasing. Same response shapes. |
+| **General Chat routing refactored to dispatch table** | 160-line if/elif chain replaced with a clean data-driven dispatch table. Adding new sections no longer requires editing the routing logic. Zero API impact. |
+| **Returning user personalization fixed** — `ThreeIdeaIntakeAgent` | Previously hardcoded `founder_setup: "solo"` and `risk_tolerance: "medium"` for all returning users regardless of their actual profile. Now loads real profile from DB. Problem discovery is now personalised to the actual founder. |
+| **Profile overwrite bug fixed** — `idea-intake/start-chat` | The `start-chat` endpoint previously overwrote a returning user's real questionnaire profile with a minimal stub. Now only saves the stub if no real profile exists. Downstream analysis quality improved. |
+| **Pipeline step agents separated into own files** | `PipelineRunner.py` was a single file containing Profile Analysis, Problem Discovery, and Idea Chat. These are now in `OneProfileAnalysis.py`, `TwoProblemDiscovery.py`, `ThreePersonalizeIdeaChat.py` — consistent with steps 4–12. `PipelineRunner.py` is now a thin import shim. Zero API impact. |
+| **Error handling hardened across all 12 section agents** | All LLM calls and JSON parsing now have proper try/except with logging. Previously a ~5–10% chance of Groq returning malformed JSON caused a silent 500 error. Now logged and propagated with context. |
+| **Orchestrator pipeline status now logged on failure** | `_status()` previously swallowed all errors silently. Now logs warnings so pipeline failures are debuggable. |
+| **HTTP error schemas fixed in backend** | `AIProblemsResponse.problems` was typed as `list` but AI returns `dict` — caused runtime crash on `GET /ai/problems`. `AIIdeaResponse.current_idea` was typed as `dict` but AI returns a plain string — caused crash on `GET /ai/idea`. Both fixed. Frontend was unaffected (errors manifested server-side). |
+
+---
+
+### 2026-05-18 — Auth, Billing & Quota Changes
+
+#### 🔴 Frontend Action Required
+
+| What changed | What the frontend must do |
+|---|---|
+| **Rate limiting added to all auth endpoints** | Handle `429 Too Many Requests` from `/auth/*`; show "try again in a moment" and disable the button for 60 seconds |
+| **Usage quota: GET requests no longer consume quota** | Reading `/ai/customers`, `/ai/business-model`, etc. is now free; only POST (generate/chat/regenerate) counts |
+| **AI GET endpoint response schemas removed from Swagger** | Swagger docs no longer show response schemas for GET AI endpoints — use this document instead |
+| **Paymob payment flow: subscription is PENDING until webhook fires** | After `POST /billing/paymob/subscribe` the user does NOT have AI access immediately. Poll `GET /billing/subscription` until `status: "active"` before unlocking AI features |
+| **Password reset invalidates all existing tokens** | After `POST /auth/reset-password` succeeds — clear token and redirect to login on all devices |
+
+#### 🟢 Internal — No Frontend Action Required
+
+| What changed | What improved |
+|---|---|
+| **`test-email` endpoint is now admin-only and hidden from Swagger** | Was never meant to be called by the frontend |
+
+---
+
 ## Table of Contents
 
 1. [Architecture Overview](#1-architecture-overview)
@@ -17,7 +73,9 @@
 7. [API Reference — Ideas](#7-api-reference--ideas)
 8. [API Reference — Groups / Teams](#8-api-reference--groups--teams)
 9. [API Reference — Notifications](#9-api-reference--notifications)
-10. [API Reference — AI Pipeline](#10-api-reference--ai-pipeline)
+10. [API Reference — Billing](#10-api-reference--billing)
+11. [API Reference — Export](#11-api-reference--export)
+12. [API Reference — AI Pipeline](#12-api-reference--ai-pipeline)
 11. [AI Integration: Full Flow](#11-ai-integration-full-flow)
 12. [SSE Streaming Guide](#12-sse-streaming-guide)
 13. [Feature Flows (Step-by-Step)](#13-feature-flows-step-by-step)
@@ -259,6 +317,44 @@ interface GeneralChatResponse {
 }
 ```
 
+### Subscription
+
+```typescript
+type SubscriptionStatus = "PENDING" | "ACTIVE" | "CANCELED";
+
+interface Subscription {
+  id: string;                          // UUID
+  user_id: string;                     // UUID
+  plan_id: string;                     // UUID
+  status: SubscriptionStatus;
+  start_date: string;                  // ISO datetime
+  end_date: string | null;
+  paypal_subscription_id: string | null;
+}
+
+interface Plan {
+  id: string;                          // UUID
+  name: string;
+  price: number;                       // decimal
+  features_json: {
+    ai_analysis: boolean;
+    ai_requests?: number;              // monthly request cap; absent = 100 (default)
+    [key: string]: any;
+  };
+  is_active: boolean;
+}
+```
+
+**`status` values and what they mean:**
+
+| Status | Meaning | AI access? |
+|--------|---------|------------|
+| `PENDING` | Payment initiated (Paymob card flow) but not yet confirmed | No — poll until `ACTIVE` |
+| `ACTIVE` | Subscription live and payment confirmed | Yes |
+| `CANCELED` | User or admin cancelled | No |
+
+---
+
 ### SSE Stream Token Event
 
 ```typescript
@@ -280,6 +376,7 @@ interface SSEReplaceEvent {
 
 interface SSEDoneEvent {
   type: "done";
+  tokens_used: number;        // always present — Groq tokens consumed by this reply
   intent?: string;
   action?: string;
   route_to_trigger?: null;
@@ -969,7 +1066,341 @@ GET /api/v1/notifications/
 
 ---
 
-## 10. API Reference — AI Pipeline
+## 10. API Reference — Billing
+
+Base path: `/api/v1/billing/`
+
+> `GET /billing/plans` requires no auth. All other endpoints require `Authorization: Bearer <token>`.
+
+---
+
+### List Plans
+
+```http
+GET /api/v1/billing/plans
+```
+
+No auth required. Returns all active subscription plans.
+
+**Response:**
+
+```json
+[
+  {
+    "id": "uuid",
+    "name": "Free Plan",
+    "price": "0.00",
+    "is_active": true,
+    "features_json": {
+      "ideas": 3,
+      "ai_analysis": false,
+      "ai_requests": 100,
+      "team_members": 1
+    }
+  },
+  {
+    "id": "uuid",
+    "name": "Starter",
+    "price": "9.99",
+    "is_active": true,
+    "features_json": {
+      "ideas": 10,
+      "ai_analysis": true,
+      "ai_requests": 500,
+      "team_members": 3
+    }
+  }
+]
+```
+
+**`features_json` fields:**
+
+| Field | Type | Meaning |
+|---|---|---|
+| `ideas` | number | Max ideas the user can create. `-1` = unlimited |
+| `ai_analysis` | boolean | Whether the plan includes AI features |
+| `ai_requests` | number | Monthly AI request quota |
+| `team_members` | number | Max team members. `-1` = unlimited |
+| `dedicated_support` | boolean | Enterprise-only dedicated support |
+
+> Use `ai_analysis: false` to lock AI features before the user has a plan. Use `ai_requests` to show quota progress.
+
+---
+
+### Subscribe — PayPal
+
+```http
+POST /api/v1/billing/paypal/subscribe
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{ "plan_id": "uuid-of-chosen-plan" }
+```
+
+**Response:**
+
+```json
+{
+  "order_id": "PAYPAL-ORDER-ID",
+  "approval_url": "https://www.paypal.com/checkoutnow?token=...",
+  "status": "CREATED"
+}
+```
+
+Redirect the user to `approval_url`. After PayPal approval the user is redirected back. Then call capture.
+
+---
+
+### Capture PayPal Payment
+
+```http
+POST /api/v1/billing/paypal/capture
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "order_id": "PAYPAL-ORDER-ID",
+  "plan_id": "uuid-of-chosen-plan"
+}
+```
+
+**Response `200`:**
+
+```json
+{
+  "payment_id": "uuid",
+  "subscription_id": "uuid",
+  "status": "COMPLETED",
+  "amount": "9.99",
+  "currency": "USD"
+}
+```
+
+After a successful capture the subscription is **immediately ACTIVE**. No webhook wait needed for PayPal.
+
+---
+
+### Subscribe — Paymob (Card / Egypt)
+
+```http
+POST /api/v1/billing/paymob/subscribe
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "plan_id": "uuid-of-chosen-plan",
+  "first_name": "Sara",
+  "last_name": "Ahmed",
+  "email": "sara@example.com",
+  "phone_number": "+201001234567"
+}
+```
+
+All billing fields are optional. `plan_id` is the only required field.
+
+**Response:**
+
+```json
+{
+  "payment_id": "uuid",
+  "subscription_id": "uuid",
+  "paymob_order_id": "PAYMOB-ORDER-ID",
+  "iframe_url": "https://accept.paymob.com/api/acceptance/iframes/...?payment_token=..."
+}
+```
+
+Render `iframe_url` inside an `<iframe>` tag. The user enters their card details inside the iframe. Paymob fires a webhook to the backend on success — the backend activates the subscription.
+
+> ⚠️ The subscription is **PENDING** until the Paymob webhook fires. Do NOT assume it's active when the iframe loads. Poll `GET /billing/subscription` after the iframe closes.
+
+---
+
+### Get Active Subscription
+
+```http
+GET /api/v1/billing/subscription
+Authorization: Bearer <token>
+```
+
+**Response `200`:**
+
+```json
+{
+  "id": "uuid",
+  "user_id": "uuid",
+  "plan_id": "uuid",
+  "status": "active",
+  "start_date": "2026-05-19T10:00:00",
+  "end_date": null,
+  "paypal_subscription_id": null,
+  "plan": {
+    "id": "uuid",
+    "name": "Starter",
+    "price": "9.99",
+    "is_active": true,
+    "features_json": { "ideas": 10, "ai_analysis": true, "ai_requests": 500 }
+  }
+}
+```
+
+**`status` values:** `"active"` | `"pending"` | `"canceled"`
+
+**Error `404`** if no subscription exists: `{ "detail": "No active subscription found." }`
+
+> Poll this after Paymob iframe closes to detect when `status` becomes `"active"`.
+
+---
+
+### Cancel Subscription
+
+```http
+DELETE /api/v1/billing/subscription
+Authorization: Bearer <token>
+```
+
+**Response `200`:** `{ "message": "Subscription cancelled successfully." }`
+
+---
+
+### Billing: TypeScript Interfaces
+
+```typescript
+interface Plan {
+  id: string;
+  name: string;
+  price: string;          // decimal as string e.g. "9.99"
+  is_active: boolean;
+  features_json: {
+    ideas: number;        // -1 = unlimited
+    ai_analysis: boolean;
+    ai_requests?: number;
+    team_members?: number; // -1 = unlimited
+    dedicated_support?: boolean;
+  } | null;
+}
+
+interface Subscription {
+  id: string;
+  user_id: string;
+  plan_id: string;
+  status: "active" | "pending" | "canceled";
+  start_date: string;     // ISO datetime
+  end_date: string | null;
+  paypal_subscription_id: string | null;
+  plan: Plan | null;
+}
+
+interface PayPalOrder {
+  order_id: string;
+  approval_url: string;
+  status: string;
+}
+
+interface PaymobCheckout {
+  payment_id: string;
+  subscription_id: string;
+  paymob_order_id: string;
+  iframe_url: string;     // render this in an <iframe>
+}
+```
+
+---
+
+## 11. API Reference — Export
+
+Base path: `/api/v1/export/`
+All endpoints require `Authorization: Bearer <token>`.
+
+Allows users to export their own data (profile, ideas, skills) as a file. The export is **async** — you start a job, poll for completion, then download.
+
+---
+
+### Start an Export
+
+```http
+POST /api/v1/export/
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "scope": ["profile", "skills", "ideas"],
+  "format": "pdf"
+}
+```
+
+**`scope` values:** `"profile"` | `"skills"` | `"ideas"` (any combination)
+
+**`format` values:** `"pdf"` | `"json"` | `"word"`
+
+**Response `200`:**
+
+```json
+{
+  "id": "uuid",
+  "status": "pending",
+  "scope": ["profile", "skills", "ideas"],
+  "format": "pdf",
+  "created_at": "2026-05-20T10:00:00",
+  "completed_at": null
+}
+```
+
+---
+
+### Get Export Status
+
+```http
+GET /api/v1/export/{job_id}
+Authorization: Bearer <token>
+```
+
+**`status` values:** `"pending"` | `"running"` | `"completed"` | `"failed"` | `"cancelled"`
+
+Poll this every 2–3 seconds until `status` is `"completed"` or `"failed"`. Then call download.
+
+---
+
+### Download Export File
+
+```http
+GET /api/v1/export/{job_id}/download
+Authorization: Bearer <token>
+```
+
+Returns the file as a binary stream (`application/pdf`, `application/json`, or Word format).
+
+**Error `400`** if export not ready yet.
+**Error `410`** if file has expired or been deleted.
+
+---
+
+### Cancel Export
+
+```http
+POST /api/v1/export/{job_id}/cancel
+Authorization: Bearer <token>
+```
+
+**Response:** `{ "message": "Export cancelled successfully" }`
+
+---
+
+### Export Flow
+
+```
+1. POST /export/  { scope: [...], format: "pdf" }
+   → { id: "job-uuid", status: "pending" }
+
+2. Poll GET /export/{job_id} every 3s
+   → wait until status: "completed"
+
+3. GET /export/{job_id}/download
+   → receive file bytes, trigger browser download
+```
+
+---
+
+## 12. API Reference — AI Pipeline
 
 Base path: `/api/v1/ai/`
 
@@ -981,6 +1412,18 @@ Base path: `/api/v1/ai/`
 
 > **CRITICAL:** The frontend **never** sends `user_id` in the request body.
 > The backend injects it automatically from the JWT token.
+
+> **Input limits (enforced server-side — exceeding returns `422`):**
+> - `message` — max **10,000 characters**
+> - `history` — max **100 turns** (50 exchanges)
+> - `custom_prompt` — max **5,000 characters**
+> - `section` — max **64 characters**
+
+> **Quota rules (updated 2026-05-19):**
+> - Only **POST** requests (generate, regenerate, chat) consume quota
+> - **GET** requests (reading saved sections) are **free**
+> - **Failed AI calls** are **free** — quota only charged on confirmed `2xx` success
+> - Streaming endpoints and `/general-chat` **do** consume quota (fixed 2026-05-19)
 
 ---
 
@@ -1092,9 +1535,12 @@ Content-Type: application/json
 {
   "user_id": "550e8400...",
   "reply": "Sure! Here's a revised version...",
-  "chat_history_length": 2
+  "chat_history_length": 2,
+  "tokens_used": 847
 }
 ```
+
+> `tokens_used` is the total Groq token count (prompt + completion) for this reply. Use it to display per-message token cost in the UI.
 
 ---
 
@@ -1351,7 +1797,7 @@ Authorization: Bearer <token>
 
 **Request body:** empty `{}`
 
-**Error `425`** if prerequisites not met:
+**Error `409`** if prerequisites not met:
 ```json
 { "detail": "Idea not ready. Complete the pipeline first." }
 ```
@@ -1701,6 +2147,9 @@ await streamChatMessage(
     if (meta.action === "ran_sections") {
       refreshSection(meta.section); // reload the generated section
     }
+    if (meta.tokens_used) {
+      showTokenCount(meta.tokens_used); // e.g. "Reply used 847 tokens"
+    }
   }
 );
 ```
@@ -1755,7 +2204,7 @@ await streamChatMessage(
    body: {}
    → { status: "done", {section}: { ...data... } }
 
-   If 425: prerequisites not met → prompt user to generate prerequisites first
+   If 409: prerequisites not met → prompt user to generate prerequisites first
 
 3. Section is now cached in DB
 
@@ -1817,16 +2266,33 @@ await streamChatMessage(
 | `201` | Created | Registration successful |
 | `202` | Accepted | Async pipeline started |
 | `204` | No Content | Skill deleted |
-| `400` | Bad Request | Invalid input (e.g. min_budget > max_budget) |
-| `401` | Unauthorized | Missing/invalid/expired token |
-| `403` | Forbidden | No subscription or AI feature not in plan |
-| `404` | Not Found | Resource doesn't exist |
-| `409` | Conflict | Email already registered |
-| `422` | Unprocessable Entity | Request body fails Pydantic validation |
-| `425` | Too Early | Pipeline prerequisites not met |
-| `429` | Too Many Requests | AI usage limit exceeded |
-| `500` | Internal Server Error | Unexpected server error |
-| `503` | Service Unavailable | AI_PIPELINE_API_KEY not configured |
+| `400` | Bad Request | Invalid input (e.g. min_budget > max_budget); invalid/expired OTP |
+| `401` | Unauthorized | Missing, invalid, or expired token; token revoked after password reset or account suspension |
+| `403` | Forbidden | No subscription, AI feature disabled on plan, or non-admin accessing admin route |
+| `404` | Not Found | Resource doesn't exist or section not generated yet |
+| `409` | Conflict | Email already registered **or AI pipeline prerequisites not met** (idea/problems not ready — previously 425, now standardised to 409) |
+| `422` | Unprocessable Entity | Request body fails Pydantic validation (wrong types, missing fields) |
+| `429` | Too Many Requests | Two distinct causes: (1) **Auth rate limit** — too many requests per IP on `/auth/*`; (2) **AI quota** — monthly AI request limit reached on `/ai/*` |
+| `500` | Internal Server Error | Unexpected server error (DB crash, unhandled exception) |
+| `502` | Bad Gateway | PayPal or Paymob API returned an error |
+| `503` | Service Unavailable | `AI_PIPELINE_API_KEY` not configured, or AI service unreachable |
+
+### Distinguishing the two `429` sources
+
+```typescript
+// Check the detail message to know which 429 it is:
+if (error.status === 429) {
+  const msg = error.body?.detail ?? error.body?.error ?? "";
+  if (msg.includes("Rate limit exceeded")) {
+    // Auth rate limit (per IP, per minute) — auth endpoint throttle
+    showToast("Too many attempts. Please wait a moment and try again.");
+  } else {
+    // AI monthly quota exhausted
+    showToast("AI request limit reached. Upgrade your plan for more.");
+    showUpgradeModal();
+  }
+}
+```
 
 ### Frontend error handling pattern
 
@@ -1842,12 +2308,24 @@ try {
   } else if (error.status === 403) {
     // No AI access → show upgrade plan modal
     showUpgradeModal();
-  } else if (error.status === 425) {
-    // Prerequisites not ready
-    showToast("Please generate prerequisite sections first");
+  } else if (error.status === 409 && isAIEndpoint(url)) {
+    // AI pipeline prerequisites not ready (previously 425, now 409)
+    showToast("Please generate prerequisite sections first.");
   } else if (error.status === 429) {
-    // Limit exceeded
-    showToast("AI request limit reached. Upgrade your plan for more.");
+    const msg = error.body?.detail ?? error.body?.error ?? "";
+    if (msg.includes("Rate limit exceeded")) {
+      showToast("Too many attempts. Please wait a moment and try again.");
+    } else {
+      showToast("AI request limit reached. Upgrade your plan for more.");
+      showUpgradeModal();
+    }
+  } else if (error.status === 409) {
+    // Either: email already taken (auth) OR AI prerequisites not met
+    if (isAIEndpoint(url)) {
+      showToast("Please generate prerequisite sections first.");
+    } else {
+      showToast("This action conflicts with existing data.");
+    }
   } else if (error.status === 422) {
     // Validation error → show field errors
     showFieldErrors(error.body.detail);
@@ -1882,16 +2360,14 @@ All AI endpoints accept `user_id` in the body internally, but the **backend inje
 
 Recommended polling interval: **3 seconds**. Timeout after **5 minutes** and show an error.
 
-### ⚠️ WARNING 4: Backend response schemas don't match the AI service
+### ⚠️ WARNING 4: Use this document for response shapes — not Swagger
 
-The `response_model` annotations in the backend's AI routes are incomplete/wrong (they were placeholder schemas). The actual data returned by the backend is the **raw JSON from the AI service**, not validated through these schemas. This means:
+The Swagger docs (`/docs`) show placeholder schemas for most AI GET endpoints. The actual shapes returned are what's documented here. Two specific schemas were previously wrong and have been fixed (2026-05-20):
 
-- `GET /api/v1/ai/status` returns the full pipeline status object (not just `{status, progress, message}`)
-- `GET /api/v1/ai/customers` returns `{ user_id, customers: {...customer_analysis_dict...}, chat_history: [] }` — `customers` is a **dict**, not a list
-- `GET /api/v1/ai/competition` returns `{ user_id, competition: {...}, chat_history: [] }`
-- `GET /api/v1/ai/idea` returns `{ user_id, current_idea: string, chat_history: [] }` — `current_idea` is a **string**, not a dict/object
+- `GET /api/v1/ai/problems` — `problems` field is a **dict** (full result object), not a list
+- `GET /api/v1/ai/idea` — `current_idea` is a **plain text string**, not an object
 
-**Use the TypeScript interfaces in this document, not the Swagger schema definitions.**
+**Always use the TypeScript interfaces in this document, not the Swagger schema definitions for AI endpoints.**
 
 ### ⚠️ WARNING 5: No refresh token — redirect to login on 401
 
@@ -2003,6 +2479,83 @@ career_q4_environment, career_q5_impact
 ```
 
 Any unrecognised `field` value is silently ignored (not saved). Missing questionnaire fields mean the AI pipeline gets empty/null values for those inputs.
+
+---
+
+### ⚠️ WARNING 14: Auth endpoints are rate-limited — handle 429 gracefully
+
+All `/api/v1/auth/*` endpoints are now throttled per IP:
+
+- `forgot-password` and `resend-verification-otp`: **3 requests/minute**
+- `login`: **10 requests/minute**
+- Others: 5–10 requests/minute
+
+When the limit is exceeded the server returns:
+```json
+HTTP 429
+{ "error": "Rate limit exceeded: 3 per 1 minute" }
+```
+
+The frontend must catch this and show a friendly message — never silently retry in a tight loop or the user stays locked out.
+
+```typescript
+// Recommended UX
+if (error.status === 429 && isAuthEndpoint(url)) {
+  showToast("Too many attempts. Please wait 60 seconds and try again.");
+  startCountdown(60);   // disable the button for 60s
+}
+```
+
+---
+
+### ⚠️ WARNING 15: Paymob payment — subscription is `PENDING` until webhook confirms
+
+After calling `POST /api/v1/billing/paymob/subscribe`:
+1. Backend creates a subscription with `status: "PENDING"` (not yet active)
+2. Returns `{ iframe_url, payment_id, subscription_id, paymob_order_id }` — render `iframe_url` inside an `<iframe>`
+3. User enters card details inside the iframe
+4. Paymob fires a webhook to the backend on transaction completion
+5. Backend sets subscription `status` to `"ACTIVE"`
+
+**The user has NO AI access while `status === "PENDING"`** — `GET /api/v1/ai/*` returns `403`. After the iframe redirects (success or failure), poll `GET /api/v1/billing/subscription` until `status: "ACTIVE"` before unlocking the UI.
+
+```typescript
+// After Paymob iframe closes/redirects:
+const pollForActivation = async (maxRetries = 20) => {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const sub = await api.get('/billing/subscription');
+      if (sub.status === 'ACTIVE') {       // ← uppercase "ACTIVE"
+        allowAIAccess();
+        return;
+      }
+    } catch (e) {
+      // 404 = still PENDING or failed; keep polling
+    }
+    await new Promise(r => setTimeout(r, 3000));
+  }
+  showToast("Payment confirmation is taking longer than expected. Please refresh.");
+};
+```
+
+---
+
+### ⚠️ WARNING 16: Password reset invalidates all tokens on all devices
+
+After `POST /api/v1/auth/reset-password` returns `200`, **every token previously issued to this user becomes invalid** — including the token on the device that initiated the reset. If the user is logged in while resetting their password:
+
+1. Clear `access_token` from storage immediately after success
+2. Redirect to login
+3. Do not attempt any further API calls with the old token
+
+```typescript
+const resetPassword = async (email, otp, newPassword) => {
+  await api.post('/auth/reset-password', { email, otp_code: otp, new_password: newPassword });
+  // ← ALL tokens now invalid
+  clearToken();           // remove from localStorage / memory
+  router.push('/login');  // force re-login on all devices
+};
+```
 
 ---
 

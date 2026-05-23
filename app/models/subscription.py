@@ -14,6 +14,7 @@ class SubscriptionStatus(str, enum.Enum):
     Enumeration of subscription statuses.
     """
 
+    PENDING = "PENDING"    # payment initiated but not yet confirmed (e.g. Paymob card flow)
     ACTIVE = "ACTIVE"
     CANCELED = "CANCELED"
 
