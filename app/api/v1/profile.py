@@ -139,7 +139,7 @@ def add_user_skill(
         raise HTTPException(status_code=400, detail="skill_name or name is required")
 
     profile = ProfileService.get_or_create_profile(db, current_user.id)
-    skills = profile.skills_json or []
+    skills = list(profile.skills_json or [])
     new_skill = {"id": str(uuid4()), "name": skill_name, "rating": 3}
     skills.append(new_skill)
     profile.skills_json = skills

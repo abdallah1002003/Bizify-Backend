@@ -53,5 +53,7 @@ class UserProfileRead(UserProfileBase):
     user_id: uuid.UUID
     guide_status: GuideStatus
     updated_at: datetime
+    skills_json: Optional[Any] = None
+    questionnaire_json: Optional[Any] = None
 
     model_config = ConfigDict(from_attributes=True)

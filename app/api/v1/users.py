@@ -273,6 +273,29 @@ def update_partner_profile(
     return PartnerService.update_profile(db=db, user_id=current_user.id, profile_in=profile_in)
 
 
+@router.get("/me")
+def get_me(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Return the authenticated user's data including partner approval status and business id."""
+    result: dict = {
+        "id": str(current_user.id),
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+        "role": current_user.role.value if current_user.role else "ENTREPRENEUR",
+        "is_active": current_user.is_active,
+        "is_verified": current_user.is_verified,
+        "approval_status": None,
+        "business_id": None,
+    }
+    if current_user.partner_profile:
+        result["approval_status"] = current_user.partner_profile.approval_status.value
+    if current_user.businesses:
+        result["business_id"] = str(current_user.businesses[0].id)
+    return result
+
+
 @router.get("/partner-profile", response_model=PartnerProfileRead, summary="Get Partner Profile")
 def get_partner_profile(
     db: Session = Depends(get_db),
