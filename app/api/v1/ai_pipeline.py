@@ -1,8 +1,8 @@
 import logging
-from typing import Any
+from typing import Any, Optional
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 
 from app.api.dependencies import check_ai_usage, get_current_user
@@ -105,7 +105,7 @@ async def general_chat_stream(
     return StreamingResponse(_stream(), media_type="text/event-stream")
 
 
-async def _forward_get_to_ai(path: str, user_id: str) -> dict:
+async def _forward_get_to_ai(path: str, user_id: str, params: dict | None = None) -> dict:
     """Helper to fetch data from the external AI pipeline."""
     if not settings.AI_PIPELINE_API_KEY:
         raise HTTPException(
@@ -116,7 +116,7 @@ async def _forward_get_to_ai(path: str, user_id: str) -> dict:
     headers = {"x-api-key": settings.AI_PIPELINE_API_KEY}
     try:
         async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS) as client:
-            response = await client.get(target_url, headers=headers)
+            response = await client.get(target_url, headers=headers, params=params)
             response.raise_for_status()
             return response.json()
     except httpx.HTTPStatusError as exc:
@@ -203,50 +203,48 @@ async def get_profile(current_user: User = Depends(get_current_user)):
 
 
 @router.get("/customers", summary="Get Customers Analysis", response_model=AICustomersResponse, tags=["AI - Customers"])
-async def get_customers(current_user: User = Depends(get_current_user)):
-    return await _forward_get_to_ai("customers", str(current_user.id))
+async def get_customers(current_user: User = Depends(get_current_user), idea_id: Optional[str] = Query(None)):
+    return await _forward_get_to_ai("customers", str(current_user.id), params={"idea_id": idea_id} if idea_id else None)
 
 
 @router.get("/competition", summary="Get Competition Analysis", response_model=AICompetitionResponse, tags=["AI - Competition"])
-async def get_competition(current_user: User = Depends(get_current_user)):
-    return await _forward_get_to_ai("competition", str(current_user.id))
+async def get_competition(current_user: User = Depends(get_current_user), idea_id: Optional[str] = Query(None)):
+    return await _forward_get_to_ai("competition", str(current_user.id), params={"idea_id": idea_id} if idea_id else None)
 
 
 @router.get("/market-potential", summary="Get Market Potential", response_model=AIMarketPotentialResponse, tags=["AI - Market Potential"])
-async def get_market_potential(current_user: User = Depends(get_current_user)):
-    return await _forward_get_to_ai("market-potential", str(current_user.id))
+async def get_market_potential(current_user: User = Depends(get_current_user), idea_id: Optional[str] = Query(None)):
+    return await _forward_get_to_ai("market-potential", str(current_user.id), params={"idea_id": idea_id} if idea_id else None)
 
 
 @router.get("/idea-strategy", summary="Get Idea Strategy", response_model=AIIdeaStrategyResponse, tags=["AI - Idea Strategy"])
-async def get_idea_strategy(current_user: User = Depends(get_current_user)):
-    return await _forward_get_to_ai("idea-strategy", str(current_user.id))
+async def get_idea_strategy(current_user: User = Depends(get_current_user), idea_id: Optional[str] = Query(None)):
+    return await _forward_get_to_ai("idea-strategy", str(current_user.id), params={"idea_id": idea_id} if idea_id else None)
 
 
 @router.get("/business-model", summary="Get Business Model", response_model=AIBusinessModelResponse, tags=["AI - Business Model"])
-async def get_business_model(current_user: User = Depends(get_current_user)):
-    return await _forward_get_to_ai("business-model", str(current_user.id))
+async def get_business_model(current_user: User = Depends(get_current_user), idea_id: Optional[str] = Query(None)):
+    return await _forward_get_to_ai("business-model", str(current_user.id), params={"idea_id": idea_id} if idea_id else None)
 
 
 @router.get("/functions-list", summary="Get Functions List", response_model=AIFunctionsListResponse, tags=["AI - Functions List"])
-async def get_functions_list(current_user: User = Depends(get_current_user)):
-    return await _forward_get_to_ai("functions-list", str(current_user.id))
+async def get_functions_list(current_user: User = Depends(get_current_user), idea_id: Optional[str] = Query(None)):
+    return await _forward_get_to_ai("functions-list", str(current_user.id), params={"idea_id": idea_id} if idea_id else None)
 
 
 @router.get("/mvp-planning", summary="Get MVP Planning", response_model=AIMVPPlanningResponse, tags=["AI - MVP Planning"])
-async def get_mvp_planning(current_user: User = Depends(get_current_user)):
-    return await _forward_get_to_ai("mvp-planning", str(current_user.id))
+async def get_mvp_planning(current_user: User = Depends(get_current_user), idea_id: Optional[str] = Query(None)):
+    return await _forward_get_to_ai("mvp-planning", str(current_user.id), params={"idea_id": idea_id} if idea_id else None)
 
 
 @router.get("/unit-economics", summary="Get Unit Economics", response_model=AIUnitEconomicsResponse, tags=["AI - Unit Economics"])
-async def get_unit_economics(current_user: User = Depends(get_current_user)):
-    # The external endpoint might return 'unit-economics' instead of 'economics', so mapping might be needed if they don't match exactly.
-    # We will assume it returns {"economics": ...} based on the schema, or we allow flexible validation.
-    return await _forward_get_to_ai("unit-economics", str(current_user.id))
+async def get_unit_economics(current_user: User = Depends(get_current_user), idea_id: Optional[str] = Query(None)):
+    return await _forward_get_to_ai("unit-economics", str(current_user.id), params={"idea_id": idea_id} if idea_id else None)
 
 
 @router.get("/go-to-market", summary="Get Go To Market Strategy", response_model=AIGoToMarketResponse, tags=["AI - Go To Market"])
-async def get_go_to_market(current_user: User = Depends(get_current_user)):
-    return await _forward_get_to_ai("go-to-market", str(current_user.id))
+async def get_go_to_market(current_user: User = Depends(get_current_user), idea_id: Optional[str] = Query(None)):
+    return await _forward_get_to_ai("go-to-market", str(current_user.id), params={"idea_id": idea_id} if idea_id else None)
 
 
 @router.get("/problems", summary="Get Generated Problems", response_model=AIProblemsResponse, tags=["AI - Problems"])

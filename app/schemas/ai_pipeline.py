@@ -70,7 +70,7 @@ class AIProfileResponse(BaseModel):
     profile_analysis: dict[str, Any]
 
 class AICustomersResponse(BaseModel):
-    customers: list[dict[str, Any]]
+    customers: dict[str, Any]
 
 class AICompetitionResponse(BaseModel):
     competition: dict[str, Any]
