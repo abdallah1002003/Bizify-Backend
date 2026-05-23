@@ -48,6 +48,23 @@ class AIPipelineStatusResponse(BaseModel):
     status: str
     progress: Optional[int] = None
     message: Optional[str] = None
+    user_id: Optional[str] = None
+    current_step: Optional[str] = None
+    error: Optional[str] = None
+    profile_ready: Optional[bool] = None
+    problems_ready: Optional[bool] = None
+    intake_ready: Optional[bool] = None
+    idea_ready: Optional[bool] = None
+    customers_ready: Optional[bool] = None
+    competition_ready: Optional[bool] = None
+    market_potential_ready: Optional[bool] = None
+    idea_strategy_ready: Optional[bool] = None
+    business_model_ready: Optional[bool] = None
+    functions_list_ready: Optional[bool] = None
+    mvp_planning_ready: Optional[bool] = None
+    unit_economics_ready: Optional[bool] = None
+    go_to_market_ready: Optional[bool] = None
+    pipeline_complete: Optional[bool] = None
 
 class AIProfileResponse(BaseModel):
     profile_analysis: dict[str, Any]

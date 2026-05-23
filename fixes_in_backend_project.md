@@ -627,6 +627,73 @@ Added both variables to the Railway AI service environment:
 
 ---
 
+### Fix 7.5 — `AIPipelineStatusResponse` stripped all ready-flags (frontend incremental loading never triggered)
+
+**File:** `Bizify-Backend/app/schemas/ai_pipeline.py`
+
+**Severity:** HIGH — frontend pipeline progress UI was broken for all users
+
+**Problem:**
+The backend proxies `GET /ai/pipeline/status/{user_id}` from the AI service. The AI service returns a rich status object:
+```json
+{
+  "status": "running", "current_step": "...",
+  "idea_ready": true, "customers_ready": false, "competition_ready": false,
+  "market_potential_ready": false, "idea_strategy_ready": false,
+  "business_model_ready": false, "functions_list_ready": false,
+  "mvp_planning_ready": false, "unit_economics_ready": false,
+  "go_to_market_ready": false, "problems_ready": true,
+  "profile_ready": true, "intake_ready": true, "pipeline_complete": false, "error": null
+}
+```
+But `AIPipelineStatusResponse` only had 3 fields (`status`, `progress`, `message`). FastAPI's `response_model` silently strips every field that isn't in the schema before returning the response. The frontend's `useAiPipeline.ts` polls this endpoint and checks each `*_ready` flag to trigger incremental section loading — every flag was always `undefined` (stripped), so no sections ever loaded until `pipeline_complete` was somehow true.
+
+**Fix:**
+Added all 15 missing fields to `AIPipelineStatusResponse` as `Optional[bool/str]`:
+```python
+class AIPipelineStatusResponse(BaseModel):
+    status: str
+    progress: Optional[int] = None
+    message: Optional[str] = None
+    user_id: Optional[str] = None
+    current_step: Optional[str] = None
+    error: Optional[str] = None
+    profile_ready: Optional[bool] = None
+    problems_ready: Optional[bool] = None
+    intake_ready: Optional[bool] = None
+    idea_ready: Optional[bool] = None
+    customers_ready: Optional[bool] = None
+    competition_ready: Optional[bool] = None
+    market_potential_ready: Optional[bool] = None
+    idea_strategy_ready: Optional[bool] = None
+    business_model_ready: Optional[bool] = None
+    functions_list_ready: Optional[bool] = None
+    mvp_planning_ready: Optional[bool] = None
+    unit_economics_ready: Optional[bool] = None
+    go_to_market_ready: Optional[bool] = None
+    pipeline_complete: Optional[bool] = None
+```
+
+---
+
+### Fix 7.6 — `check_ai_usage` incremented quota on GET requests (read-only fetches consumed user quota)
+
+**File:** `Bizify-Backend/app/api/dependencies.py`
+
+**Severity:** MEDIUM — users lost AI quota every time they loaded previously-generated pipeline sections
+
+**Problem:**
+`check_ai_usage` was applied to all AI routes including GETs (fetching cached section data). The dependency called `usage_repo.increment()` unconditionally, meaning reading your own previously-generated startup profile, customers, competition analysis etc. each burned one request from the user's monthly quota. Fix 5.5 documented that GET requests should be free, but the actual implementation was never updated.
+
+**Fix:**
+Added `request: Request` parameter to the dependency and return early before the quota check if the method is GET:
+```python
+if request.method == "GET":
+    return current_user
+```
+
+---
+
 ## Files Changed — 2026-05-23
 
 ### `Bizify-Backend` (backend)
@@ -634,7 +701,8 @@ Added both variables to the Railway AI service environment:
 | File | Change |
 |---|---|
 | `app/models/ai/chat_session.py` | Added `GENERAL_BOT = "GENERAL_BOT"` to `SessionType` enum |
-| `app/schemas/ai_pipeline.py` | Fixed field names in 5 response schemas (competition, idea_strategy, functions_list, mvp_planning, unit_economics) |
+| `app/schemas/ai_pipeline.py` | Fixed 5 wrong response schema field names; expanded `AIPipelineStatusResponse` with all 15 ready-flag fields |
+| `app/api/dependencies.py` | Added `request: Request` param to `check_ai_usage`; GET requests now skip quota increment |
 | `alembic/versions/c3d4e5f6a1b2_add_general_bot_session_type.py` | **NEW** — migration to add `GENERAL_BOT` to PostgreSQL `sessiontype` enum |
 
 ### `bizifyAI` (AI service)
@@ -643,7 +711,50 @@ Added both variables to the Railway AI service environment:
 |---|---|
 | `agents/generalBot.py` | Added `_normalize_questionnaire()` + guard in `_run_new_user_pipeline_inline()` to handle raw list questionnaire format |
 | `agents/OneProfileAnalysis.py` | Added type guard before `questionnaire.get()` call |
-| `db/crud.py` | Changed `"general_bot"` → `"GENERAL_BOT"` in all 3 places |
+| `db/crud.py` | Changed `"general_bot"` → `"GENERAL_BOT"` in all 3 places; changed `role="user"` → `"USER"` and `role="assistant"` → `"AI"` in `save_general_bot_messages()` |
+
+---
+
+## Post-2026-05-23 Fixes (detected from Railway logs after deploy)
+
+---
+
+### Fix 8.1 — `invalid input value for enum messagerole: "user"` (general-chat history never saved)
+
+**File:** `bizifyAI/db/crud.py` → `save_general_bot_messages()` (lines 585–586)
+
+**Severity:** HIGH — every general-chat turn failed to save to `chat_messages`; the error was caught so the user saw a 200 OK, but no history was ever persisted
+
+**Problem:**
+`save_general_bot_messages()` inserted:
+```python
+ChatMessage(session_id=session.id, role="user",      content=user_message)
+ChatMessage(session_id=session.id, role="assistant",  content=bot_reply)
+```
+The PostgreSQL `messagerole` enum column on `chat_messages.role` only accepts the values `'USER'` and `'AI'` (uppercase), as defined in the initial Alembic migration. Lowercase `"user"` and `"assistant"` were rejected by PostgreSQL on every INSERT with `invalid input value for enum messagerole: "user"`.
+
+The exception was caught by `except Exception: db.rollback(); raise` and then caught again in `generalBot.py`'s caller as non-fatal, so the API returned 200 OK — but zero history was ever written.
+
+**Fix:**
+```python
+# Before
+db.add(ChatMessage(session_id=session.id, role="user",      content=user_message))
+db.add(ChatMessage(session_id=session.id, role="assistant", content=bot_reply))
+
+# After
+db.add(ChatMessage(session_id=session.id, role="USER", content=user_message))
+db.add(ChatMessage(session_id=session.id, role="AI",   content=bot_reply))
+```
+
+**Note on `get_general_bot_history()`:** This function reads messages back and returns `[{"role": m.role, ...}]`. It is defined in `crud.py` but never called anywhere in the codebase — history is managed client-side and sent with each request. So no downstream fix was needed.
+
+---
+
+### Observed (not a bug) — LLM extraction rate limit on Groq `llama-3.1-8b-instant`
+
+**Log:** `LLM extraction failed for '...' (RateLimitError: 429 — TPM limit 6000) — using regex fallback`
+
+**Status:** Working as intended. The rate limit is hit when multiple search results are extracted in rapid succession on Groq's on-demand tier (6000 TPM for llama-3.1-8b-instant). The `except Exception` block in `_extract_one_source()` already catches this, falls back to `_regex_fallback()`, and the source is still included in search results — just with regex-extracted fields instead of LLM-extracted ones. No code change needed; upgrading the Groq plan or reducing parallel extraction would eliminate the warning.
 
 ---
 
