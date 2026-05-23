@@ -253,8 +253,8 @@ async def get_problems(current_user: User = Depends(get_current_user)):
 
 
 @router.get("/idea", summary="Get Generated Idea", response_model=AIIdeaResponse, tags=["AI - Idea"])
-async def get_idea(current_user: User = Depends(get_current_user)):
-    return await _forward_get_to_ai("idea", str(current_user.id))
+async def get_idea(current_user: User = Depends(get_current_user), idea_id: Optional[str] = Query(None)):
+    return await _forward_get_to_ai("idea", str(current_user.id), params={"idea_id": idea_id} if idea_id else None)
 
 
 
