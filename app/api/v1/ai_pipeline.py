@@ -173,7 +173,7 @@ async def _forward_stream_to_ai(path: str, payload: dict[str, Any] | None = None
 
 
 @router.post("/run", summary="Trigger AI Pipeline", tags=["AI - System"])
-async def trigger_pipeline(current_user: User = Depends(get_current_user)):
+async def trigger_pipeline(payload: dict[str, Any] = {}, current_user: User = Depends(get_current_user)):
     if not settings.AI_PIPELINE_API_KEY:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -181,9 +181,12 @@ async def trigger_pipeline(current_user: User = Depends(get_current_user)):
         )
     target_url = f"{_AI_BASE_URL}/pipeline/run"
     headers = {"x-api-key": settings.AI_PIPELINE_API_KEY, "Content-Type": "application/json"}
+    body: dict[str, Any] = {"user_id": str(current_user.id)}
+    if payload.get("idea_id"):
+        body["idea_id"] = payload["idea_id"]
     try:
         async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS) as client:
-            response = await client.post(target_url, headers=headers, json={"user_id": str(current_user.id)})
+            response = await client.post(target_url, headers=headers, json=body)
             response.raise_for_status()
             return response.json()
     except httpx.HTTPStatusError as exc:
