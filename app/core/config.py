@@ -56,7 +56,7 @@ class Settings(BaseSettings):
     SUPABASE_KEY: Optional[str] = None
     SUPABASE_BUCKET_NAME: str = "partner-documents"
 
-    AI_PIPELINE_BASE_URL: str = "https://bizifyai-production.up.railway.app"
+    AI_PIPELINE_BASE_URL: str = "https://bizifyai.onrender.com"
     AI_PIPELINE_API_KEY: Optional[str] = None
 
     RESEND_API_KEY: Optional[str] = None
