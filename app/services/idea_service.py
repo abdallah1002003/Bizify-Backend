@@ -1,3 +1,4 @@
+import re
 import uuid
 from datetime import datetime
 from typing import Optional
@@ -9,6 +10,41 @@ from app.models.ai.idea import Idea, IdeaStatus
 from app.models.group_member import GroupRole
 from app.repositories.group_repo import group_repo
 from app.repositories.idea_repo import idea_repo
+
+
+def _extract_budget_from_text(text: str) -> Optional[float]:
+    m = re.search(r"(?:startup[\s\-]cost|budget)[^:]*:\s*\$?\s*([\d,]+)", text, re.IGNORECASE)
+    if m:
+        try:
+            return float(m.group(1).replace(",", ""))
+        except ValueError:
+            pass
+    return None
+
+
+def _extract_feasibility_from_text(text: str) -> Optional[float]:
+    m = re.search(r"risk[\s\-]level[^:]*:\s*(low|medium|high)", text, re.IGNORECASE)
+    if m:
+        level = m.group(1).lower()
+        return {"low": 8.0, "medium": 6.0, "high": 4.0}.get(level)
+    return None
+
+
+def _clean_idea_description(text: str) -> str:
+    """Strip ━/─/= separator lines and title line; keep the key-value body."""
+    lines = []
+    for line in text.splitlines():
+        s = line.strip()
+        if not s:
+            continue
+        if not set(s).difference(set("━─=- \t")):
+            continue
+        if "💡 IDEA:" in s or s.upper().startswith("IDEA:"):
+            continue
+        if s.lower().startswith("what do you think"):
+            continue
+        lines.append(s)
+    return "\n".join(lines).strip() or text
 
 
 class IdeaService:
@@ -69,8 +105,18 @@ class IdeaService:
 
             match_count = 0
             if skills:
-                idea_skills = set(idea.skills or [])
-                requested_skills = set(skills)
+                raw = idea.skills or []
+                if isinstance(raw, dict):
+                    # New format: {your_skills, required_skills, skill_gaps}
+                    flat = (
+                        raw.get("your_skills", [])
+                        + raw.get("required_skills", [])
+                        + raw.get("skill_gaps", [])
+                    )
+                    idea_skills = {s.lower() for s in flat if isinstance(s, str)}
+                else:
+                    idea_skills = {s.lower() for s in raw if isinstance(s, str)}
+                requested_skills = {s.lower() for s in skills}
                 match_count = len(requested_skills.intersection(idea_skills))
                 if match_count == 0:
                     continue
@@ -141,17 +187,32 @@ class IdeaService:
         user_id: uuid.UUID,
         title: str,
         description: Optional[str] = None,
+        budget: Optional[float] = None,
+        feasibility: Optional[float] = None,
+        skills: Optional[object] = None,
     ) -> Idea:
-        """Create a new draft idea for a user."""
-        return idea_repo.create(
-            db,
-            obj_in={
-                "owner_id": user_id,
-                "title": title,
-                "description": description,
-                "status": IdeaStatus.DRAFT,
-            },
-        )
+        """Create a new draft idea, auto-extracting budget/feasibility when not provided."""
+        clean_desc = _clean_idea_description(description) if description else description
+        if description:
+            if budget is None:
+                budget = _extract_budget_from_text(description)
+            if feasibility is None:
+                feasibility = _extract_feasibility_from_text(description)
+
+        obj: dict = {
+            "owner_id":    user_id,
+            "title":       title,
+            "description": clean_desc,
+            "status":      IdeaStatus.DRAFT,
+        }
+        if budget is not None:
+            obj["budget"] = budget
+        if feasibility is not None:
+            obj["feasibility"] = feasibility
+        if skills is not None:
+            obj["skills"] = skills
+
+        return idea_repo.create(db, obj_in=obj)
 
     @staticmethod
     def archive_idea(db: Session, idea_id: uuid.UUID, user_id: uuid.UUID) -> Idea:
