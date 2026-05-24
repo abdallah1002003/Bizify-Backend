@@ -50,7 +50,15 @@ def create_idea(
     current_user: User = Depends(get_current_user),
 ) -> IdeaRead:
     """Create a new business idea for the authenticated user."""
-    return IdeaService.create_idea(db, current_user.id, idea_in.title, idea_in.description)
+    return IdeaService.create_idea(
+        db,
+        current_user.id,
+        idea_in.title,
+        idea_in.description,
+        budget=idea_in.budget,
+        feasibility=idea_in.feasibility,
+        skills=idea_in.skills,
+    )
 
 
 @router.get("/archived", response_model=list[IdeaRead])

@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -11,13 +11,13 @@ class IdeaBase(BaseModel):
     """
     Base Pydantic model for Business Idea data.
     """
-    
+
     title: str
     description: Optional[str] = None
     status: IdeaStatus = IdeaStatus.DRAFT
     is_archived: Optional[bool] = False
     budget: Optional[float] = None
-    skills: Optional[list[str]] = None
+    skills: Optional[Any] = None  # list[str] or {your_skills, required_skills, skill_gaps}
     feasibility: Optional[float] = None
 
 
