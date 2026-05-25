@@ -5,6 +5,20 @@
 
 ---
 
+## 2026-05-25 — "Edit with AI" Feature: Clear Analysis Endpoint
+
+### New endpoint: `DELETE /api/v1/ai/ideas/{idea_id}/analysis`
+Added to `app/api/v1/ai_pipeline.py`. Clears all AI-generated analysis rows from every result table for a specific `(user_id, idea_id)` pair so the pipeline can be re-run on a freshly edited idea.
+
+**Tables cleared:**
+`idea_results`, `idea_intake_results`, `customers_results`, `competition_results`, `market_potential_results`, `idea_strategy_results`, `business_model_results`, `functions_list_results`, `mvp_planning_results`, `unit_economics_results`, `go_to_market_results`
+
+Uses raw SQL via SQLAlchemy `text()` since these tables have no ORM models in the backend.
+
+**New imports added:** `UUID` from `uuid`, `text` + `Session` from SQLAlchemy, `get_db` from dependencies.
+
+---
+
 ## 2026-05-25 — Chat Sessions CRUD + AI Pipeline Fixes
 
 ### New File: `app/api/v1/chat_sessions.py`
