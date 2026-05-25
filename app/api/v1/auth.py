@@ -21,11 +21,20 @@ from app.services.auth_service import AuthService
 router = APIRouter()
 
 
+def _google_redirect_uri() -> str:
+    """
+    Where Google should send the user back to after consent.
+    Must match BOTH the URI used when building the auth URL AND the URI
+    sent during the token exchange — Google rejects mismatches.
+    Must also be registered in the Google Cloud Console OAuth client.
+    """
+    return f"{settings.FRONTEND_URL.rstrip('/')}/api/auth/google/callback"
+
+
 @router.get("/google/url")
 def get_google_auth_url() -> dict[str, str]:
     """Return the Google OAuth2 authorization URL."""
-    redirect_uri = f"{settings.FRONTEND_URL}/"
-    url = google_client.get_google_auth_url(redirect_uri)
+    url = google_client.get_google_auth_url(_google_redirect_uri())
     return {"url": url}
 
 
@@ -35,8 +44,9 @@ async def google_auth_callback(
     db: Session = Depends(get_db),
 ) -> Any:
     """Exchange a Google auth code for a Bizify token."""
-    redirect_uri = f"{settings.FRONTEND_URL}/"
-    return await AuthService.google_login(db, code=data.code, redirect_uri=redirect_uri)
+    return await AuthService.google_login(
+        db, code=data.code, redirect_uri=_google_redirect_uri(),
+    )
 
 
 @router.post("/login", response_model=Token)
