@@ -5,6 +5,7 @@ from app.api.v1 import (
     ai_pipeline,
     auth,
     billing,
+    chat_sessions,
     export,
     groups,
     ideas,
@@ -37,3 +38,4 @@ api_router.include_router(billing.router, prefix="/billing", tags=["Billing"])
 api_router.include_router(payment_methods.router, prefix="/payment-methods", tags=["Payment Methods"])
 api_router.include_router(ai_pipeline.router, prefix="/ai")
 api_router.include_router(ai_pipeline._system_router, prefix="/ai")
+api_router.include_router(chat_sessions.router, prefix="/chat", tags=["Chat Sessions"])
