@@ -1,11 +1,14 @@
 import logging
 from typing import Any, Optional
+from uuid import UUID
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
-from app.api.dependencies import check_ai_usage, get_current_user
+from app.api.dependencies import check_ai_usage, get_current_user, get_db
 from app.core.config import settings
 from app.models.user import User
 from app.schemas.ai_pipeline import (
@@ -541,6 +544,26 @@ async def rerun_profile(current_user: User = Depends(get_current_user)):
 @router.post("/rerun/problems", summary="Rerun Problems", tags=["AI - Problems"])
 async def rerun_problems(current_user: User = Depends(get_current_user)):
     return await _forward_post_to_ai("rerun/problems", str(current_user.id))
+
+@router.delete("/ideas/{idea_id}/analysis", status_code=204, tags=["AI - Pipeline"])
+async def clear_idea_analysis(
+    idea_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Delete all AI-generated analysis rows for a specific idea so the pipeline can be re-run fresh."""
+    uid = str(current_user.id)
+    iid = str(idea_id)
+    for table in [
+        "idea_results", "idea_intake_results", "customers_results",
+        "competition_results", "market_potential_results",
+        "idea_strategy_results", "business_model_results",
+        "functions_list_results", "mvp_planning_results",
+        "unit_economics_results", "go_to_market_results",
+    ]:
+        db.execute(text(f"DELETE FROM {table} WHERE user_id = :uid AND idea_id = :iid"), {"uid": uid, "iid": iid})
+    db.commit()
+
 
 @router.post("/idea-intake", summary="Idea Intake", tags=["AI - Idea Intake"])
 async def idea_intake(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
