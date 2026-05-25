@@ -1,4 +1,8 @@
 import logging
+import smtplib
+import time
+from email.message import EmailMessage
+from typing import Literal
 
 import httpx
 
@@ -6,9 +10,60 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+EmailProvider = Literal["resend", "smtp"]
+
+# Transient SMTP failures worth retrying. Auth/recipient errors are not.
+_TRANSIENT_SMTP_EXCEPTIONS = (
+    smtplib.SMTPConnectError,
+    smtplib.SMTPServerDisconnected,
+    smtplib.SMTPHeloError,
+    TimeoutError,
+    ConnectionError,
+)
+
 
 class EmailDeliveryError(RuntimeError):
     """Raised when an outbound email could not be delivered."""
+
+
+def configured_provider() -> EmailProvider:
+    """Return which provider `send_email` will use given the current config."""
+    if settings.RESEND_API_KEY:
+        return "resend"
+    return "smtp"
+
+
+def validate_email_config() -> tuple[bool, str]:
+    """
+    Check the email config at startup. Returns (ok, message).
+    Called from main.py to fail loudly when the deployment is misconfigured.
+    """
+    provider = configured_provider()
+
+    if provider == "resend":
+        if not settings.EMAILS_FROM_EMAIL:
+            return False, (
+                "RESEND_API_KEY is set but EMAILS_FROM_EMAIL is not. "
+                "The default 'onboarding@resend.dev' only delivers to the Resend "
+                "account owner's address — production users won't receive emails. "
+                "Set EMAILS_FROM_EMAIL to an address on a domain verified in Resend."
+            )
+        return True, f"Resend configured (from: {settings.EMAILS_FROM_EMAIL})."
+
+    # SMTP path
+    missing = [
+        name for name, value in [
+            ("SMTP_HOST", settings.SMTP_HOST),
+            ("SMTP_USER", settings.SMTP_USER),
+            ("SMTP_PASSWORD", settings.SMTP_PASSWORD),
+        ] if not value
+    ]
+    if missing:
+        return False, (
+            f"No email provider configured. RESEND_API_KEY is unset and SMTP is "
+            f"missing: {', '.join(missing)}. Configure Resend or SMTP."
+        )
+    return True, f"SMTP configured ({settings.SMTP_HOST}:{settings.SMTP_PORT})."
 
 
 def send_email(
@@ -16,10 +71,8 @@ def send_email(
     subject: str,
     html_content: str,
 ) -> None:
-    """
-    Send an email via Resend API (preferred) or SMTP (fallback).
-    """
-    if settings.RESEND_API_KEY:
+    """Send an email via Resend API (preferred) or SMTP (fallback)."""
+    if configured_provider() == "resend":
         _send_via_resend(email_to, subject, html_content)
         return
 
@@ -27,39 +80,87 @@ def send_email(
 
 
 def _send_via_resend(email_to: str, subject: str, html_content: str) -> None:
-    """Send email using the Resend API."""
-    try:
-        with httpx.Client(timeout=15) as client:
-            response = client.post(
-                "https://api.resend.com/emails",
-                headers={
-                    "Authorization": f"Bearer {settings.RESEND_API_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "from": settings.EMAILS_FROM_EMAIL or "Bizify <onboarding@resend.dev>",
-                    "to": [email_to],
-                    "subject": subject,
-                    "html": html_content,
-                },
-            )
+    """Send email using the Resend API. Retries once on transient network failure."""
+    from_address = settings.EMAILS_FROM_EMAIL or "Bizify <onboarding@resend.dev>"
+    payload = {
+        "from": from_address,
+        "to": [email_to],
+        "subject": subject,
+        "html": html_content,
+    }
+    headers = {
+        "Authorization": f"Bearer {settings.RESEND_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    last_exc: Exception | None = None
+    for attempt in (1, 2):
+        try:
+            with httpx.Client(timeout=15) as client:
+                response = client.post(
+                    "https://api.resend.com/emails",
+                    headers=headers,
+                    json=payload,
+                )
             if response.is_error:
-                logger.error("Resend API error: %s %s", response.status_code, response.text)
-                raise EmailDeliveryError(f"Resend error: {response.text}")
-            logger.info("Email sent via Resend to %s", email_to)
-    except httpx.RequestError as exc:
-        logger.error("Resend API unreachable: %s", exc)
-        raise EmailDeliveryError(f"Resend API unreachable: {exc}")
+                # API-level errors (4xx/5xx) are not retried — the request reached
+                # Resend and was rejected, so a retry will produce the same result.
+                body = response.text
+                logger.error(
+                    "Resend API error %s for %s (from=%s): %s",
+                    response.status_code, email_to, from_address, body,
+                )
+                hint = _resend_hint(response.status_code, body)
+                raise EmailDeliveryError(
+                    f"Resend rejected the request ({response.status_code}). {hint}"
+                )
+            logger.info("Email sent via Resend to %s (attempt %d)", email_to, attempt)
+            return
+        except httpx.RequestError as exc:
+            last_exc = exc
+            logger.warning(
+                "Resend network error on attempt %d for %s: %s", attempt, email_to, exc,
+            )
+            if attempt == 1:
+                time.sleep(1)
+
+    logger.error("Resend unreachable after retries for %s: %s", email_to, last_exc)
+    raise EmailDeliveryError(
+        "Could not reach Resend after 2 attempts. Check outbound network connectivity."
+    ) from last_exc
+
+
+def _resend_hint(status_code: int, body: str) -> str:
+    """Best-effort guidance for the most common Resend rejection reasons."""
+    body_lower = body.lower()
+    if status_code in (401, 403):
+        return "Check RESEND_API_KEY — it may be invalid, revoked, or expired."
+    if "domain" in body_lower and ("not verified" in body_lower or "verify" in body_lower):
+        return (
+            "The sender domain is not verified in Resend. Verify the domain in "
+            "EMAILS_FROM_EMAIL at resend.com/domains."
+        )
+    if "testing emails" in body_lower or "onboarding@resend.dev" in body_lower:
+        return (
+            "Resend's shared sender 'onboarding@resend.dev' can only deliver to "
+            "your own Resend account email. Verify a domain and set EMAILS_FROM_EMAIL."
+        )
+    if status_code == 429:
+        return "Rate limit exceeded. Wait, or upgrade the Resend plan."
+    return "See backend logs for the full Resend response body."
 
 
 def _send_via_smtp(email_to: str, subject: str, html_content: str) -> None:
-    """Send email via SMTP (fallback)."""
-    import smtplib
-    from email.message import EmailMessage
-
+    """
+    Send email via SMTP. Picks the correct connection mode based on SMTP_PORT
+    (465 → implicit SSL, anything else → STARTTLS if SMTP_TLS is true).
+    Retries once on transient network failures.
+    """
     if not settings.SMTP_HOST or not settings.SMTP_USER or not settings.SMTP_PASSWORD:
-        logger.error("SMTP settings are incomplete. Email was not sent.")
-        raise EmailDeliveryError("SMTP settings are incomplete")
+        logger.error("SMTP settings are incomplete (host/user/password). Email not sent.")
+        raise EmailDeliveryError(
+            "SMTP is not fully configured. Set SMTP_HOST, SMTP_USER, and SMTP_PASSWORD."
+        )
 
     message = EmailMessage()
     message["Subject"] = subject
@@ -67,30 +168,65 @@ def _send_via_smtp(email_to: str, subject: str, html_content: str) -> None:
     message["To"] = email_to
     message.set_content(html_content, subtype="html")
 
-    ports_to_try = [(settings.SMTP_HOST, settings.SMTP_PORT)]
-    if settings.SMTP_PORT != 465:
-        ports_to_try.append((settings.SMTP_HOST, 465))
+    host = settings.SMTP_HOST
+    port = settings.SMTP_PORT or 587
 
-    last_exception = None
-    for host, port in ports_to_try:
+    last_exc: Exception | None = None
+    for attempt in (1, 2):
         try:
-            if port == 465:
-                server = smtplib.SMTP_SSL(host, port, timeout=15)
-            else:
-                server = smtplib.SMTP(host, port, timeout=15)
-                if settings.SMTP_TLS:
-                    server.starttls()
+            _smtp_send(host, port, message)
+            logger.info("Email sent via SMTP %s:%s to %s (attempt %d)", host, port, email_to, attempt)
+            return
+        except smtplib.SMTPAuthenticationError as exc:
+            # Permanent — do not retry.
+            logger.error("SMTP auth failed for %s@%s: %s", settings.SMTP_USER, host, exc)
+            raise EmailDeliveryError(_smtp_auth_hint(host, exc)) from exc
+        except smtplib.SMTPRecipientsRefused as exc:
+            # Permanent — recipient rejected.
+            logger.error("SMTP recipient refused for %s: %s", email_to, exc)
+            raise EmailDeliveryError(f"Recipient '{email_to}' was rejected by the SMTP server.") from exc
+        except _TRANSIENT_SMTP_EXCEPTIONS as exc:
+            last_exc = exc
+            logger.warning("Transient SMTP failure attempt %d (%s:%s): %s", attempt, host, port, exc)
+            if attempt == 1:
+                time.sleep(1)
+        except Exception as exc:
+            # Unknown SMTP error — log fully, do not retry.
+            logger.exception("Unexpected SMTP error (%s:%s)", host, port)
+            raise EmailDeliveryError(f"SMTP send failed: {exc}") from exc
 
-            with server:
-                server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-                server.send_message(message)
-                logger.info("Email sent via SMTP %s:%s to %s", host, port, email_to)
-                return
-        except Exception as e:
-            logger.warning("SMTP %s:%s failed: %s", host, port, e)
-            last_exception = e
+    logger.error("SMTP unreachable after retries (%s:%s): %s", host, port, last_exc)
+    raise EmailDeliveryError(
+        f"Could not reach SMTP server {host}:{port} after 2 attempts."
+    ) from last_exc
 
-    raise EmailDeliveryError("All SMTP attempts failed") from last_exception
+
+def _smtp_send(host: str, port: int, message: EmailMessage) -> None:
+    """One SMTP send attempt. Caller handles retries and exception classification."""
+    if port == 465:
+        server = smtplib.SMTP_SSL(host, port, timeout=15)
+    else:
+        server = smtplib.SMTP(host, port, timeout=15)
+        if settings.SMTP_TLS:
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+
+    with server:
+        server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+        server.send_message(message)
+
+
+def _smtp_auth_hint(host: str, exc: smtplib.SMTPAuthenticationError) -> str:
+    """Provide actionable guidance for the common Gmail App Password mistake."""
+    if "gmail" in (host or "").lower():
+        return (
+            "Gmail SMTP authentication failed. Gmail no longer accepts regular "
+            "passwords — you must use a 16-character App Password generated at "
+            "myaccount.google.com/apppasswords (2-Step Verification must be enabled). "
+            f"Server said: {exc.smtp_error.decode('utf-8', 'ignore') if isinstance(exc.smtp_error, bytes) else exc.smtp_error}"
+        )
+    return f"SMTP authentication failed for {settings.SMTP_USER}@{host}. Check SMTP_USER and SMTP_PASSWORD."
 
 
 def send_otp_email(email_to: str, otp: str) -> None:

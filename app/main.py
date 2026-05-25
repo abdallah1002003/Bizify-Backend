@@ -11,6 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.api.api import api_router
 from app.core.config import settings
 from app.core.database import engine, ensure_sqlite_compatibility_schema
+from app.core.mail import configured_provider, validate_email_config
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,16 @@ async def lifespan(app: FastAPI):
         import sys
         if "pytest" not in sys.modules:
             raise RuntimeError("Database connection failed. Aborting startup.")
+
+    ok, message = validate_email_config()
+    provider = configured_provider()
+    if ok:
+        print(f" Email provider: {provider} — {message}")
+    else:
+        # Warn loudly but do not abort. The server is still useful for
+        # non-email features; signup will return a clear 503 if hit.
+        print(f" [WARN] Email provider misconfigured ({provider}): {message}")
+        logger.warning("Email provider misconfigured: %s", message)
 
     yield
 

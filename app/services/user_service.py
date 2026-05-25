@@ -139,10 +139,14 @@ class UserService:
         try:
             send_otp_email(email, otp)
         except EmailDeliveryError as exc:
-            logger.error("Email delivery failed for %s. OTP %s is saved in DB.", email, otp)
+            logger.error(
+                "Email delivery failed for %s (OTP saved in DB): %s", email, exc,
+            )
+            # Surface the real reason so the user (and frontend toast) can act on it.
+            # The OTP itself is never included in the response — only in server logs.
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Could not send email.",
+                detail=f"Could not send verification email: {exc}",
             ) from exc
         except Exception:
             raise

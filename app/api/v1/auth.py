@@ -121,11 +121,39 @@ def session_ping(current_user: User = Depends(get_current_user)) -> dict[str, st
     """Keep the current session active."""
     return {"message": "Session kept alive"}
 @router.get("/test-email")
-def test_email(email: str):
-    """Diagnostic endpoint to test SMTP connectivity."""
-    from app.core.mail import send_otp_email
+def test_email(email: str) -> dict[str, Any]:
+    """
+    Diagnostic endpoint for email delivery. Returns the configured provider,
+    a config-validation summary, and (if reachable) the result of an actual send.
+    Safe to call in production — only the resolved provider is exposed, no secrets.
+    """
+    from app.core.mail import (
+        EmailDeliveryError,
+        configured_provider,
+        send_otp_email,
+        validate_email_config,
+    )
+
+    provider = configured_provider()
+    ok, message = validate_email_config()
+    result: dict[str, Any] = {
+        "provider": provider,
+        "config_ok": ok,
+        "config_message": message,
+    }
+
+    if not ok:
+        result["sent"] = False
+        return result
+
     try:
         send_otp_email(email, "123456")
-        return {"message": "Email sent successfully"}
-    except Exception as e:
-        return {"error": str(e)}
+        result["sent"] = True
+        result["message"] = (
+            "Test code 123456 dispatched. Check inbox/spam, or backend logs if EMAIL_DEV_MODE is on."
+        )
+    except EmailDeliveryError as exc:
+        result["sent"] = False
+        result["error"] = str(exc)
+
+    return result
