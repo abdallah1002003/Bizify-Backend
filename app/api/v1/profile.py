@@ -147,9 +147,17 @@ SKILL_CATEGORIES: list[str] = list(CATEGORY_SKILLS.keys())
 @router.get("/skill-categories")
 def list_skill_categories(
     current_user: User = Depends(get_current_user),
-) -> list[str]:
-    """Return predefined skill categories."""
-    return SKILL_CATEGORIES
+) -> list[dict[str, Any]]:
+    """Return predefined categories with their full skill lists nested inline.
+
+    Shape: [{ "name": <category>, "subcategories": [<skill>, ...] }, ...]
+    The frontend uses this one call to render category chips AND the skill grid
+    without any per-category follow-up requests.
+    """
+    return [
+        {"name": cat, "subcategories": skills}
+        for cat, skills in CATEGORY_SKILLS.items()
+    ]
 
 
 @router.get("/skills")
@@ -191,11 +199,24 @@ def update_skills_json(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[dict[str, Any]]:
-    """Save the raw skills JSON data for the current user."""
+    """Replace the user's skills list atomically, with case-insensitive dedup."""
     profile = ProfileService.get_or_create_profile(db, current_user.id)
-    profile.skills_json = skills
+    seen: set[str] = set()
+    deduped: list[dict[str, Any]] = []
+    for s in skills:
+        name = str(s.get("name") or s.get("skill_name") or "").strip()
+        if not name or name.lower() in seen:
+            continue
+        seen.add(name.lower())
+        rating = s.get("rating", 3)
+        deduped.append({
+            "id": str(s.get("id") or uuid4()),
+            "name": name,
+            "rating": int(rating) if rating is not None else 3,
+        })
+    profile.skills_json = deduped
     db.commit()
-    return profile.skills_json or []
+    return deduped
 
 
 @router.post("/skills", status_code=status.HTTP_201_CREATED)
@@ -204,14 +225,22 @@ def add_user_skill(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
-    """Add a skill for the current user."""
-    skill_name = body.get("skill_name") or body.get("name")
-    if not skill_name:
+    """Add a single skill for the current user (case-insensitive dedup)."""
+    raw = body.get("skill_name") or body.get("name")
+    if not raw or not str(raw).strip():
         raise HTTPException(status_code=400, detail="skill_name or name is required")
+    skill_name = str(raw).strip()
 
     profile = ProfileService.get_or_create_profile(db, current_user.id)
     skills = list(profile.skills_json or [])
-    new_skill = {"id": str(uuid4()), "name": str(skill_name), "rating": 3}
+    existing = next(
+        (s for s in skills if str(s.get("name", "")).strip().lower() == skill_name.lower()),
+        None,
+    )
+    if existing:
+        return existing
+
+    new_skill = {"id": str(uuid4()), "name": skill_name, "rating": 3}
     skills.append(new_skill)
     profile.skills_json = skills
     db.commit()
