@@ -4,6 +4,7 @@ from typing import Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.api.dependencies import get_current_user, get_db
 from app.models.ai.chat_message import ChatMessage, MessageRole
@@ -52,6 +53,7 @@ def _session_out(s: ChatSession) -> dict:
     return {
         "id": str(s.id),
         "section_slug": meta.get("section"),
+        "idea_id": str(s.idea_id) if s.idea_id else None,
         "title": meta.get("title", "New conversation"),
         "preview": meta.get("preview", ""),
         "created_at": s.created_at.isoformat() if s.created_at else "",
@@ -71,15 +73,18 @@ def _message_out(m: ChatMessage) -> dict:
 
 @router.get("/sessions", tags=["Chat Sessions"])
 def list_sessions(
+    section_slug: Optional[str] = Query(default=None),
+    idea_id: Optional[uuid.UUID] = Query(default=None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    sessions = (
-        db.query(ChatSession)
-        .filter(ChatSession.user_id == current_user.id)
-        .order_by(ChatSession.created_at.desc())
-        .all()
-    )
+    q = db.query(ChatSession).filter(ChatSession.user_id == current_user.id)
+    if idea_id:
+        q = q.filter(ChatSession.idea_id == idea_id)
+    sessions = q.order_by(ChatSession.created_at.desc()).all()
+    # Filter by section_slug in Python (stored in JSON field)
+    if section_slug is not None:
+        sessions = [s for s in sessions if (s.conversation_summary_json or {}).get("section") == section_slug]
     return [_session_out(s) for s in sessions]
 
 
@@ -173,6 +178,7 @@ def save_messages(
         meta = dict(session.conversation_summary_json or {})
         meta["preview"] = last_user.content[:80]
         session.conversation_summary_json = meta
+        flag_modified(session, "conversation_summary_json")
 
     db.commit()
     for m in saved:
