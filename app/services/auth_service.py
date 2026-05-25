@@ -152,7 +152,7 @@ class AuthService:
 
     @staticmethod
     def verify_otp(db: Session, data: OTPVerify) -> dict[str, str]:
-        """Validate an account verification OTP."""
+        """Validate an account verification OTP and issue an access token."""
         is_verified = UserService.verify_otp_status(
             db,
             email=data.email,
@@ -164,7 +164,15 @@ class AuthService:
                 detail="Invalid or expired OTP",
             )
 
-        return {"message": "Account verified successfully"}
+        # Issue a token so the frontend can authenticate the remaining
+        # signup-wizard steps (questionnaire, skills, profile/complete).
+        # Partners receive a token too but are gated by approval_status in the UI.
+        user = UserService.get_user_by_email(db, email=data.email)
+        token_response = AuthService.create_token_response(user)
+        return {
+            "message": "Account verified successfully",
+            **token_response,
+        }
 
     @staticmethod
     def resend_verification_otp(
