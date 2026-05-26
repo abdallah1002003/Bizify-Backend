@@ -254,8 +254,8 @@ async def get_go_to_market(current_user: User = Depends(get_current_user), idea_
 
 
 @router.get("/problems", summary="Get Generated Problems", response_model=AIProblemsResponse, tags=["AI - Problems"])
-async def get_problems(current_user: User = Depends(get_current_user)):
-    return await _forward_get_to_ai("problems", str(current_user.id))
+async def get_problems(current_user: User = Depends(get_current_user), idea_id: Optional[str] = Query(None)):
+    return await _forward_get_to_ai("problems", str(current_user.id), params={"idea_id": idea_id} if idea_id else None)
 
 
 @router.get("/idea", summary="Get Generated Idea", response_model=AIIdeaResponse, tags=["AI - Idea"])
@@ -592,6 +592,16 @@ async def get_idea_intake(current_user: User = Depends(get_current_user)):
 async def explain(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
     payload["user_id"] = str(current_user.id)
     return await _forward_post_to_ai("explain", payload=payload)
+
+
+@router.post("/ideas/{idea_id}/seed-context", summary="Seed Idea Context in BizifyAI", tags=["AI - Pipeline"])
+async def seed_idea_context(
+    idea_id: UUID,
+    payload: dict[str, Any],
+    current_user: User = Depends(get_current_user),
+):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_post_to_ai(f"idea/{idea_id}/seed-context", payload=payload)
 
 
 @router.delete("/ideas/{idea_id}/analysis", status_code=204, summary="Clear Idea Analysis", tags=["AI - Pipeline"])
