@@ -15,6 +15,7 @@ from app.api.v1 import (
     payment_methods,
     profile,
     settings,
+    share,
     users,
 )
 
@@ -39,3 +40,5 @@ api_router.include_router(payment_methods.router, prefix="/payment-methods", tag
 api_router.include_router(ai_pipeline.router, prefix="/ai")
 api_router.include_router(ai_pipeline._system_router, prefix="/ai")
 api_router.include_router(chat_sessions.router, prefix="/chat", tags=["Chat Sessions"])
+api_router.include_router(share.router, tags=["Share"])
+api_router.include_router(share.public_router, tags=["Share"])
