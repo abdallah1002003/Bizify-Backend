@@ -14,6 +14,7 @@ class MarketplacePartnerPublic(BaseModel):
     id: uuid.UUID
     partner_type: PartnerType
     company_name: Optional[str] = None
+    phone_number: Optional[str] = None
     description: Optional[str] = None
     services_json: Optional[Any] = None
     experience_json: Optional[Any] = None

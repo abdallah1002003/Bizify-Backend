@@ -27,6 +27,7 @@ class MarketplaceService:
             id=partner.id,
             partner_type=partner.partner_type,
             company_name=partner.company_name,
+            phone_number=partner.phone_number,
             description=partner.description,
             services_json=partner.services_json,
             experience_json=partner.experience_json,

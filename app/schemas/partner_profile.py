@@ -21,6 +21,7 @@ class PartnerProfileBase(BaseModel):
             return v.upper()
         return v
     company_name: Optional[str] = None
+    phone_number: Optional[str] = None
     description: Optional[str] = None
     services_json: Optional[Any] = None
     experience_json: Optional[Any] = None
@@ -44,9 +45,10 @@ class PartnerProfileUpdate(BaseModel):
     """
     Pydantic model for updating a Partner Profile.
     """
-    
+
     partner_type: Optional[PartnerType] = None
     company_name: Optional[str] = None
+    phone_number: Optional[str] = None
     description: Optional[str] = None
     services_json: Optional[Any] = None
     experience_json: Optional[Any] = None

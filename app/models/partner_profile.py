@@ -45,6 +45,7 @@ class PartnerProfile(Base):
     )
     
     company_name = Column(String)
+    phone_number = Column(String, nullable=True)
     description = Column(Text)
     services_json = Column(JSON)
     experience_json = Column(JSON)

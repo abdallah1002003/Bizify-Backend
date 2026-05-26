@@ -104,6 +104,7 @@ def register_user(
                                 "description": "Upload one or more supporting files",
                             },
                             "company_name": {"type": "string", "nullable": True},
+                            "phone_number": {"type": "string", "nullable": True},
                             "description": {"type": "string", "nullable": True},
                             "services_json": {"type": "string", "nullable": True},
                             "experience_json": {"type": "string", "nullable": True},
@@ -125,6 +126,7 @@ async def register_partner_user(
     confirm_password: str = Form(...),
     files: list[UploadFile] = File(..., description="Upload one or more supporting files"),
     company_name: Optional[str] = Form(None),
+    phone_number: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
     services_json: Optional[str] = Form(None),
     experience_json: Optional[str] = Form(None),
@@ -141,6 +143,7 @@ async def register_partner_user(
     partner_profile_in = PartnerProfileRegistration(
         partner_type=role.value,
         company_name=company_name,
+        phone_number=phone_number,
         description=description,
         services_json=_parse_partner_json_field(services_json, "services_json"),
         experience_json=_parse_partner_json_field(experience_json, "experience_json"),
