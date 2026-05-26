@@ -17,7 +17,7 @@ NC='\033[0m' # No Color
 echo ""
 echo -e "${CYAN}${BOLD}╔══════════════════════════════════════════════╗${NC}"
 echo -e "${CYAN}${BOLD}║        Bizify — Automation Test Suite        ║${NC}"
-echo -e "${CYAN}${BOLD}║              104 Integration Tests           ║${NC}"
+echo -e "${CYAN}${BOLD}║              129 Integration Tests           ║${NC}"
 echo -e "${CYAN}${BOLD}╚══════════════════════════════════════════════╝${NC}"
 echo ""
 
