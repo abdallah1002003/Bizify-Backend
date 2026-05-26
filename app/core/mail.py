@@ -2,7 +2,7 @@ import logging
 import smtplib
 import time
 from email.message import EmailMessage
-from typing import Literal
+from typing import Literal, Optional
 
 import httpx
 
@@ -93,7 +93,7 @@ def _send_via_resend(email_to: str, subject: str, html_content: str) -> None:
         "Content-Type": "application/json",
     }
 
-    last_exc: Exception | None = None
+    last_exc: Optional[Exception] = None
     for attempt in (1, 2):
         try:
             with httpx.Client(timeout=15) as client:
@@ -171,7 +171,7 @@ def _send_via_smtp(email_to: str, subject: str, html_content: str) -> None:
     host = settings.SMTP_HOST
     port = settings.SMTP_PORT or 587
 
-    last_exc: Exception | None = None
+    last_exc: Optional[Exception] = None
     for attempt in (1, 2):
         try:
             _smtp_send(host, port, message)

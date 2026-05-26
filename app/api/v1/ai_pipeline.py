@@ -108,7 +108,7 @@ async def general_chat_stream(
     return StreamingResponse(_stream(), media_type="text/event-stream")
 
 
-async def _forward_get_to_ai(path: str, user_id: str, params: dict | None = None) -> dict:
+async def _forward_get_to_ai(path: str, user_id: str, params: Optional[dict] = None) -> dict:
     """Helper to fetch data from the external AI pipeline."""
     if not settings.AI_PIPELINE_API_KEY:
         raise HTTPException(
@@ -129,7 +129,7 @@ async def _forward_get_to_ai(path: str, user_id: str, params: dict | None = None
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI Service unavailable.")
 
 
-async def _forward_post_to_ai(path: str, user_id: str | None = None, payload: dict[str, Any] | None = None) -> dict:
+async def _forward_post_to_ai(path: str, user_id: Optional[str] = None, payload: Optional[dict[str, Any]] = None) -> dict:
     """Helper to post data to the external AI pipeline."""
     if not settings.AI_PIPELINE_API_KEY:
         raise HTTPException(
@@ -149,7 +149,7 @@ async def _forward_post_to_ai(path: str, user_id: str | None = None, payload: di
         logger.error("AI pipeline request failed: %s", exc)
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI Service unavailable.")
 
-async def _forward_stream_to_ai(path: str, payload: dict[str, Any] | None = None):
+async def _forward_stream_to_ai(path: str, payload: Optional[dict[str, Any]] = None):
     """Helper to stream data from the external AI pipeline."""
     if not settings.AI_PIPELINE_API_KEY:
         raise HTTPException(

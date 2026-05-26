@@ -8,8 +8,8 @@ def test_get_my_profile(auth_client: TestClient):
     data = response.json()
     assert "id" in data
     assert "user_id" in data
-    assert "skills_json" not in data
-    assert "questionnaire_json" not in data
+    assert "skills_json" in data
+    assert "questionnaire_json" in data
 
 
 def test_submit_questionnaire(auth_client: TestClient):
