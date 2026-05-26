@@ -579,6 +579,11 @@ async def idea_intake_start_chat(payload: dict[str, Any], current_user: User = D
     payload["user_id"] = str(current_user.id)
     return await _forward_post_to_ai("idea-intake/start-chat", payload=payload)
 
+@router.post("/idea-intake/chat/stream", summary="Idea Intake Chat Stream", tags=["AI - Idea Intake"])
+async def idea_intake_chat_stream(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_stream_to_ai("idea-intake/chat/stream", payload=payload)
+
 @router.get("/idea-intake", summary="Get Idea Intake", tags=["AI - Idea Intake"])
 async def get_idea_intake(current_user: User = Depends(get_current_user)):
     return await _forward_get_to_ai("idea-intake", str(current_user.id))
