@@ -57,13 +57,20 @@ class Idea(Base):
     budget = Column(Float)
     skills = Column(JSON)
     feasibility = Column(Float)
-    is_score_outdated = Column(Boolean, default = False)
-    is_archived = Column(Boolean, default = False)
-    
-    archived_at = Column(DateTime)
-    created_at = Column(DateTime, default = datetime.utcnow)
-    updated_at = Column(DateTime, default = datetime.utcnow, onupdate = datetime.utcnow)
-    converted_at = Column(DateTime)
+    is_score_outdated   = Column(Boolean, default = False)
+    is_archived         = Column(Boolean, default = False)
+
+    archived_at         = Column(DateTime)
+    created_at          = Column(DateTime, default = datetime.utcnow)
+    updated_at          = Column(DateTime, default = datetime.utcnow, onupdate = datetime.utcnow)
+    converted_at        = Column(DateTime)
+
+    # AI-generated seed fields
+    domain              = Column(String,  nullable = True)
+    problem_evidence    = Column(JSON,    nullable = True)
+    core_insight        = Column(Text,    nullable = True)
+    target_segment      = Column(Text,    nullable = True)
+    founding_hypothesis = Column(Text,    nullable = True)
 
     owner = relationship("User", back_populates = "ideas")
     business = relationship("Business", foreign_keys = [business_id])

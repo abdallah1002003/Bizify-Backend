@@ -7,18 +7,34 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from app.models.ai.idea import IdeaStatus
 
 
+class ProblemEvidence(BaseModel):
+    problems_analyzed: int = 0
+    top_validated:     list[dict] = []
+    why_this_idea:     str = ""
+    primary_gap:       str = ""
+    customer_signal:   str = ""
+
+    model_config = ConfigDict(extra="allow")
+
+
 class IdeaBase(BaseModel):
     """
     Base Pydantic model for Business Idea data.
     """
 
-    title: str
-    description: Optional[str] = None
-    status: IdeaStatus = IdeaStatus.DRAFT
-    is_archived: Optional[bool] = False
-    budget: Optional[float] = None
-    skills: Optional[Any] = None  # list[str] or {your_skills, required_skills, skill_gaps}
-    feasibility: Optional[float] = None
+    title:               str
+    description:         Optional[str]            = None
+    status:              IdeaStatus                = IdeaStatus.DRAFT
+    is_archived:         Optional[bool]            = False
+    budget:              Optional[float]           = None
+    skills:              Optional[Any]             = None
+    feasibility:         Optional[float]           = None
+    # AI seed fields
+    domain:              Optional[str]             = None
+    problem_evidence:    Optional[ProblemEvidence] = None
+    core_insight:        Optional[str]             = None
+    target_segment:      Optional[str]             = None
+    founding_hypothesis: Optional[str]             = None
 
 
     @field_validator("status", mode="before")
@@ -40,15 +56,20 @@ class IdeaUpdate(BaseModel):
     """
     Pydantic model for updating an existing Business Idea.
     """
-    
-    title: Optional[str] = None
-    description: Optional[str] = None
-    status: Optional[IdeaStatus] = None
-    is_archived: Optional[bool] = None
-    budget: Optional[float] = None
-    skills: Optional[list[str]] = None
-    feasibility: Optional[float] = None
 
+    title:               Optional[str]             = None
+    description:         Optional[str]             = None
+    status:              Optional[IdeaStatus]       = None
+    is_archived:         Optional[bool]             = None
+    budget:              Optional[float]            = None
+    skills:              Optional[list[str]]        = None
+    feasibility:         Optional[float]            = None
+    business_id:         Optional[uuid.UUID]        = None
+    domain:              Optional[str]              = None
+    problem_evidence:    Optional[ProblemEvidence]  = None
+    core_insight:        Optional[str]              = None
+    target_segment:      Optional[str]              = None
+    founding_hypothesis: Optional[str]              = None
 
     @field_validator("status", mode="before")
     @classmethod
@@ -56,7 +77,6 @@ class IdeaUpdate(BaseModel):
         if isinstance(v, str):
             return v.upper()
         return v
-    business_id: Optional[uuid.UUID] = None
 
 
 class IdeaRead(IdeaBase):

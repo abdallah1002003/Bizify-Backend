@@ -559,6 +559,11 @@ async def idea_intake_start_chat(payload: dict[str, Any], current_user: User = D
     payload["user_id"] = str(current_user.id)
     return await _forward_post_to_ai("idea-intake/start-chat", payload=payload)
 
+@router.post("/idea-intake/chat", summary="Idea Intake Chat (Phase B)", tags=["AI - Idea Intake"])
+async def idea_intake_chat(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_post_to_ai("idea-intake/chat", payload=payload)
+
 @router.post("/idea-intake/chat/stream", summary="Idea Intake Chat Stream", tags=["AI - Idea Intake"])
 async def idea_intake_chat_stream(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
     payload["user_id"] = str(current_user.id)
@@ -593,7 +598,6 @@ async def clear_idea_analysis(
     uid = str(current_user.id)
     iid = str(idea_id)
     for table in [
-        "idea_results",
         "idea_intake_results",
         "customers_results",
         "competition_results",
