@@ -265,7 +265,7 @@ async def get_idea(current_user: User = Depends(get_current_user), idea_id: Opti
 
 @router.post("/ideas/{idea_id}/suggest-name", summary="Suggest catchy startup names", tags=["AI - Idea"])
 async def suggest_idea_name(idea_id: UUID, current_user: User = Depends(get_current_user)):
-    return await _forward_post_to_ai(f"suggest-name/{current_user.id}", None, {})
+    return await _forward_post_to_ai(f"suggest-name/{current_user.id}", None, {"idea_id": str(idea_id)})
 
 
 # ==========================================
