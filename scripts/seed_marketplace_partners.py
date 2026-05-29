@@ -28,6 +28,8 @@ PARTNERS = [
         "partner_type": PartnerType.MENTOR,
         "company_name": "Sara Mentorship",
         "phone_number": "+20 100 555 0101",
+        "category": "Brand & Growth",
+        "linkedin_url": "https://www.linkedin.com/in/sara-elsayed-mentor",
         "description": (
             "15+ years building consumer brands across MENA. I help early-stage "
             "founders nail positioning, pricing, and their first 100 customers."
@@ -45,6 +47,8 @@ PARTNERS = [
         "partner_type": PartnerType.MENTOR,
         "company_name": "Habib Advisory",
         "phone_number": "+20 100 555 0102",
+        "category": "Fundraising & Product",
+        "linkedin_url": "https://www.linkedin.com/in/omar-habib-advisor",
         "description": (
             "Ex-YC founder turned mentor. I focus on technical co-founders who "
             "need help turning a prototype into a fundable startup."
@@ -61,6 +65,8 @@ PARTNERS = [
         "partner_type": PartnerType.SUPPLIER,
         "company_name": "Nile Supplies Co.",
         "phone_number": "+20 101 222 0301",
+        "category": "Textiles & Fabrics",
+        "linkedin_url": None,
         "description": (
             "Wholesale supplier of organic cotton, linen, and recycled "
             "polyester for fashion and home-textile brands. MOQ 200 units."
@@ -75,6 +81,8 @@ PARTNERS = [
         "partner_type": PartnerType.SUPPLIER,
         "company_name": "Pyramid Packaging Ltd.",
         "phone_number": "+20 101 222 0302",
+        "category": "Packaging & Print",
+        "linkedin_url": None,
         "description": (
             "Custom eco-friendly packaging: kraft boxes, compostable mailers, "
             "and printed tissue. Lead time 10-14 days from artwork approval."
@@ -89,6 +97,8 @@ PARTNERS = [
         "partner_type": PartnerType.MANUFACTURER,
         "company_name": "DeltaWorks Manufacturing",
         "phone_number": "+20 102 777 0401",
+        "category": "Apparel & Garments",
+        "linkedin_url": None,
         "description": (
             "Full-service apparel manufacturer in 10th of Ramadan. Cut-and-sew, "
             "knit, and woven garments. CMT and full-package available."
@@ -105,6 +115,8 @@ PARTNERS = [
         "partner_type": PartnerType.MANUFACTURER,
         "company_name": "Red Sea Metal Works",
         "phone_number": "+20 102 777 0402",
+        "category": "Metal Fabrication",
+        "linkedin_url": None,
         "description": (
             "Precision metal fabrication for furniture and small appliance "
             "startups. Laser cutting, powder coating, and short-run assembly."
@@ -148,6 +160,8 @@ def _upsert_partner_profile(db, *, user_id, data) -> PartnerProfile:
         profile.description = data["description"]
         profile.services_json = data["services_json"]
         profile.experience_json = data["experience_json"]
+        profile.category = data.get("category")
+        profile.linkedin_url = data.get("linkedin_url")
         profile.approval_status = ApprovalStatus.APPROVED
         profile.approved_at = profile.approved_at or now
         return profile
@@ -160,6 +174,8 @@ def _upsert_partner_profile(db, *, user_id, data) -> PartnerProfile:
         description=data["description"],
         services_json=data["services_json"],
         experience_json=data["experience_json"],
+        category=data.get("category"),
+        linkedin_url=data.get("linkedin_url"),
         approval_status=ApprovalStatus.APPROVED,
         approved_at=now,
     )

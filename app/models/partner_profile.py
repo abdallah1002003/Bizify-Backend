@@ -51,6 +51,9 @@ class PartnerProfile(Base):
     experience_json = Column(JSON)
     documents_json = Column(JSON)
     
+    category = Column(String, nullable=True)
+    linkedin_url = Column(String, nullable=True)
+
     approval_status = Column(
         Enum(ApprovalStatus, values_callable = lambda x: [e.value for e in x]), 
         default = ApprovalStatus.PENDING

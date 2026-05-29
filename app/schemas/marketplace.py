@@ -19,6 +19,8 @@ class MarketplacePartnerPublic(BaseModel):
     services_json: Optional[Any] = None
     experience_json: Optional[Any] = None
     display_name: Optional[str] = None
+    category: Optional[str] = None
+    linkedin_url: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

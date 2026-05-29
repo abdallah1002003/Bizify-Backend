@@ -32,6 +32,8 @@ class MarketplaceService:
             services_json=partner.services_json,
             experience_json=partner.experience_json,
             display_name=display,
+            category=partner.category,
+            linkedin_url=partner.linkedin_url,
         )
 
     @staticmethod
