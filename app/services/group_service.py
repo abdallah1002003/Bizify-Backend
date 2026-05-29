@@ -15,6 +15,7 @@ from app.models.group import Group
 from app.models.group_invite import GroupInvite, GroupInviteStatus
 from app.models.group_join_request import GroupJoinRequest, GroupJoinRequestStatus
 from app.models.group_member import GroupMember, GroupMemberStatus, GroupRole
+from app.core.config import settings
 from app.repositories.business_repo import business_repo
 from app.repositories.group_repo import group_repo
 from app.repositories.idea_repo import idea_repo
@@ -211,7 +212,7 @@ class GroupService:
                 email,
                 group_name,
                 inviter_email,
-                f"https://bizify.app/join-group?token={token}",
+                f"{settings.FRONTEND_URL}/invite/accept?token={token}",
             )
         except Exception:
             logger.exception("Failed to send invite email to %s, invite still created", email)
