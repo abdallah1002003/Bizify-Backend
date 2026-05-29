@@ -3,7 +3,7 @@ from typing import Any, Optional
 from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -528,6 +528,87 @@ async def chat_go_to_market(payload: dict[str, Any], current_user: User = Depend
 async def chat_stream_go_to_market(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
     payload["user_id"] = str(current_user.id)
     return await _forward_stream_to_ai(f"go-to-market/{current_user.id}/chat/stream", payload=payload)
+
+# ==========================================
+# Domain: PDF VALIDATION
+# ==========================================
+
+async def _forward_file_to_ai(path: str, user_id: str, file_bytes: bytes, filename: str, extra_fields: dict) -> dict:
+    """Forward a multipart file upload to the AI service."""
+    if not settings.AI_PIPELINE_API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI_PIPELINE_API_KEY not configured on server.",
+        )
+    target_url = f"{_AI_BASE_URL}/pipeline/{path}/{user_id}"
+    headers = {"x-api-key": settings.AI_PIPELINE_API_KEY}
+    try:
+        async with httpx.AsyncClient(timeout=180) as client:
+            response = await client.post(
+                target_url,
+                headers=headers,
+                files={"file": (filename, file_bytes, "application/pdf")},
+                data=extra_fields,
+            )
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+    except httpx.RequestError as exc:
+        logger.error("AI pipeline file request failed: %s", exc)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI Service unavailable.")
+
+
+@router.post(
+    "/validate/{section}",
+    summary="Validate a user-uploaded PDF against a pipeline section",
+    tags=["AI - Validation"],
+)
+async def validate_section_pdf(
+    section: str,
+    file: UploadFile = File(...),
+    validation_mode: str = Form("generic"),
+    idea_id: Optional[str] = Form(None),
+    current_user: User = Depends(get_current_user),
+):
+    pdf_bytes = await file.read()
+    extra: dict = {"validation_mode": validation_mode}
+    if idea_id:
+        extra["idea_id"] = idea_id
+    return await _forward_file_to_ai(
+        path=f"validate/{section}",
+        user_id=str(current_user.id),
+        file_bytes=pdf_bytes,
+        filename=file.filename or "upload.pdf",
+        extra_fields=extra,
+    )
+
+
+@router.get(
+    "/validate/{section}",
+    summary="List past validations for a section",
+    tags=["AI - Validation"],
+)
+async def list_section_validations(
+    section: str,
+    idea_id: Optional[str] = Query(None),
+    current_user: User = Depends(get_current_user),
+):
+    params = {"idea_id": idea_id} if idea_id else None
+    return await _forward_get_to_ai(f"validate/{section}", str(current_user.id), params=params)
+
+
+@router.get(
+    "/validate/result/{validation_id}",
+    summary="Get a single past validation result",
+    tags=["AI - Validation"],
+)
+async def get_validation_result(
+    validation_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    return await _forward_get_to_ai(f"validate/result/{validation_id}", "")
+
 
 @_system_router.get("/health", summary="Health", tags=["AI - System"])
 async def get_health():
