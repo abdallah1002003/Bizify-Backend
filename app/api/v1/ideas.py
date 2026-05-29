@@ -18,7 +18,7 @@ def get_ideas(
     max_budget: Optional[float] = Query(None, description="Maximum allowed budget"),
     skills: Optional[str] = Query(None, description="Comma-separated skills (e.g., Python,React)"),
     feasibility: Optional[float] = Query(None, description="Minimum feasibility score required"),
-    sort_by: str = Query("created_at", description="Field to sort by (e.g., budget, feasibility, ai_score)"),
+    sort_by: str = Query("created_at", description="Field to sort by (e.g., budget, feasibility, problem_validation_score)"),
     sort_order: str = Query("desc", description="Sort order: asc or desc"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

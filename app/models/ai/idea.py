@@ -53,7 +53,7 @@ class Idea(Base):
         default = IdeaStatus.DRAFT
     )
     
-    ai_score = Column(Float)
+    problem_validation_score = Column(Float)
     budget = Column(Float)
     skills = Column(JSON)
     feasibility = Column(Float)

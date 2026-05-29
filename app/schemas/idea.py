@@ -26,6 +26,7 @@ class IdeaBase(BaseModel):
     description:         Optional[str]            = None
     status:              IdeaStatus                = IdeaStatus.DRAFT
     is_archived:         Optional[bool]            = False
+    problem_validation_score: Optional[float]      = None
     budget:              Optional[float]           = None
     skills:              Optional[Any]             = None
     feasibility:         Optional[float]           = None
@@ -57,11 +58,12 @@ class IdeaUpdate(BaseModel):
     Pydantic model for updating an existing Business Idea.
     """
 
-    title:               Optional[str]             = None
-    description:         Optional[str]             = None
-    status:              Optional[IdeaStatus]       = None
-    is_archived:         Optional[bool]             = None
-    budget:              Optional[float]            = None
+    title:                    Optional[str]          = None
+    description:              Optional[str]          = None
+    status:                   Optional[IdeaStatus]   = None
+    is_archived:              Optional[bool]         = None
+    problem_validation_score: Optional[float]        = None
+    budget:                   Optional[float]        = None
     skills:              Optional[list[str]]        = None
     feasibility:         Optional[float]            = None
     business_id:         Optional[uuid.UUID]        = None

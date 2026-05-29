@@ -161,7 +161,7 @@ def seed():
                     id=uuid.uuid4(), owner_id=e.id,
                     title=title, description=desc,
                     status=status,
-                    ai_score=round(70 + 20 * (hash(title) % 10) / 10, 1),
+                    problem_validation_score=round(70 + 20 * (hash(title) % 10) / 10, 1),
                     budget=5000 + (hash(e.email) % 45000),
                     skills=["Python", "Design", "Marketing"],
                 )
