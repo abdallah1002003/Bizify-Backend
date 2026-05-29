@@ -10,9 +10,11 @@ from app.models.user import User
 from app.repositories.business_repo import business_repo
 from app.repositories.partner_repo import partner_repo
 from app.repositories.partner_request_repo import partner_request_repo
+from app.models.partner_category import PartnerCategory
 from app.schemas.marketplace import (
     MarketplacePartnerPublic,
     MarketplacePartnerRequestRead,
+    PartnerCategoryRead,
 )
 
 
@@ -23,6 +25,7 @@ class MarketplaceService:
     def _to_public(partner: PartnerProfile) -> MarketplacePartnerPublic:
         user = partner.user
         display = (user.full_name if user else None) or partner.company_name
+        cat = partner.category_ref
         return MarketplacePartnerPublic(
             id=partner.id,
             partner_type=partner.partner_type,
@@ -32,15 +35,24 @@ class MarketplaceService:
             services_json=partner.services_json,
             experience_json=partner.experience_json,
             display_name=display,
-            category=partner.category,
+            category_id=cat.id if cat else None,
+            category_name=cat.name if cat else None,
             linkedin_url=partner.linkedin_url,
         )
+
+    @staticmethod
+    def list_categories(
+        db: Session, *, partner_type: Optional[PartnerType] = None
+    ) -> list[PartnerCategoryRead]:
+        rows = partner_repo.list_categories(db, partner_type=partner_type)
+        return [PartnerCategoryRead.model_validate(r) for r in rows]
 
     @staticmethod
     def list_partners(
         db: Session,
         *,
         partner_type: Optional[PartnerType] = None,
+        category_id: Optional[uuid.UUID] = None,
         q: Optional[str] = None,
         skip: int = 0,
         limit: int = 50,
@@ -48,6 +60,7 @@ class MarketplaceService:
         rows = partner_repo.list_marketplace_approved(
             db,
             partner_type=partner_type,
+            category_id=category_id,
             q=q,
             skip=skip,
             limit=limit,

@@ -42,6 +42,7 @@ from app.models.group_member import GroupMember, GroupMemberStatus, GroupRole
 from app.models.group_message import GroupMessage
 from app.models.notification import DeliveryStatus, Notification, NotificationStatus
 from app.models.notification_setting import NotificationSetting
+from app.models.partner_category import PartnerCategory
 from app.models.partner_profile import ApprovalStatus, PartnerProfile, PartnerType
 from app.models.partner_request import PartnerRequest, RequestStatus
 from app.models.payment import Payment
@@ -63,6 +64,7 @@ __all__ = [
     "UserRole",
     "UserProfile",
     "AdminActionLog",
+    "PartnerCategory",
     "PartnerProfile",
     "PartnerType",
     "ApprovalStatus",

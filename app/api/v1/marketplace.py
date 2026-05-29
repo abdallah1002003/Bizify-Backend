@@ -11,10 +11,25 @@ from app.schemas.marketplace import (
     MarketplacePartnerPublic,
     MarketplacePartnerRequestCreate,
     MarketplacePartnerRequestRead,
+    PartnerCategoryRead,
 )
 from app.services.marketplace_service import MarketplaceService
 
 router = APIRouter()
+
+
+@router.get(
+    "/categories",
+    response_model=list[PartnerCategoryRead],
+    summary="List partner categories",
+)
+def list_categories(
+    partner_type_filter: Optional[str] = Query(None, alias="type"),
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(get_current_user),
+) -> list[PartnerCategoryRead]:
+    partner_type = _parse_partner_type(partner_type_filter) if partner_type_filter else None
+    return MarketplaceService.list_categories(db, partner_type=partner_type)
 
 
 def _parse_partner_type(type_param: Optional[str]) -> Optional[PartnerType]:
@@ -44,6 +59,7 @@ def list_marketplace_partners(
         alias="type",
         description="Filter by partner type: MENTOR, SUPPLIER, or MANUFACTURER",
     ),
+    category_id: Optional[UUID] = Query(None, description="Filter by category UUID"),
     q: Optional[str] = Query(
         None,
         description="Search in company name and description (case-insensitive)",
@@ -55,7 +71,7 @@ def list_marketplace_partners(
 ) -> list[MarketplacePartnerPublic]:
     partner_type = _parse_partner_type(partner_type_filter)
     return MarketplaceService.list_partners(
-        db, partner_type=partner_type, q=q, skip=skip, limit=limit
+        db, partner_type=partner_type, category_id=category_id, q=q, skip=skip, limit=limit
     )
 
 
