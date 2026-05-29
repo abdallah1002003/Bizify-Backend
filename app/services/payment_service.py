@@ -43,6 +43,11 @@ async def create_paypal_order(plan_id: uuid.UUID, db: Session) -> dict[str, Any]
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"PayPal error: {exc.response.text}",
         ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="PayPal payment is currently unavailable. Please check your PayPal configuration or try again later.",
+        ) from exc
 
     approval_url = next(
         (link["href"] for link in order.get("links", []) if link["rel"] == "approve"),
@@ -76,6 +81,11 @@ async def capture_payment(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"PayPal capture error: {exc.response.text}",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="PayPal payment capture is currently unavailable. Please contact support.",
         ) from exc
 
     capture_status = capture_result.get("status")
@@ -207,7 +217,12 @@ async def create_paymob_payment(
     except httpx.HTTPStatusError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Paymob error: {exc.response.text}",
+            detail="Card payment is currently unavailable. Please use PayPal or contact support.",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Card payment is currently unavailable. Please use PayPal or contact support.",
         ) from exc
 
     # Create an active subscription (or upgrade the existing one) immediately.

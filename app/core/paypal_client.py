@@ -21,6 +21,8 @@ async def get_access_token() -> str:
     """
     Fetches a short-lived Bearer token from PayPal using client credentials.
     """
+    if not settings.PAYPAL_CLIENT_ID or not settings.PAYPAL_CLIENT_SECRET:
+        raise ValueError("PayPal credentials (PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET) are not configured.")
     url = f"{_base_url()}/v1/oauth2/token"
 
     async with httpx.AsyncClient() as client:
