@@ -215,6 +215,27 @@ class IdeaService:
         return idea_repo.create(db, obj_in=obj)
 
     @staticmethod
+    def convert_idea(db: Session, idea_id: uuid.UUID, user_id: uuid.UUID) -> Idea:
+        """Mark a validated idea as converted — user has committed to building it."""
+        idea = idea_repo.get(db, id=idea_id)
+        if not idea:
+            raise HTTPException(status_code=404, detail="Idea not found")
+        if idea.owner_id != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized to convert this idea")
+        if idea.status == IdeaStatus.DRAFT:
+            raise HTTPException(
+                status_code=400,
+                detail="Only validated ideas can be converted. Complete the business pipeline first.",
+            )
+        if idea.status == IdeaStatus.CONVERTED:
+            return idea
+        return idea_repo.update(
+            db,
+            db_obj=idea,
+            obj_in={"status": IdeaStatus.CONVERTED, "converted_at": datetime.utcnow()},
+        )
+
+    @staticmethod
     def archive_idea(db: Session, idea_id: uuid.UUID, user_id: uuid.UUID) -> Idea:
         """Archive an idea owned by the user."""
         idea = idea_repo.get(db, id=idea_id)

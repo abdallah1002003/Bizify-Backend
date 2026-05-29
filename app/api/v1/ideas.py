@@ -112,6 +112,16 @@ def update_idea(
     return IdeaService.update_idea(db=db, idea_id=idea_id, user_id=current_user.id, updates=updates)
 
 
+@router.post("/{idea_id}/convert", response_model=IdeaRead)
+def convert_idea(
+    idea_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> IdeaRead:
+    """Mark a validated idea as converted — the user has decided to build it."""
+    return IdeaService.convert_idea(db=db, idea_id=idea_id, user_id=current_user.id)
+
+
 @router.delete("/{idea_id}", status_code=204)
 def delete_idea(
     idea_id: UUID,
