@@ -41,7 +41,6 @@ def search_user_by_email(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
-
     return user
 
 
@@ -107,6 +106,19 @@ def get_all_users(
     return user_repo.get_multi(db, skip=skip, limit=limit)
 
 
+@router.get("/users/{user_id}", response_model=UserRead)
+def get_user(
+    user_id: UUID,
+    db: Session = Depends(get_db),
+    _current_admin: User = Depends(RoleChecker([UserRole.ADMIN])),
+) -> UserRead:
+    """Return a single user by ID."""
+    user = user_repo.get(db, id=user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
 @router.get("/stats", response_model=dict[str, Any])
 def get_dashboard_stats(
     db: Session = Depends(get_db),
@@ -124,3 +136,15 @@ def suspend_user(
 ) -> UserRead:
     """Suspend a user and invalidate active sessions."""
     return AdminService.suspend_user(db=db, admin_id=current_admin.id, user_id=user_id)
+
+
+@router.patch("/users/{user_id}/unsuspend", response_model=UserRead)
+def unsuspend_user(
+    user_id: UUID,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(RoleChecker([UserRole.ADMIN])),
+) -> UserRead:
+    """Reinstate a suspended user."""
+    return AdminService.unsuspend_user(
+        db=db, admin_id=current_admin.id, user_id=user_id
+    )
