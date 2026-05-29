@@ -57,8 +57,9 @@ class Idea(Base):
     budget = Column(Float)
     skills = Column(JSON)
     feasibility = Column(Float)
-    is_score_outdated   = Column(Boolean, default = False)
-    is_archived         = Column(Boolean, default = False)
+    is_score_outdated    = Column(Boolean, default = False)
+    is_archived          = Column(Boolean, default = False)
+    pipeline_complete    = Column(Boolean, default = False)
 
     archived_at         = Column(DateTime)
     created_at          = Column(DateTime, default = datetime.utcnow)

@@ -27,6 +27,7 @@ class IdeaBase(BaseModel):
     status:              IdeaStatus                = IdeaStatus.DRAFT
     is_archived:         Optional[bool]            = False
     problem_validation_score: Optional[float]      = None
+    pipeline_complete:   Optional[bool]            = None
     budget:              Optional[float]           = None
     skills:              Optional[Any]             = None
     feasibility:         Optional[float]           = None
