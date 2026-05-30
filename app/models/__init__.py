@@ -45,6 +45,7 @@ from app.models.notification_setting import NotificationSetting
 from app.models.partner_category import PartnerCategory
 from app.models.partner_profile import ApprovalStatus, PartnerProfile, PartnerType
 from app.models.partner_request import PartnerRequest, RequestStatus
+from app.models.profile_view import ProfileView
 from app.models.payment import Payment
 from app.models.payment_method import PaymentMethod
 from app.models.plan import Plan
@@ -70,6 +71,7 @@ __all__ = [
     "ApprovalStatus",
     "PartnerRequest",
     "RequestStatus",
+    "ProfileView",
     "Idea",
     "IdeaStatus",
     "IdeaVersion",

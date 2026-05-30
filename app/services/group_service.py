@@ -71,6 +71,13 @@ class GroupService:
             commit=False,
             refresh=False,
         )
+        owner_member = GroupMember(
+            group_id=group.id,
+            user_id=creator_id,
+            role=GroupRole.OWNER,
+            status=GroupMemberStatus.ACTIVE,
+        )
+        db.add(owner_member)
         db.commit()
         db.refresh(group)
         GroupService.invalidate_group_cache(business.id)
@@ -381,7 +388,26 @@ class GroupService:
         if not is_owner and not is_member:
             raise HTTPException(status_code=403, detail="Access denied")
 
-        return group_repo.get_active_members(db, group_id)
+        members = group_repo.get_active_members(db, group_id)
+
+        # Ensure the business owner always appears as an OWNER member.
+        # For groups created before auto-member creation was added, the owner
+        # may not have a GroupMember record yet — create it on-the-fly.
+        owner_id = group.business.owner_id
+        owner_is_member = any(m.user_id == owner_id for m in members)
+        if not owner_is_member:
+            owner_member = GroupMember(
+                group_id=group_id,
+                user_id=owner_id,
+                role=GroupRole.OWNER,
+                status=GroupMemberStatus.ACTIVE,
+            )
+            db.add(owner_member)
+            db.commit()
+            db.refresh(owner_member)
+            members = [owner_member] + members
+
+        return members
 
     @staticmethod
     def update_group_member(

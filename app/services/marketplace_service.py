@@ -1,11 +1,14 @@
 import uuid
+from datetime import datetime
 from typing import Optional
 
 from fastapi import HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.partner_profile import PartnerProfile, PartnerType
 from app.models.partner_request import PartnerRequest
+from app.models.profile_view import ProfileView
 from app.models.user import User
 from app.repositories.business_repo import business_repo
 from app.repositories.partner_repo import partner_repo
@@ -129,6 +132,74 @@ class MarketplaceService:
                 "requested_by": current_user.id,
             },
         )
+
+    @staticmethod
+    def record_profile_view(
+        db: Session,
+        *,
+        partner_id: uuid.UUID,
+        viewer: User,
+    ) -> None:
+        profile = partner_repo.get_marketplace_by_id(db, partner_id)
+        if not profile:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Partner not found",
+            )
+        view = ProfileView(
+            partner_id=partner_id,
+            viewer_id=viewer.id,
+            viewer_name=viewer.full_name,
+            viewer_email=viewer.email,
+            viewer_role=viewer.role.value if hasattr(viewer.role, "value") else str(viewer.role),
+            viewed_at=datetime.utcnow(),
+        )
+        db.add(view)
+        db.commit()
+
+    @staticmethod
+    def get_profile_view_stats(
+        db: Session,
+        *,
+        partner_profile_id: uuid.UUID,
+        limit: int = 20,
+    ) -> dict:
+        total = (
+            db.query(func.count(ProfileView.id))
+            .filter(ProfileView.partner_id == partner_profile_id)
+            .scalar()
+        ) or 0
+
+        recent = (
+            db.query(ProfileView)
+            .filter(ProfileView.partner_id == partner_profile_id)
+            .order_by(ProfileView.viewed_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+        unique_viewers = (
+            db.query(func.count(func.distinct(ProfileView.viewer_id)))
+            .filter(
+                ProfileView.partner_id == partner_profile_id,
+                ProfileView.viewer_id.isnot(None),
+            )
+            .scalar()
+        ) or 0
+
+        return {
+            "total_views": total,
+            "unique_viewers": unique_viewers,
+            "recent_views": [
+                {
+                    "viewer_name": v.viewer_name,
+                    "viewer_email": v.viewer_email,
+                    "viewer_role": v.viewer_role,
+                    "viewed_at": v.viewed_at.isoformat() if v.viewed_at else None,
+                }
+                for v in recent
+            ],
+        }
 
     @staticmethod
     def list_my_requests(
