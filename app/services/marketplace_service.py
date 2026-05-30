@@ -38,6 +38,11 @@ class MarketplaceService:
             category_id=cat.id if cat else None,
             category_name=cat.name if cat else None,
             linkedin_url=partner.linkedin_url,
+            headline=partner.headline,
+            about_summary=partner.about_summary,
+            skills_json=partner.skills_json,
+            country=partner.country,
+            documents_json=partner.documents_json,
         )
 
     @staticmethod

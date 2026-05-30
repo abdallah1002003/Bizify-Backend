@@ -53,6 +53,10 @@ class PartnerProfile(Base):
     
     category_id = Column(UUID(as_uuid=True), ForeignKey("partner_categories.id"), nullable=True)
     linkedin_url = Column(String, nullable=True)
+    headline = Column(String, nullable=True)
+    about_summary = Column(Text, nullable=True)
+    skills_json = Column(JSON, nullable=True)
+    country = Column(String, nullable=True)
 
     approval_status = Column(
         Enum(ApprovalStatus, values_callable = lambda x: [e.value for e in x]), 

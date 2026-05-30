@@ -16,34 +16,34 @@ PLANS = [
         "name":          "Free",
         "price":         0.00,
         "features_json": {
-            "ai_runs":      3,
-            "ideas":        5,
-            "businesses":   1,
-            "export":       False,
+            "ai_tokens":        20_000,   # ~6 section analyses or 20 chats
+            "ideas":            5,
+            "businesses":       1,
+            "export":           False,
             "priority_support": False,
         },
         "is_active": True,
     },
     {
         "name":          "Pro",
-        "price":         9.99,        
+        "price":         9.99,
         "features_json": {
-            "ai_runs":      50,
-            "ideas":        50,
-            "businesses":   5,
-            "export":       True,
+            "ai_tokens":        500_000,  # ~166 section analyses or 500 chats
+            "ideas":            50,
+            "businesses":       5,
+            "export":           True,
             "priority_support": False,
         },
         "is_active": True,
     },
     {
         "name":          "Enterprise",
-        "price":         29.99,       
+        "price":         29.99,
         "features_json": {
-            "ai_runs":      -1,       # -1 = unlimited
-            "ideas":        -1,
-            "businesses":   -1,
-            "export":       True,
+            "ai_tokens":        -1,       # -1 = unlimited
+            "ideas":            -1,
+            "businesses":       -1,
+            "export":           True,
             "priority_support": True,
         },
         "is_active": True,

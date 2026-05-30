@@ -30,6 +30,11 @@ class MarketplacePartnerPublic(BaseModel):
     category_id: Optional[uuid.UUID] = None
     category_name: Optional[str] = None
     linkedin_url: Optional[str] = None
+    headline: Optional[str] = None
+    about_summary: Optional[str] = None
+    skills_json: Optional[Any] = None
+    country: Optional[str] = None
+    documents_json: Optional[Any] = None
 
     model_config = ConfigDict(from_attributes=True)
 

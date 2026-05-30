@@ -11,7 +11,7 @@ class PartnerProfileBase(BaseModel):
     """
     Base Pydantic model for Partner Profile data.
     """
-    
+
     partner_type: PartnerType
 
     @field_validator("partner_type", mode="before")
@@ -25,6 +25,10 @@ class PartnerProfileBase(BaseModel):
     description: Optional[str] = None
     services_json: Optional[Any] = None
     experience_json: Optional[Any] = None
+    headline: Optional[str] = None
+    about_summary: Optional[str] = None
+    skills_json: Optional[Any] = None
+    country: Optional[str] = None
 
 
 class PartnerProfileCreate(PartnerProfileBase):
@@ -52,6 +56,10 @@ class PartnerProfileUpdate(BaseModel):
     description: Optional[str] = None
     services_json: Optional[Any] = None
     experience_json: Optional[Any] = None
+    headline: Optional[str] = None
+    about_summary: Optional[str] = None
+    skills_json: Optional[Any] = None
+    country: Optional[str] = None
     approval_status: Optional[ApprovalStatus] = None
 
     @field_validator("partner_type", "approval_status", mode="before")
