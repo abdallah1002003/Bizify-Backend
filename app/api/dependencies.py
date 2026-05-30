@@ -180,20 +180,29 @@ def check_ai_usage(
     if request.method == "GET":
         return current_user
 
+    # PPF plan — skip subscription token check, only use credit balance
+    if features.get("is_ppf"):
+        ppf_balance = usage_repo.get_ppf_balance(db, current_user.id)
+        if ppf_balance > 0:
+            usage_repo.consume_ppf_section(db, current_user.id)
+            usage_repo.add_tokens(db, current_user.id, PPF_TOKENS_PER_SECTION)
+            return current_user
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="No Pay-Per-Feature credits remaining. Buy more sections to continue.",
+        )
+
     plan_limit: int | None = features.get("ai_tokens")
     _, record = usage_repo.check_limit(db, current_user.id)
     active_limit = plan_limit if plan_limit is not None else (record.limit_value or 20_000)
     used = record.used or 0
 
     if active_limit == -1 or used < active_limit:
-        # Within subscription quota — allow
         return current_user
 
-    # Subscription quota exhausted — check PPF credits before blocking
+    # Subscription quota exhausted — fall back to PPF credits if any
     ppf_balance = usage_repo.get_ppf_balance(db, current_user.id)
     if ppf_balance > 0:
-        # Consume one PPF credit and add its token allowance so the AI service
-        # can proceed with this single section call.
         usage_repo.consume_ppf_section(db, current_user.id)
         usage_repo.add_tokens(db, current_user.id, PPF_TOKENS_PER_SECTION)
         return current_user

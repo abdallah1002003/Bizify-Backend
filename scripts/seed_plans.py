@@ -16,55 +16,52 @@ PLANS = [
         "name":          "Free",
         "price":         0.00,
         "features_json": {
-            "ai_tokens":        15_000,   # 1 full analysis (~12K) + a few chats
-            "ideas":            1,
-            "businesses":       1,
-            "export":           False,
-            "priority_support": False,
+            "ai_tokens":        15_000,   # ~1 full analysis
             "ai_analysis":      True,
-            "search_tier":      "serper",  # cheap fallback only
+            "export":           True,
+            "priority_support": True,
+            "ideas":            -1,
+            "businesses":       -1,
         },
         "is_active": True,
     },
     {
-        "name":          "Starter",
-        "price":         150.00,          # EGP
+        "name":          "Pay-Per-Feature",
+        "price":         135.00,          # EGP per section credit
         "features_json": {
-            "ai_tokens":        50_000,   # ~3 full analyses + chats
-            "ideas":            5,
-            "businesses":       2,
-            "export":           False,
-            "priority_support": False,
+            "ai_tokens":        0,        # tokens come from PPF credits, not a budget
             "ai_analysis":      True,
-            "search_tier":      "serper",
+            "export":           True,
+            "priority_support": True,
+            "ideas":            -1,
+            "businesses":       -1,
+            "is_ppf":           True,     # flag so the gate uses PPF credit balance
         },
         "is_active": True,
     },
     {
         "name":          "Pro",
-        "price":         350.00,          # EGP
+        "price":         350.00,          # EGP / month
         "features_json": {
-            "ai_tokens":        150_000,  # ~10 full analyses + chats + regens
-            "ideas":            20,
-            "businesses":       5,
-            "export":           True,
-            "priority_support": False,
+            "ai_tokens":        150_000,  # ~10 full analyses / mo
             "ai_analysis":      True,
-            "search_tier":      "tavily",
+            "export":           True,
+            "priority_support": True,
+            "ideas":            -1,
+            "businesses":       -1,
         },
         "is_active": True,
     },
     {
         "name":          "Premium",
-        "price":         600.00,          # EGP
+        "price":         600.00,          # EGP / month
         "features_json": {
-            "ai_tokens":        -1,       # -1 = unlimited
-            "ideas":            -1,
-            "businesses":       -1,
+            "ai_tokens":        -1,       # unlimited
+            "ai_analysis":      True,
             "export":           True,
             "priority_support": True,
-            "ai_analysis":      True,
-            "search_tier":      "tavily",
+            "ideas":            -1,
+            "businesses":       -1,
         },
         "is_active": True,
     },

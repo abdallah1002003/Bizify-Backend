@@ -36,4 +36,14 @@ def get_my_usage(
 
     info = usage_repo.get_usage_info(db, current_user.id, plan_limit)
     info["plan_name"] = plan_name
+    info["is_ppf"] = bool(features.get("is_ppf"))
+
+    # PPF credit balance
+    record = usage_repo.get_or_create(db, current_user.id)
+    ppf_purchased = record.ppf_purchased or 0
+    ppf_used      = record.ppf_used or 0
+    info["ppf_purchased"] = ppf_purchased
+    info["ppf_used"]      = ppf_used
+    info["ppf_remaining"] = max(ppf_purchased - ppf_used, 0)
+
     return info
