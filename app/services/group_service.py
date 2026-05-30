@@ -279,7 +279,9 @@ class GroupService:
     ) -> dict[str, Any]:
         """Accept a pending group invite."""
         invite = group_repo.get_pending_invite_by_token(db, token)
-        if not invite or invite.expires_at < datetime.now(timezone.utc):
+        # expires_at is stored as timezone-naive in the DB; compare against naive UTC
+        naive_now = datetime.now(timezone.utc).replace(tzinfo=None)
+        if not invite or invite.expires_at < naive_now:
             if invite:
                 invite.status = GroupInviteStatus.EXPIRED
                 group_repo.save_invite(db, invite)

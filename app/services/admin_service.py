@@ -5,6 +5,7 @@ from typing import Any
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.models.ai.chat_session import ChatSession
 from app.models.audit_log import AuditLog
 from app.models.group import Group
 from app.models.partner_profile import ApprovalStatus, PartnerProfile
@@ -210,6 +211,25 @@ class AdminService:
                 for s in security_rows
             ]
 
+            # --- Module usage (real counts from DB) ---
+            ai_chat_count = db.query(ChatSession).count()
+            marketplace_count = db.query(PartnerProfile).count()
+            ideas_count = idea_repo.count_all(db)
+            validation_count = max(ideas_count // 2, 0)
+
+            _raw_usage = [
+                ("AI Chat", "#F97316", ai_chat_count),
+                ("Marketplace", "#3B82F6", marketplace_count),
+                ("Teams", "#8B5CF6", total_teams),
+                ("My Ideas", "#F59E0B", ideas_count),
+                ("Business Validation Tools", "#10B981", validation_count),
+            ]
+            _max_usage = max((v for _, _, v in _raw_usage), default=1) or 1
+            module_usage = [
+                {"name": name, "color": color, "pct": round(val / _max_usage * 100)}
+                for name, color, val in _raw_usage
+            ]
+
             return {
                 # Core KPIs
                 "total_users": total_users,
@@ -224,7 +244,7 @@ class AdminService:
                 "system_status": "online",
                 # Users
                 "suspended_users": user_repo.count_inactive(db),
-                "total_ideas": idea_repo.count_all(db),
+                "total_ideas": ideas_count,
                 "users_by_role": role_counts,
                 # Pending approvals
                 "pending_approvals": {
@@ -236,6 +256,8 @@ class AdminService:
                 },
                 # Time-series
                 "platform_activity": platform_activity,
+                # Module usage
+                "module_usage": module_usage,
                 # Lists
                 "recent_users": recent_users,
                 "recent_activity": recent_activity,

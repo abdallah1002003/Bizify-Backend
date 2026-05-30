@@ -1,3 +1,4 @@
+import os
 from typing import Any, Optional
 from uuid import UUID
 
@@ -148,3 +149,20 @@ def unsuspend_user(
     return AdminService.unsuspend_user(
         db=db, admin_id=current_admin.id, user_id=user_id
     )
+
+
+@router.get("/platform-config", response_model=dict[str, Any])
+def get_platform_config(
+    _current_admin: User = Depends(RoleChecker([UserRole.ADMIN])),
+) -> dict[str, Any]:
+    """Return read-only platform configuration derived from environment."""
+    return {
+        "session_timeout_minutes": int(os.getenv("SESSION_TIMEOUT_MINUTES", "240")),
+        "jwt_expire_minutes": int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "10080")),
+        "environment": os.getenv("ENVIRONMENT", os.getenv("ENV", "production")),
+        "debug_mode": os.getenv("DEBUG", "false").lower() == "true",
+        "allow_registration": os.getenv("ALLOW_REGISTRATION", "true").lower() == "true",
+        "require_email_verification": os.getenv("REQUIRE_EMAIL_VERIFICATION", "true").lower() == "true",
+        "max_login_attempts": int(os.getenv("MAX_LOGIN_ATTEMPTS", "5")),
+        "backend_version": os.getenv("APP_VERSION", "1.0.0"),
+    }
