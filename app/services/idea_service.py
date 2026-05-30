@@ -121,6 +121,7 @@ class IdeaService:
                 if match_count == 0:
                     continue
 
+            idea = IdeaService._maybe_promote_to_validated(db, idea)
             filtered_items.append((idea, match_count))
 
         def sort_key(item: tuple[Idea, int]) -> tuple[int, object]:
@@ -146,6 +147,16 @@ class IdeaService:
         ]
 
     @staticmethod
+    def _maybe_promote_to_validated(db: Session, idea: Idea) -> Idea:
+        """Promote a DRAFT idea to VALIDATED if scores meet the threshold."""
+        if idea.status == IdeaStatus.DRAFT:
+            score = idea.problem_validation_score or 0
+            feasibility = idea.feasibility or 0
+            if score >= 60 and feasibility >= 5:
+                idea = idea_repo.update(db, db_obj=idea, obj_in={"status": IdeaStatus.VALIDATED})
+        return idea
+
+    @staticmethod
     def get_idea(db: Session, idea_id: uuid.UUID, user_id: uuid.UUID) -> Idea:
         """Return a single idea the user can access."""
         idea = idea_repo.get(db, id=idea_id)
@@ -154,7 +165,7 @@ class IdeaService:
         accessible_ids = {i.id for i in IdeaService._get_accessible_ideas(db, user_id)}
         if idea_id not in accessible_ids:
             raise HTTPException(status_code=403, detail="Not authorized to access this idea")
-        return idea
+        return IdeaService._maybe_promote_to_validated(db, idea)
 
     @staticmethod
     def update_idea(
@@ -169,7 +180,8 @@ class IdeaService:
             raise HTTPException(status_code=404, detail="Idea not found")
         if idea.owner_id != user_id:
             raise HTTPException(status_code=403, detail="Not authorized to modify this idea")
-        return idea_repo.update(db, db_obj=idea, obj_in=updates)
+        updated = idea_repo.update(db, db_obj=idea, obj_in=updates)
+        return IdeaService._maybe_promote_to_validated(db, updated)
 
     @staticmethod
     def delete_idea(db: Session, idea_id: uuid.UUID, user_id: uuid.UUID) -> None:
