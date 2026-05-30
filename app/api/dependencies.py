@@ -13,13 +13,7 @@ from app.models.user import User, UserRole
 from app.repositories.admin_repo import security_repo
 from app.repositories.auth_repo import auth_repo
 from app.repositories.billing_repo import subscription_repo
-from app.repositories.usage_repo import (
-    usage_repo,
-    TOKEN_COST_PIPELINE_RUN,
-    TOKEN_COST_SECTION,
-    TOKEN_COST_CHAT,
-    TOKEN_COST_DEFAULT,
-)
+from app.repositories.usage_repo import usage_repo, PPF_TOKENS_PER_SECTION
 from app.repositories.user_repo import user_repo
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
@@ -154,35 +148,22 @@ class RoleChecker:
 get_current_admin_user = RoleChecker([UserRole.ADMIN])
 
 
-def _estimate_token_cost(path: str) -> int:
-    """Estimate the token cost for an AI call based on the request URL path."""
-    if "/run" in path:
-        return TOKEN_COST_PIPELINE_RUN
-    if "/chat" in path:
-        return TOKEN_COST_CHAT
-    if "/explain" in path or "/general-chat" in path:
-        return TOKEN_COST_CHAT
-    # section generation: customers, competition, market-potential, etc.
-    _SECTION_KEYWORDS = (
-        "customers", "competition", "market-potential", "idea-strategy",
-        "business-model", "functions-list", "mvp-planning", "unit-economics",
-        "go-to-market", "idea-intake", "validate", "rerun", "suggest-name",
-    )
-    for kw in _SECTION_KEYWORDS:
-        if kw in path:
-            return TOKEN_COST_SECTION
-    return TOKEN_COST_DEFAULT
-
-
 def check_ai_usage(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> User:
     """
-    Dependency that enforces AI token limits based on the user's active plan.
-    - GET requests (reading cached results) are free and never consume quota.
-    - POST/PUT/PATCH requests consume tokens estimated by operation type.
+    Gate-check AI token limits before forwarding to the AI service.
+
+    Token counting strategy:
+    - The bizifyAI service writes REAL token counts (from Groq usage.total_tokens)
+      directly to the usages table after every LLM call.
+    - This dependency only READS the current usage to enforce the plan limit.
+    - GET requests (reading cached results) are always free.
+    - POST/PUT/PATCH requests are checked against the limit before proceeding.
+      If the user is already over their limit, the request is rejected here
+      before any AI compute is consumed.
     """
     sub = subscription_repo.get_active_by_user(db, current_user.id)
     features: dict = {}
@@ -200,22 +181,27 @@ def check_ai_usage(
         return current_user
 
     plan_limit: int | None = features.get("ai_tokens")
-
-    within_limit, record = usage_repo.check_limit(db, current_user.id)
-
+    _, record = usage_repo.check_limit(db, current_user.id)
     active_limit = plan_limit if plan_limit is not None else (record.limit_value or 20_000)
-
     used = record.used or 0
 
-    if active_limit != -1 and used >= active_limit:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=(
-                f"AI token limit reached ({used:,}/{active_limit:,} tokens). "
-                "Please upgrade your plan or wait for your limit to reset."
-            ),
-        )
+    if active_limit == -1 or used < active_limit:
+        # Within subscription quota — allow
+        return current_user
 
-    tokens = _estimate_token_cost(request.url.path)
-    usage_repo.add_tokens(db, current_user.id, tokens)
-    return current_user
+    # Subscription quota exhausted — check PPF credits before blocking
+    ppf_balance = usage_repo.get_ppf_balance(db, current_user.id)
+    if ppf_balance > 0:
+        # Consume one PPF credit and add its token allowance so the AI service
+        # can proceed with this single section call.
+        usage_repo.consume_ppf_section(db, current_user.id)
+        usage_repo.add_tokens(db, current_user.id, PPF_TOKENS_PER_SECTION)
+        return current_user
+
+    raise HTTPException(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        detail=(
+            f"AI token limit reached ({used:,}/{active_limit:,} tokens used). "
+            "Upgrade your plan or buy Pay-Per-Feature credits to continue."
+        ),
+    )

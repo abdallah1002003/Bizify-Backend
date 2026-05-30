@@ -16,35 +16,55 @@ PLANS = [
         "name":          "Free",
         "price":         0.00,
         "features_json": {
-            "ai_tokens":        20_000,   # ~6 section analyses or 20 chats
-            "ideas":            5,
+            "ai_tokens":        15_000,   # 1 full analysis (~12K) + a few chats
+            "ideas":            1,
             "businesses":       1,
             "export":           False,
             "priority_support": False,
+            "ai_analysis":      True,
+            "search_tier":      "serper",  # cheap fallback only
+        },
+        "is_active": True,
+    },
+    {
+        "name":          "Starter",
+        "price":         150.00,          # EGP
+        "features_json": {
+            "ai_tokens":        50_000,   # ~3 full analyses + chats
+            "ideas":            5,
+            "businesses":       2,
+            "export":           False,
+            "priority_support": False,
+            "ai_analysis":      True,
+            "search_tier":      "serper",
         },
         "is_active": True,
     },
     {
         "name":          "Pro",
-        "price":         9.99,
+        "price":         350.00,          # EGP
         "features_json": {
-            "ai_tokens":        500_000,  # ~166 section analyses or 500 chats
-            "ideas":            50,
+            "ai_tokens":        150_000,  # ~10 full analyses + chats + regens
+            "ideas":            20,
             "businesses":       5,
             "export":           True,
             "priority_support": False,
+            "ai_analysis":      True,
+            "search_tier":      "tavily",
         },
         "is_active": True,
     },
     {
-        "name":          "Enterprise",
-        "price":         29.99,
+        "name":          "Premium",
+        "price":         600.00,          # EGP
         "features_json": {
             "ai_tokens":        -1,       # -1 = unlimited
             "ideas":            -1,
             "businesses":       -1,
             "export":           True,
             "priority_support": True,
+            "ai_analysis":      True,
+            "search_tier":      "tavily",
         },
         "is_active": True,
     },

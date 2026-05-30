@@ -122,3 +122,42 @@ class PaymobCheckoutResponse(BaseModel):
     subscription_id: uuid.UUID
     paymob_order_id: str
     iframe_url:      str
+
+
+# ─────────────────────────────────────────────
+#  Pay-Per-Feature (PPF)
+# ─────────────────────────────────────────────
+
+class PPFPurchaseRequest(BaseModel):
+    """Request body to buy PPF sections (1–10 at a time)."""
+    quantity: int = 1   # number of sections to buy (1 section = 135 EGP)
+    first_name:   Optional[str] = None
+    last_name:    Optional[str] = None
+    email:        Optional[str] = None
+    phone_number: Optional[str] = None
+
+
+class PPFPaymobResponse(BaseModel):
+    ppf_credit_id:  uuid.UUID
+    quantity:        int
+    amount:          Decimal
+    paymob_order_id: str
+    iframe_url:      str
+
+
+class PPFPayPalResponse(BaseModel):
+    ppf_credit_id: uuid.UUID
+    quantity:       int
+    amount:         Decimal
+    order_id:       str
+    approval_url:   str
+
+
+class PPFCaptureRequest(BaseModel):
+    order_id: str
+
+
+class PPFBalanceResponse(BaseModel):
+    purchased: int
+    used:      int
+    remaining: int

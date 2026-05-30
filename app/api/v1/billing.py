@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, get_db
 from app.core import paypal_client
+from app.repositories.usage_repo import usage_repo
 from app.models.user import User
 from app.schemas.billing import (
     CaptureRequest,
@@ -15,6 +16,11 @@ from app.schemas.billing import (
     PaymobCheckoutRequest,
     PaymobCheckoutResponse,
     PlanRead,
+    PPFBalanceResponse,
+    PPFCaptureRequest,
+    PPFPaymobResponse,
+    PPFPayPalResponse,
+    PPFPurchaseRequest,
     SubscriptionRead,
 )
 from app.services import payment_service
@@ -155,6 +161,73 @@ async def create_paymob_subscription(
         billing_data=billing_data,
     )
     return result
+
+
+# ─────────────────────────────────────────────
+#  Pay-Per-Feature (PPF) endpoints
+# ─────────────────────────────────────────────
+
+@router.get("/ppf/balance", response_model=PPFBalanceResponse)
+def get_ppf_balance(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Return how many PPF section credits the user has purchased and consumed."""
+    record = usage_repo.get_or_create(db, current_user.id)
+    purchased = record.ppf_purchased or 0
+    used      = record.ppf_used or 0
+    return {"purchased": purchased, "used": used, "remaining": max(purchased - used, 0)}
+
+
+@router.post("/ppf/paymob", response_model=PPFPaymobResponse)
+async def buy_ppf_paymob(
+    body: PPFPurchaseRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Initiate a Paymob card payment to purchase PPF section credits."""
+    if body.quantity < 1 or body.quantity > 10:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="quantity must be between 1 and 10.")
+    billing_data = None
+    if any([body.first_name, body.last_name, body.email, body.phone_number]):
+        billing_data = {
+            "apartment": "NA", "email": body.email or "NA", "floor": "NA",
+            "first_name": body.first_name or "NA", "street": "NA", "building": "NA",
+            "phone_number": body.phone_number or "NA", "shipping_method": "NA",
+            "postal_code": "NA", "city": "NA", "country": "EG",
+            "last_name": body.last_name or "NA", "state": "NA",
+        }
+    return await payment_service.create_ppf_paymob_payment(
+        quantity=body.quantity, user_id=current_user.id, db=db, billing_data=billing_data
+    )
+
+
+@router.post("/ppf/paypal", response_model=PPFPayPalResponse)
+async def buy_ppf_paypal(
+    body: PPFPurchaseRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Create a PayPal order to purchase PPF section credits."""
+    if body.quantity < 1 or body.quantity > 10:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="quantity must be between 1 and 10.")
+    return await payment_service.create_ppf_paypal_payment(
+        quantity=body.quantity, user_id=current_user.id, db=db
+    )
+
+
+@router.post("/ppf/paypal/capture")
+async def capture_ppf_paypal(
+    body: PPFCaptureRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Capture an approved PayPal order and credit the PPF sections."""
+    return await payment_service.capture_ppf_paypal_payment(
+        order_id=body.order_id, user_id=current_user.id, db=db
+    )
 
 
 @router.post("/paymob/webhook", status_code=status.HTTP_200_OK)

@@ -49,6 +49,7 @@ from app.models.profile_view import ProfileView
 from app.models.payment import Payment
 from app.models.payment_method import PaymentMethod
 from app.models.plan import Plan
+from app.models.ppf_credit import PPFCredit
 from app.models.privacy_setting import PrivacySetting, ProfileVisibility
 from app.models.security_log import SecurityLog
 from app.models.share_link import ShareLink
@@ -109,6 +110,7 @@ __all__ = [
     "SubscriptionStatus",
     "PaymentMethod",
     "Payment",
+    "PPFCredit",
     "Usage",
     "File",
     "Notification",

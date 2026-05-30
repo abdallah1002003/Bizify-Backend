@@ -89,3 +89,4 @@ class User(Base):
     chat_sessions = relationship("ChatSession", back_populates = "user", cascade="all, delete-orphan")
     group_messages = relationship("GroupMessage", back_populates = "sender", cascade="all, delete-orphan")
     verification_codes = relationship("AccountVerification", back_populates = "user", cascade="all, delete-orphan")
+    ppf_credits = relationship("PPFCredit", back_populates = "user", cascade="all, delete-orphan")
