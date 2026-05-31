@@ -20,5 +20,8 @@ class Usage(Base):
     resource_type = Column(String, nullable = False)
     used = Column(Integer, default = 0)
     limit_value = Column(Integer)
+    # Pay-Per-Feature: sections purchased and consumed (independent of subscription tokens)
+    ppf_purchased = Column(Integer, default = 0)   # total sections ever bought
+    ppf_used      = Column(Integer, default = 0)   # sections already consumed
 
     user = relationship("User", back_populates = "usages")

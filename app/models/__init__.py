@@ -42,11 +42,14 @@ from app.models.group_member import GroupMember, GroupMemberStatus, GroupRole
 from app.models.group_message import GroupMessage
 from app.models.notification import DeliveryStatus, Notification, NotificationStatus
 from app.models.notification_setting import NotificationSetting
+from app.models.partner_category import PartnerCategory
 from app.models.partner_profile import ApprovalStatus, PartnerProfile, PartnerType
 from app.models.partner_request import PartnerRequest, RequestStatus
+from app.models.profile_view import ProfileView
 from app.models.payment import Payment
 from app.models.payment_method import PaymentMethod
 from app.models.plan import Plan
+from app.models.ppf_credit import PPFCredit
 from app.models.privacy_setting import PrivacySetting, ProfileVisibility
 from app.models.security_log import SecurityLog
 from app.models.share_link import ShareLink
@@ -63,11 +66,13 @@ __all__ = [
     "UserRole",
     "UserProfile",
     "AdminActionLog",
+    "PartnerCategory",
     "PartnerProfile",
     "PartnerType",
     "ApprovalStatus",
     "PartnerRequest",
     "RequestStatus",
+    "ProfileView",
     "Idea",
     "IdeaStatus",
     "IdeaVersion",
@@ -105,6 +110,7 @@ __all__ = [
     "SubscriptionStatus",
     "PaymentMethod",
     "Payment",
+    "PPFCredit",
     "Usage",
     "File",
     "Notification",

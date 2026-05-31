@@ -1,3 +1,4 @@
+import os
 from typing import Any, Optional
 from uuid import UUID
 
@@ -41,7 +42,6 @@ def search_user_by_email(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
-
     return user
 
 
@@ -107,6 +107,19 @@ def get_all_users(
     return user_repo.get_multi(db, skip=skip, limit=limit)
 
 
+@router.get("/users/{user_id}", response_model=UserRead)
+def get_user(
+    user_id: UUID,
+    db: Session = Depends(get_db),
+    _current_admin: User = Depends(RoleChecker([UserRole.ADMIN])),
+) -> UserRead:
+    """Return a single user by ID."""
+    user = user_repo.get(db, id=user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
 @router.get("/stats", response_model=dict[str, Any])
 def get_dashboard_stats(
     db: Session = Depends(get_db),
@@ -124,3 +137,32 @@ def suspend_user(
 ) -> UserRead:
     """Suspend a user and invalidate active sessions."""
     return AdminService.suspend_user(db=db, admin_id=current_admin.id, user_id=user_id)
+
+
+@router.patch("/users/{user_id}/unsuspend", response_model=UserRead)
+def unsuspend_user(
+    user_id: UUID,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(RoleChecker([UserRole.ADMIN])),
+) -> UserRead:
+    """Reinstate a suspended user."""
+    return AdminService.unsuspend_user(
+        db=db, admin_id=current_admin.id, user_id=user_id
+    )
+
+
+@router.get("/platform-config", response_model=dict[str, Any])
+def get_platform_config(
+    _current_admin: User = Depends(RoleChecker([UserRole.ADMIN])),
+) -> dict[str, Any]:
+    """Return read-only platform configuration derived from environment."""
+    return {
+        "session_timeout_minutes": int(os.getenv("SESSION_TIMEOUT_MINUTES", "240")),
+        "jwt_expire_minutes": int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "10080")),
+        "environment": os.getenv("ENVIRONMENT", os.getenv("ENV", "production")),
+        "debug_mode": os.getenv("DEBUG", "false").lower() == "true",
+        "allow_registration": os.getenv("ALLOW_REGISTRATION", "true").lower() == "true",
+        "require_email_verification": os.getenv("REQUIRE_EMAIL_VERIFICATION", "true").lower() == "true",
+        "max_login_attempts": int(os.getenv("MAX_LOGIN_ATTEMPTS", "5")),
+        "backend_version": os.getenv("APP_VERSION", "1.0.0"),
+    }

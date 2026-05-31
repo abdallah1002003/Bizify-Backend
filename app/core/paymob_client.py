@@ -25,6 +25,8 @@ async def _authenticate() -> str:
     Step 1 – Authenticate with Paymob and return a short-lived API token.
     Raises httpx.HTTPStatusError on failure.
     """
+    if not settings.PAYMOB_API_KEY:
+        raise ValueError("PAYMOB_API_KEY is not configured.")
     async with httpx.AsyncClient() as client:
         response = await client.post(
             f"{PAYMOB_BASE_URL}/auth/tokens",

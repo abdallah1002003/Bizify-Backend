@@ -18,7 +18,7 @@ def get_ideas(
     max_budget: Optional[float] = Query(None, description="Maximum allowed budget"),
     skills: Optional[str] = Query(None, description="Comma-separated skills (e.g., Python,React)"),
     feasibility: Optional[float] = Query(None, description="Minimum feasibility score required"),
-    sort_by: str = Query("created_at", description="Field to sort by (e.g., budget, feasibility, ai_score)"),
+    sort_by: str = Query("created_at", description="Field to sort by (e.g., budget, feasibility, problem_validation_score)"),
     sort_order: str = Query("desc", description="Sort order: asc or desc"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -110,6 +110,16 @@ def update_idea(
     """Update an idea owned by the authenticated user."""
     updates = idea_in.model_dump(exclude_unset=True)
     return IdeaService.update_idea(db=db, idea_id=idea_id, user_id=current_user.id, updates=updates)
+
+
+@router.post("/{idea_id}/convert", response_model=IdeaRead)
+def convert_idea(
+    idea_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> IdeaRead:
+    """Mark a validated idea as converted — the user has decided to build it."""
+    return IdeaService.convert_idea(db=db, idea_id=idea_id, user_id=current_user.id)
 
 
 @router.delete("/{idea_id}", status_code=204)

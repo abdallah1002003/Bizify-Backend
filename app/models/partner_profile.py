@@ -51,6 +51,13 @@ class PartnerProfile(Base):
     experience_json = Column(JSON)
     documents_json = Column(JSON)
     
+    category_id = Column(UUID(as_uuid=True), ForeignKey("partner_categories.id"), nullable=True)
+    linkedin_url = Column(String, nullable=True)
+    headline = Column(String, nullable=True)
+    about_summary = Column(Text, nullable=True)
+    skills_json = Column(JSON, nullable=True)
+    country = Column(String, nullable=True)
+
     approval_status = Column(
         Enum(ApprovalStatus, values_callable = lambda x: [e.value for e in x]), 
         default = ApprovalStatus.PENDING
@@ -63,3 +70,4 @@ class PartnerProfile(Base):
     user = relationship("User", foreign_keys = [user_id], back_populates = "partner_profile")
     approver = relationship("User", foreign_keys = [approved_by])
     requests = relationship("PartnerRequest", back_populates = "partner")
+    category_ref = relationship("PartnerCategory", back_populates = "partners")

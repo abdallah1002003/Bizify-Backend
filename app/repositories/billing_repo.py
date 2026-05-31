@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models.payment import Payment
 from app.models.plan import Plan
+from app.models.ppf_credit import PPFCredit
 from app.models.subscription import Subscription, SubscriptionStatus
 from app.repositories.base import BaseRepository
 
@@ -205,6 +206,48 @@ class SubscriptionRepository(BaseRepository[Subscription, Any, Any]):
         return subscription
 
 
+class PPFCreditRepository(BaseRepository[PPFCredit, Any, Any]):
+    """Data-access helpers for Pay-Per-Feature credit purchases."""
+
+    def create_pending(
+        self,
+        db: Session,
+        *,
+        user_id: uuid.UUID,
+        quantity: int,
+        amount: Decimal,
+        payment_method: str,
+        payment_ref: str,
+        commit: bool = True,
+    ) -> PPFCredit:
+        credit = PPFCredit(
+            user_id=user_id,
+            quantity=quantity,
+            amount_paid=amount,
+            payment_method=payment_method,
+            payment_ref=payment_ref,
+            status="pending",
+        )
+        db.add(credit)
+        if commit:
+            db.commit()
+            db.refresh(credit)
+        else:
+            db.flush()
+        return credit
+
+    def confirm(self, db: Session, credit: PPFCredit) -> PPFCredit:
+        credit.status = "succeeded"
+        db.add(credit)
+        db.commit()
+        db.refresh(credit)
+        return credit
+
+    def get_by_payment_ref(self, db: Session, ref: str) -> Optional[PPFCredit]:
+        return db.query(self.model).filter(self.model.payment_ref == ref).first()
+
+
 plan_repo = PlanRepository(Plan)
 payment_repo = PaymentRepository(Payment)
 subscription_repo = SubscriptionRepository(Subscription)
+ppf_credit_repo = PPFCreditRepository(PPFCredit)

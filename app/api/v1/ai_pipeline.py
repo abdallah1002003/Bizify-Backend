@@ -3,7 +3,7 @@ from typing import Any, Optional
 from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -528,84 +528,6 @@ async def chat_go_to_market(payload: dict[str, Any], current_user: User = Depend
 async def chat_stream_go_to_market(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
     payload["user_id"] = str(current_user.id)
     return await _forward_stream_to_ai(f"go-to-market/{current_user.id}/chat/stream", payload=payload)
-
-# ==========================================
-# Domain: MARKETING (customer-research, copywriting, marketing-pricing,
-# launch-strategy, ad-creative, social-media, marketing-ideas)
-# ==========================================
-_MARKETING_SECTIONS: list[tuple[str, str]] = [
-    ("customer-research", "AI - Customer Research"),
-    ("copywriting",       "AI - Copywriting"),
-    ("marketing-pricing", "AI - Marketing Pricing"),
-    ("launch-strategy",   "AI - Launch Strategy"),
-    ("ad-creative",       "AI - Ad Creative"),
-    ("social-media",      "AI - Social Media"),
-    ("marketing-ideas",   "AI - Marketing Ideas"),
-]
-
-
-def _make_marketing_handlers(slug: str):
-    """Build a set of route handlers bound to a single marketing slug."""
-
-    async def get_section(
-        current_user: User = Depends(get_current_user),
-        idea_id: Optional[str] = Query(None),
-    ):
-        params = {"idea_id": idea_id} if idea_id else None
-        return await _forward_get_to_ai(slug, str(current_user.id), params=params)
-
-    async def generate_section(
-        payload: dict[str, Any] = {},  # noqa: B006
-        current_user: User = Depends(get_current_user),
-    ):
-        body: dict[str, Any] = {}
-        if payload.get("idea_id"):
-            body["idea_id"] = payload["idea_id"]
-        return await _forward_post_to_ai(slug, str(current_user.id), payload=body or None)
-
-    async def regenerate_section(current_user: User = Depends(get_current_user)):
-        return await _forward_post_to_ai(f"{slug}/{current_user.id}/regenerate", None)
-
-    async def regenerate_custom_section(
-        payload: dict[str, Any],
-        current_user: User = Depends(get_current_user),
-    ):
-        payload["user_id"] = str(current_user.id)
-        return await _forward_post_to_ai(f"{slug}/{current_user.id}/regenerate-custom", payload=payload)
-
-    async def chat_section(
-        payload: dict[str, Any],
-        current_user: User = Depends(get_current_user),
-    ):
-        payload["user_id"] = str(current_user.id)
-        return await _forward_post_to_ai(f"{slug}/{current_user.id}/chat", payload=payload)
-
-    async def chat_stream_section(
-        payload: dict[str, Any],
-        current_user: User = Depends(get_current_user),
-    ):
-        payload["user_id"] = str(current_user.id)
-        return await _forward_stream_to_ai(f"{slug}/{current_user.id}/chat/stream", payload=payload)
-
-    return (
-        get_section,
-        generate_section,
-        regenerate_section,
-        regenerate_custom_section,
-        chat_section,
-        chat_stream_section,
-    )
-
-
-for _slug, _tag in _MARKETING_SECTIONS:
-    _get, _generate, _regenerate, _regenerate_custom, _chat, _chat_stream = _make_marketing_handlers(_slug)
-    router.add_api_route(f"/{_slug}",                  _get,               methods=["GET"],  response_model=dict, summary=f"Get {_slug}",                  tags=[_tag])
-    router.add_api_route(f"/{_slug}",                  _generate,          methods=["POST"], response_model=dict, summary=f"Generate {_slug}",             tags=[_tag])
-    router.add_api_route(f"/{_slug}/regenerate",        _regenerate,        methods=["POST"], response_model=dict, summary=f"Regenerate {_slug}",           tags=[_tag])
-    router.add_api_route(f"/{_slug}/regenerate-custom", _regenerate_custom, methods=["POST"], response_model=dict, summary=f"Regenerate {_slug} (custom)",  tags=[_tag])
-    router.add_api_route(f"/{_slug}/chat",              _chat,              methods=["POST"], response_model=dict, summary=f"Chat {_slug}",                 tags=[_tag])
-    router.add_api_route(f"/{_slug}/chat/stream",       _chat_stream,       methods=["POST"],                       summary=f"Chat {_slug} stream",          tags=[_tag])
-
 
 @_system_router.get("/health", summary="Health", tags=["AI - System"])
 async def get_health():

@@ -13,7 +13,7 @@ from app.models.user import User, UserRole
 from app.repositories.admin_repo import security_repo
 from app.repositories.auth_repo import auth_repo
 from app.repositories.billing_repo import subscription_repo
-from app.repositories.usage_repo import usage_repo
+from app.repositories.usage_repo import usage_repo, PPF_TOKENS_PER_SECTION
 from app.repositories.user_repo import user_repo
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
@@ -154,13 +154,19 @@ def check_ai_usage(
     db: Session = Depends(get_db),
 ) -> User:
     """
-    Dependency that enforces AI usage limits based on the user's active plan.
-    - GET requests (reading cached results) are free and never consume quota.
-    - Only POST/PUT/PATCH requests (generating new AI content) consume quota.
+    Gate-check AI token limits before forwarding to the AI service.
+
+    Token counting strategy:
+    - The bizifyAI service writes REAL token counts (from Groq usage.total_tokens)
+      directly to the usages table after every LLM call.
+    - This dependency only READS the current usage to enforce the plan limit.
+    - GET requests (reading cached results) are always free.
+    - POST/PUT/PATCH requests are checked against the limit before proceeding.
+      If the user is already over their limit, the request is rejected here
+      before any AI compute is consumed.
     """
-    # 1. Check User's Active Subscription
     sub = subscription_repo.get_active_by_user(db, current_user.id)
-    features = {}
+    features: dict = {}
     if sub and sub.plan and sub.plan.features_json:
         features = sub.plan.features_json
 
@@ -174,20 +180,37 @@ def check_ai_usage(
     if request.method == "GET":
         return current_user
 
-    plan_limit = features.get("ai_requests")
-
-    within_limit, record = usage_repo.check_limit(db, current_user.id)
-
-    active_limit = plan_limit if plan_limit is not None else (record.limit_value or 100)
-
-    if (record.used or 0) >= active_limit:
+    # PPF plan — skip subscription token check, only use credit balance
+    if features.get("is_ppf"):
+        ppf_balance = usage_repo.get_ppf_balance(db, current_user.id)
+        if ppf_balance > 0:
+            usage_repo.consume_ppf_section(db, current_user.id)
+            usage_repo.add_tokens(db, current_user.id, PPF_TOKENS_PER_SECTION)
+            return current_user
         raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=(
-                f"AI request limit reached ({(record.used or 0)}/{active_limit}). "
-                "Please upgrade your plan or wait for your limit to reset."
-            ),
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="No Pay-Per-Feature credits remaining. Buy more sections to continue.",
         )
 
-    usage_repo.increment(db, current_user.id)
-    return current_user
+    plan_limit: int | None = features.get("ai_tokens")
+    _, record = usage_repo.check_limit(db, current_user.id)
+    active_limit = plan_limit if plan_limit is not None else (record.limit_value or 20_000)
+    used = record.used or 0
+
+    if active_limit == -1 or used < active_limit:
+        return current_user
+
+    # Subscription quota exhausted — fall back to PPF credits if any
+    ppf_balance = usage_repo.get_ppf_balance(db, current_user.id)
+    if ppf_balance > 0:
+        usage_repo.consume_ppf_section(db, current_user.id)
+        usage_repo.add_tokens(db, current_user.id, PPF_TOKENS_PER_SECTION)
+        return current_user
+
+    raise HTTPException(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        detail=(
+            f"AI token limit reached ({used:,}/{active_limit:,} tokens used). "
+            "Upgrade your plan or buy Pay-Per-Feature credits to continue."
+        ),
+    )

@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 from app.core import paymob_client, paypal_client
 from app.models.plan import Plan
 from app.models.subscription import Subscription
-from app.repositories.billing_repo import payment_repo, plan_repo, subscription_repo
+from app.repositories.billing_repo import payment_repo, plan_repo, ppf_credit_repo, subscription_repo
+from app.repositories.usage_repo import usage_repo
 
 
 def get_active_plans(db: Session) -> list[Plan]:
@@ -42,6 +43,11 @@ async def create_paypal_order(plan_id: uuid.UUID, db: Session) -> dict[str, Any]
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"PayPal error: {exc.response.text}",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="PayPal payment is currently unavailable. Please check your PayPal configuration or try again later.",
         ) from exc
 
     approval_url = next(
@@ -76,6 +82,11 @@ async def capture_payment(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"PayPal capture error: {exc.response.text}",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="PayPal payment capture is currently unavailable. Please contact support.",
         ) from exc
 
     capture_status = capture_result.get("status")
@@ -207,7 +218,12 @@ async def create_paymob_payment(
     except httpx.HTTPStatusError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Paymob error: {exc.response.text}",
+            detail="Card payment is currently unavailable. Please use PayPal or contact support.",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Card payment is currently unavailable. Please use PayPal or contact support.",
         ) from exc
 
     # Create an active subscription (or upgrade the existing one) immediately.
@@ -239,6 +255,136 @@ async def create_paymob_payment(
     }
 
 
+# ─────────────────────────────────────────────
+#  Pay-Per-Feature (PPF) – one-time section purchase
+# ─────────────────────────────────────────────
+
+PPF_PRICE_PER_SECTION = Decimal("135.00")   # EGP — midpoint of 120-150 range
+
+
+async def create_ppf_paymob_payment(
+    quantity: int,
+    user_id: uuid.UUID,
+    db: Session,
+    billing_data: Optional[dict[str, str]] = None,
+) -> dict[str, Any]:
+    """Initiate a Paymob card payment for `quantity` PPF sections."""
+    total = PPF_PRICE_PER_SECTION * quantity
+
+    billing_data = billing_data or {
+        "apartment": "NA", "email": "NA", "floor": "NA",
+        "first_name": "Bizify", "street": "NA", "building": "NA",
+        "phone_number": "NA", "shipping_method": "NA", "postal_code": "NA",
+        "city": "NA", "country": "EG", "last_name": "User", "state": "NA",
+    }
+
+    try:
+        result = await paymob_client.create_card_payment(
+            amount=total,
+            currency="EGP",
+            merchant_order_id=f"ppf-{user_id}-{quantity}",
+            billing_data=billing_data,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Card payment unavailable. Please try again.",
+        ) from exc
+
+    credit = ppf_credit_repo.create_pending(
+        db,
+        user_id=user_id,
+        quantity=quantity,
+        amount=total,
+        payment_method="paymob",
+        payment_ref=result["paymob_order_id"],
+    )
+
+    return {
+        "ppf_credit_id":  credit.id,
+        "quantity":        quantity,
+        "amount":          total,
+        "paymob_order_id": result["paymob_order_id"],
+        "iframe_url":      result["iframe_url"],
+    }
+
+
+async def create_ppf_paypal_payment(
+    quantity: int,
+    user_id: uuid.UUID,
+    db: Session,
+) -> dict[str, Any]:
+    """Create a PayPal order for `quantity` PPF sections."""
+    total = PPF_PRICE_PER_SECTION * quantity
+
+    try:
+        order = await paypal_client.create_order(
+            amount=str(total),
+            currency="USD",
+            plan_id=f"ppf-{quantity}",
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="PayPal payment unavailable. Please try again.",
+        ) from exc
+
+    approval_url = next(
+        (l["href"] for l in order.get("links", []) if l["rel"] == "approve"), None
+    )
+    if not approval_url:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY,
+                            detail="PayPal did not return an approval URL.")
+
+    credit = ppf_credit_repo.create_pending(
+        db,
+        user_id=user_id,
+        quantity=quantity,
+        amount=total,
+        payment_method="paypal",
+        payment_ref=order["id"],
+    )
+
+    return {
+        "ppf_credit_id": credit.id,
+        "quantity":       quantity,
+        "amount":         total,
+        "order_id":       order["id"],
+        "approval_url":   approval_url,
+    }
+
+
+async def capture_ppf_paypal_payment(
+    order_id: str,
+    user_id: uuid.UUID,
+    db: Session,
+) -> dict[str, Any]:
+    """Capture a PPF PayPal order and credit the user's sections."""
+    try:
+        capture_result = await paypal_client.capture_order(order_id)
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY,
+                            detail="PayPal capture failed.") from exc
+
+    if capture_result.get("status") != "COMPLETED":
+        raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                            detail="Payment not completed.")
+
+    credit = ppf_credit_repo.get_by_payment_ref(db, order_id)
+    if not credit:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="PPF credit record not found.")
+
+    ppf_credit_repo.confirm(db, credit)
+    usage_repo.add_ppf_sections(db, user_id, credit.quantity)
+
+    return {
+        "ppf_credit_id": credit.id,
+        "quantity":       credit.quantity,
+        "status":         "succeeded",
+    }
+
+
 async def handle_paymob_webhook(data: dict[str, Any], db: Session) -> None:
     """
     Process Paymob's Transaction Processed Callback.
@@ -260,12 +406,20 @@ async def handle_paymob_webhook(data: dict[str, Any], db: Session) -> None:
     if not paymob_order_id:
         return
 
+    # Check if this is a PPF payment first
+    ppf_credit = ppf_credit_repo.get_by_payment_ref(db, paymob_order_id)
+    if ppf_credit:
+        if is_success and ppf_credit.status != "succeeded":
+            ppf_credit_repo.confirm(db, ppf_credit)
+            usage_repo.add_ppf_sections(db, ppf_credit.user_id, ppf_credit.quantity)
+        return
+
     payment = payment_repo.get_by_paymob_order(db, paymob_order_id)
     if not payment:
         return
 
     new_status = "succeeded" if is_success else "failed"
-    payment.status               = new_status
+    payment.status                = new_status
     payment.paymob_transaction_id = transaction_id
     db.add(payment)
 

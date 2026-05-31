@@ -5,6 +5,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.partner_profile import ApprovalStatus, PartnerProfile, PartnerType
+from app.models.partner_category import PartnerCategory
 from app.repositories.base import BaseRepository
 
 
@@ -47,6 +48,7 @@ class PartnerRepository(BaseRepository[PartnerProfile, Any, Any]):
         db: Session,
         *,
         partner_type: Optional[PartnerType] = None,
+        category_id: Optional[uuid.UUID] = None,
         q: Optional[str] = None,
         skip: int = 0,
         limit: int = 50,
@@ -54,11 +56,13 @@ class PartnerRepository(BaseRepository[PartnerProfile, Any, Any]):
         """List approved partner profiles for marketplace browse/search."""
         query = (
             db.query(self.model)
-            .options(joinedload(PartnerProfile.user))
+            .options(joinedload(PartnerProfile.user), joinedload(PartnerProfile.category_ref))
             .filter(self.model.approval_status == ApprovalStatus.APPROVED)
         )
         if partner_type is not None:
             query = query.filter(self.model.partner_type == partner_type)
+        if category_id is not None:
+            query = query.filter(self.model.category_id == category_id)
         if q:
             term = f"%{q.strip()}%"
             query = query.filter(
@@ -80,13 +84,22 @@ class PartnerRepository(BaseRepository[PartnerProfile, Any, Any]):
         """Return a partner profile by id only if approved (for public marketplace detail)."""
         return (
             db.query(self.model)
-            .options(joinedload(PartnerProfile.user))
+            .options(joinedload(PartnerProfile.user), joinedload(PartnerProfile.category_ref))
             .filter(
                 self.model.id == profile_id,
                 self.model.approval_status == ApprovalStatus.APPROVED,
             )
             .first()
         )
+
+    def list_categories(
+        self, db: Session, *, partner_type: Optional[PartnerType] = None
+    ) -> list[PartnerCategory]:
+        """List all partner categories, optionally filtered by partner type."""
+        query = db.query(PartnerCategory)
+        if partner_type is not None:
+            query = query.filter(PartnerCategory.partner_type == partner_type)
+        return query.order_by(PartnerCategory.name).all()
 
 
 partner_repo = PartnerRepository(PartnerProfile)

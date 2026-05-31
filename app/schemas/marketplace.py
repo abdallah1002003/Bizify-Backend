@@ -8,6 +8,14 @@ from app.models.partner_profile import PartnerType
 from app.models.partner_request import RequestStatus
 
 
+class PartnerCategoryRead(BaseModel):
+    id: uuid.UUID
+    name: str
+    partner_type: PartnerType
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class MarketplacePartnerPublic(BaseModel):
     """Approved partner card shown in marketplace listings (no internal documents)."""
 
@@ -19,6 +27,14 @@ class MarketplacePartnerPublic(BaseModel):
     services_json: Optional[Any] = None
     experience_json: Optional[Any] = None
     display_name: Optional[str] = None
+    category_id: Optional[uuid.UUID] = None
+    category_name: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    headline: Optional[str] = None
+    about_summary: Optional[str] = None
+    skills_json: Optional[Any] = None
+    country: Optional[str] = None
+    documents_json: Optional[Any] = None
 
     model_config = ConfigDict(from_attributes=True)
 

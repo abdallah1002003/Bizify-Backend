@@ -11,10 +11,25 @@ from app.schemas.marketplace import (
     MarketplacePartnerPublic,
     MarketplacePartnerRequestCreate,
     MarketplacePartnerRequestRead,
+    PartnerCategoryRead,
 )
 from app.services.marketplace_service import MarketplaceService
 
 router = APIRouter()
+
+
+@router.get(
+    "/categories",
+    response_model=list[PartnerCategoryRead],
+    summary="List partner categories",
+)
+def list_categories(
+    partner_type_filter: Optional[str] = Query(None, alias="type"),
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(get_current_user),
+) -> list[PartnerCategoryRead]:
+    partner_type = _parse_partner_type(partner_type_filter) if partner_type_filter else None
+    return MarketplaceService.list_categories(db, partner_type=partner_type)
 
 
 def _parse_partner_type(type_param: Optional[str]) -> Optional[PartnerType]:
@@ -44,6 +59,7 @@ def list_marketplace_partners(
         alias="type",
         description="Filter by partner type: MENTOR, SUPPLIER, or MANUFACTURER",
     ),
+    category_id: Optional[UUID] = Query(None, description="Filter by category UUID"),
     q: Optional[str] = Query(
         None,
         description="Search in company name and description (case-insensitive)",
@@ -55,7 +71,7 @@ def list_marketplace_partners(
 ) -> list[MarketplacePartnerPublic]:
     partner_type = _parse_partner_type(partner_type_filter)
     return MarketplaceService.list_partners(
-        db, partner_type=partner_type, q=q, skip=skip, limit=limit
+        db, partner_type=partner_type, category_id=category_id, q=q, skip=skip, limit=limit
     )
 
 
@@ -100,6 +116,37 @@ def create_marketplace_partner_request(
         created_at=row.created_at,
         partner=partner_public,
     )
+
+
+@router.post(
+    "/partners/{partner_id}/views",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Record a profile view",
+)
+def record_profile_view(
+    partner_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    MarketplaceService.record_profile_view(db, partner_id=partner_id, viewer=current_user)
+
+
+@router.get(
+    "/my-profile/views",
+    summary="Get profile view stats for the logged-in partner",
+)
+def get_my_profile_view_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    from app.repositories.partner_repo import partner_repo as _partner_repo
+    profile = _partner_repo.get_by_user_id(db, current_user.id)
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No partner profile found for this user",
+        )
+    return MarketplaceService.get_profile_view_stats(db, partner_profile_id=profile.id)
 
 
 @router.get(

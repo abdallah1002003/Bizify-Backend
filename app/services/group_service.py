@@ -15,6 +15,7 @@ from app.models.group import Group
 from app.models.group_invite import GroupInvite, GroupInviteStatus
 from app.models.group_join_request import GroupJoinRequest, GroupJoinRequestStatus
 from app.models.group_member import GroupMember, GroupMemberStatus, GroupRole
+from app.core.config import settings
 from app.repositories.business_repo import business_repo
 from app.repositories.group_repo import group_repo
 from app.repositories.idea_repo import idea_repo
@@ -70,6 +71,13 @@ class GroupService:
             commit=False,
             refresh=False,
         )
+        owner_member = GroupMember(
+            group_id=group.id,
+            user_id=creator_id,
+            role=GroupRole.OWNER,
+            status=GroupMemberStatus.ACTIVE,
+        )
+        db.add(owner_member)
         db.commit()
         db.refresh(group)
         GroupService.invalidate_group_cache(business.id)
@@ -211,7 +219,7 @@ class GroupService:
                 email,
                 group_name,
                 inviter_email,
-                f"https://bizify.app/join-group?token={token}",
+                f"{settings.FRONTEND_URL}/invite/accept?token={token}",
             )
         except Exception:
             logger.exception("Failed to send invite email to %s, invite still created", email)
@@ -278,7 +286,9 @@ class GroupService:
     ) -> dict[str, Any]:
         """Accept a pending group invite."""
         invite = group_repo.get_pending_invite_by_token(db, token)
-        if not invite or invite.expires_at < datetime.now(timezone.utc):
+        # expires_at is stored as timezone-naive in the DB; compare against naive UTC
+        naive_now = datetime.now(timezone.utc).replace(tzinfo=None)
+        if not invite or invite.expires_at < naive_now:
             if invite:
                 invite.status = GroupInviteStatus.EXPIRED
                 group_repo.save_invite(db, invite)
@@ -378,7 +388,26 @@ class GroupService:
         if not is_owner and not is_member:
             raise HTTPException(status_code=403, detail="Access denied")
 
-        return group_repo.get_active_members(db, group_id)
+        members = group_repo.get_active_members(db, group_id)
+
+        # Ensure the business owner always appears as an OWNER member.
+        # For groups created before auto-member creation was added, the owner
+        # may not have a GroupMember record yet — create it on-the-fly.
+        owner_id = group.business.owner_id
+        owner_is_member = any(m.user_id == owner_id for m in members)
+        if not owner_is_member:
+            owner_member = GroupMember(
+                group_id=group_id,
+                user_id=owner_id,
+                role=GroupRole.OWNER,
+                status=GroupMemberStatus.ACTIVE,
+            )
+            db.add(owner_member)
+            db.commit()
+            db.refresh(owner_member)
+            members = [owner_member] + members
+
+        return members
 
     @staticmethod
     def update_group_member(

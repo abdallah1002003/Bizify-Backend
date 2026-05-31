@@ -16,35 +16,52 @@ PLANS = [
         "name":          "Free",
         "price":         0.00,
         "features_json": {
-            "ai_runs":      3,
-            "ideas":        5,
-            "businesses":   1,
-            "export":       False,
-            "priority_support": False,
+            "ai_tokens":        15_000,   # ~1 full analysis
+            "ai_analysis":      True,
+            "export":           True,
+            "priority_support": True,
+            "ideas":            -1,
+            "businesses":       -1,
+        },
+        "is_active": True,
+    },
+    {
+        "name":          "Pay-Per-Feature",
+        "price":         135.00,          # EGP per section credit
+        "features_json": {
+            "ai_tokens":        0,        # tokens come from PPF credits, not a budget
+            "ai_analysis":      True,
+            "export":           True,
+            "priority_support": True,
+            "ideas":            -1,
+            "businesses":       -1,
+            "is_ppf":           True,     # flag so the gate uses PPF credit balance
         },
         "is_active": True,
     },
     {
         "name":          "Pro",
-        "price":         9.99,        
+        "price":         350.00,          # EGP / month
         "features_json": {
-            "ai_runs":      50,
-            "ideas":        50,
-            "businesses":   5,
-            "export":       True,
-            "priority_support": False,
+            "ai_tokens":        150_000,  # ~10 full analyses / mo
+            "ai_analysis":      True,
+            "export":           True,
+            "priority_support": True,
+            "ideas":            -1,
+            "businesses":       -1,
         },
         "is_active": True,
     },
     {
-        "name":          "Enterprise",
-        "price":         29.99,       
+        "name":          "Premium",
+        "price":         600.00,          # EGP / month
         "features_json": {
-            "ai_runs":      -1,       # -1 = unlimited
-            "ideas":        -1,
-            "businesses":   -1,
-            "export":       True,
+            "ai_tokens":        -1,       # unlimited
+            "ai_analysis":      True,
+            "export":           True,
             "priority_support": True,
+            "ideas":            -1,
+            "businesses":       -1,
         },
         "is_active": True,
     },
