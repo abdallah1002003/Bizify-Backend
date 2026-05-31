@@ -2,18 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import (
-    JSON,
-    Boolean,
-    Column,
-    DateTime,
-    Enum,
-    Float,
-    ForeignKey,
-    Integer,
-    String,
-    Text,
-)
+from sqlalchemy import JSON, Column, DateTime, Enum, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -69,56 +58,16 @@ class PartnerProfile(Base):
     skills_json = Column(JSON, nullable=True)
     country = Column(String, nullable=True)
 
-    # ── Rich supplier/manufacturer fields (see scripts/seed_marketplace_suppliers_manufacturers.py) ──
-    # Contact / web presence
-    whatsapp = Column(String, nullable=True)
-    email = Column(String, nullable=True)
-    website = Column(String, nullable=True)
-    facebook_url = Column(String, nullable=True)
-    facebook_followers = Column(Integer, nullable=True)
-    instagram_url = Column(String, nullable=True)
-    tiktok_url = Column(String, nullable=True)
-    google_maps_url = Column(String, nullable=True)
-    google_rating = Column(Float, nullable=True)
-    review_count = Column(Integer, nullable=True)
-
-    # Location
-    address = Column(String, nullable=True)
-    area = Column(String, nullable=True)
-    city = Column(String, nullable=True)
-    governorate = Column(String, nullable=True)
-
-    # Business classification
-    industry = Column(String, nullable=True)
-    business_model = Column(String, nullable=True)
-    minimum_order_quantity = Column(String, nullable=True)
-    delivery_available = Column(Boolean, nullable=True)
-    estimated_size = Column(String, nullable=True)
-
-    # Manufacturer-specific
-    factory_name = Column(String, nullable=True)
-    factory_address = Column(String, nullable=True)
-    factory_area = Column(String, nullable=True)
-    production_capacity = Column(String, nullable=True)
-    private_label_available = Column(Boolean, nullable=True)
-    exporting = Column(Boolean, nullable=True)
-    year_founded = Column(Integer, nullable=True)
-    employee_count = Column(Integer, nullable=True)
-
-    # Provenance
-    verification_score = Column(Integer, nullable=True)
-    last_verified_date = Column(String, nullable=True)
-
-    # List-valued fields (stored as JSON arrays)
-    industry_tags = Column(JSON, nullable=True)
-    product_tags = Column(JSON, nullable=True)
-    products = Column(JSON, nullable=True)
-    brands_distributed = Column(JSON, nullable=True)
-    distribution_areas = Column(JSON, nullable=True)
-    manufacturing_capabilities = Column(JSON, nullable=True)
-    certifications = Column(JSON, nullable=True)
-    export_countries = Column(JSON, nullable=True)
-    source_urls = Column(JSON, nullable=True)
+    # All rich supplier/manufacturer fields packed into one JSON blob.
+    # Keys: whatsapp, email, website, facebook_url, google_rating, review_count,
+    #       address, area, city, governorate, industry, business_model, moq,
+    #       delivery_available, estimated_size, factory_name, factory_address,
+    #       factory_area, production_capacity, private_label_available, exporting,
+    #       year_founded, employee_count, verification_score, last_verified_date,
+    #       industry_tags, product_tags, products, brands_distributed,
+    #       distribution_areas, manufacturing_capabilities, certifications,
+    #       export_countries, source_urls
+    details_json = Column(JSON, nullable=True)
 
     approval_status = Column(
         Enum(ApprovalStatus, values_callable = lambda x: [e.value for e in x]), 
