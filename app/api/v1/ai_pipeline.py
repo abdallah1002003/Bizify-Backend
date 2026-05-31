@@ -529,6 +529,237 @@ async def chat_stream_go_to_market(payload: dict[str, Any], current_user: User =
     payload["user_id"] = str(current_user.id)
     return await _forward_stream_to_ai(f"go-to-market/{current_user.id}/chat/stream", payload=payload)
 
+# ==========================================
+# Domain: MARKETING — Customer Research
+# ==========================================
+@router.get("/customer-research", summary="Get Customer Research", response_model=dict, tags=["AI - Marketing"])
+async def get_customer_research(current_user: User = Depends(get_current_user), idea_id: Optional[str] = Query(None)):
+    return await _forward_get_to_ai("customer-research", str(current_user.id), params={"idea_id": idea_id} if idea_id else None)
+
+@router.post("/customer-research", summary="Generate Customer Research", response_model=dict, tags=["AI - Marketing"])
+async def generate_customer_research(payload: dict[str, Any] = {}, current_user: User = Depends(get_current_user)):
+    body: dict[str, Any] = {}
+    if payload.get("idea_id"):
+        body["idea_id"] = payload["idea_id"]
+    return await _forward_post_to_ai("customer-research", str(current_user.id), payload=body or None)
+
+@router.post("/customer-research/regenerate", summary="Regenerate Customer Research", response_model=dict, tags=["AI - Marketing"])
+async def regenerate_customer_research(current_user: User = Depends(get_current_user)):
+    return await _forward_post_to_ai(f"customer-research/{current_user.id}/regenerate", None)
+
+@router.post("/customer-research/regenerate-custom", summary="Regenerate Customer Research Custom", response_model=dict, tags=["AI - Marketing"])
+async def regenerate_custom_customer_research(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_post_to_ai(f"customer-research/{current_user.id}/regenerate-custom", payload=payload)
+
+@router.post("/customer-research/chat", summary="Chat Customer Research", response_model=dict, tags=["AI - Marketing"])
+async def chat_customer_research(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_post_to_ai(f"customer-research/{current_user.id}/chat", payload=payload)
+
+@router.post("/customer-research/chat/stream", summary="Chat Customer Research Stream", tags=["AI - Marketing"])
+async def chat_stream_customer_research(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_stream_to_ai(f"customer-research/{current_user.id}/chat/stream", payload=payload)
+
+# ==========================================
+# Domain: MARKETING — Copywriting
+# ==========================================
+@router.get("/copywriting", summary="Get Copywriting", response_model=dict, tags=["AI - Marketing"])
+async def get_copywriting(current_user: User = Depends(get_current_user), idea_id: Optional[str] = Query(None)):
+    return await _forward_get_to_ai("copywriting", str(current_user.id), params={"idea_id": idea_id} if idea_id else None)
+
+@router.post("/copywriting", summary="Generate Copywriting", response_model=dict, tags=["AI - Marketing"])
+async def generate_copywriting(payload: dict[str, Any] = {}, current_user: User = Depends(get_current_user)):
+    body: dict[str, Any] = {}
+    if payload.get("idea_id"):
+        body["idea_id"] = payload["idea_id"]
+    return await _forward_post_to_ai("copywriting", str(current_user.id), payload=body or None)
+
+@router.post("/copywriting/regenerate", summary="Regenerate Copywriting", response_model=dict, tags=["AI - Marketing"])
+async def regenerate_copywriting(current_user: User = Depends(get_current_user)):
+    return await _forward_post_to_ai(f"copywriting/{current_user.id}/regenerate", None)
+
+@router.post("/copywriting/regenerate-custom", summary="Regenerate Copywriting Custom", response_model=dict, tags=["AI - Marketing"])
+async def regenerate_custom_copywriting(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_post_to_ai(f"copywriting/{current_user.id}/regenerate-custom", payload=payload)
+
+@router.post("/copywriting/chat", summary="Chat Copywriting", response_model=dict, tags=["AI - Marketing"])
+async def chat_copywriting(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_post_to_ai(f"copywriting/{current_user.id}/chat", payload=payload)
+
+@router.post("/copywriting/chat/stream", summary="Chat Copywriting Stream", tags=["AI - Marketing"])
+async def chat_stream_copywriting(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_stream_to_ai(f"copywriting/{current_user.id}/chat/stream", payload=payload)
+
+# ==========================================
+# Domain: MARKETING — Pricing
+# ==========================================
+@router.get("/marketing-pricing", summary="Get Marketing Pricing", response_model=dict, tags=["AI - Marketing"])
+async def get_marketing_pricing(current_user: User = Depends(get_current_user), idea_id: Optional[str] = Query(None)):
+    return await _forward_get_to_ai("marketing-pricing", str(current_user.id), params={"idea_id": idea_id} if idea_id else None)
+
+@router.post("/marketing-pricing", summary="Generate Marketing Pricing", response_model=dict, tags=["AI - Marketing"])
+async def generate_marketing_pricing(payload: dict[str, Any] = {}, current_user: User = Depends(get_current_user)):
+    body: dict[str, Any] = {}
+    if payload.get("idea_id"):
+        body["idea_id"] = payload["idea_id"]
+    return await _forward_post_to_ai("marketing-pricing", str(current_user.id), payload=body or None)
+
+@router.post("/marketing-pricing/regenerate", summary="Regenerate Marketing Pricing", response_model=dict, tags=["AI - Marketing"])
+async def regenerate_marketing_pricing(current_user: User = Depends(get_current_user)):
+    return await _forward_post_to_ai(f"marketing-pricing/{current_user.id}/regenerate", None)
+
+@router.post("/marketing-pricing/regenerate-custom", summary="Regenerate Marketing Pricing Custom", response_model=dict, tags=["AI - Marketing"])
+async def regenerate_custom_marketing_pricing(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_post_to_ai(f"marketing-pricing/{current_user.id}/regenerate-custom", payload=payload)
+
+@router.post("/marketing-pricing/chat", summary="Chat Marketing Pricing", response_model=dict, tags=["AI - Marketing"])
+async def chat_marketing_pricing(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_post_to_ai(f"marketing-pricing/{current_user.id}/chat", payload=payload)
+
+@router.post("/marketing-pricing/chat/stream", summary="Chat Marketing Pricing Stream", tags=["AI - Marketing"])
+async def chat_stream_marketing_pricing(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_stream_to_ai(f"marketing-pricing/{current_user.id}/chat/stream", payload=payload)
+
+# ==========================================
+# Domain: MARKETING — Launch Strategy
+# ==========================================
+@router.get("/launch-strategy", summary="Get Launch Strategy", response_model=dict, tags=["AI - Marketing"])
+async def get_launch_strategy(current_user: User = Depends(get_current_user), idea_id: Optional[str] = Query(None)):
+    return await _forward_get_to_ai("launch-strategy", str(current_user.id), params={"idea_id": idea_id} if idea_id else None)
+
+@router.post("/launch-strategy", summary="Generate Launch Strategy", response_model=dict, tags=["AI - Marketing"])
+async def generate_launch_strategy(payload: dict[str, Any] = {}, current_user: User = Depends(get_current_user)):
+    body: dict[str, Any] = {}
+    if payload.get("idea_id"):
+        body["idea_id"] = payload["idea_id"]
+    return await _forward_post_to_ai("launch-strategy", str(current_user.id), payload=body or None)
+
+@router.post("/launch-strategy/regenerate", summary="Regenerate Launch Strategy", response_model=dict, tags=["AI - Marketing"])
+async def regenerate_launch_strategy(current_user: User = Depends(get_current_user)):
+    return await _forward_post_to_ai(f"launch-strategy/{current_user.id}/regenerate", None)
+
+@router.post("/launch-strategy/regenerate-custom", summary="Regenerate Launch Strategy Custom", response_model=dict, tags=["AI - Marketing"])
+async def regenerate_custom_launch_strategy(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_post_to_ai(f"launch-strategy/{current_user.id}/regenerate-custom", payload=payload)
+
+@router.post("/launch-strategy/chat", summary="Chat Launch Strategy", response_model=dict, tags=["AI - Marketing"])
+async def chat_launch_strategy(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_post_to_ai(f"launch-strategy/{current_user.id}/chat", payload=payload)
+
+@router.post("/launch-strategy/chat/stream", summary="Chat Launch Strategy Stream", tags=["AI - Marketing"])
+async def chat_stream_launch_strategy(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_stream_to_ai(f"launch-strategy/{current_user.id}/chat/stream", payload=payload)
+
+# ==========================================
+# Domain: MARKETING — Ad Creative
+# ==========================================
+@router.get("/ad-creative", summary="Get Ad Creative", response_model=dict, tags=["AI - Marketing"])
+async def get_ad_creative(current_user: User = Depends(get_current_user), idea_id: Optional[str] = Query(None)):
+    return await _forward_get_to_ai("ad-creative", str(current_user.id), params={"idea_id": idea_id} if idea_id else None)
+
+@router.post("/ad-creative", summary="Generate Ad Creative", response_model=dict, tags=["AI - Marketing"])
+async def generate_ad_creative(payload: dict[str, Any] = {}, current_user: User = Depends(get_current_user)):
+    body: dict[str, Any] = {}
+    if payload.get("idea_id"):
+        body["idea_id"] = payload["idea_id"]
+    return await _forward_post_to_ai("ad-creative", str(current_user.id), payload=body or None)
+
+@router.post("/ad-creative/regenerate", summary="Regenerate Ad Creative", response_model=dict, tags=["AI - Marketing"])
+async def regenerate_ad_creative(current_user: User = Depends(get_current_user)):
+    return await _forward_post_to_ai(f"ad-creative/{current_user.id}/regenerate", None)
+
+@router.post("/ad-creative/regenerate-custom", summary="Regenerate Ad Creative Custom", response_model=dict, tags=["AI - Marketing"])
+async def regenerate_custom_ad_creative(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_post_to_ai(f"ad-creative/{current_user.id}/regenerate-custom", payload=payload)
+
+@router.post("/ad-creative/chat", summary="Chat Ad Creative", response_model=dict, tags=["AI - Marketing"])
+async def chat_ad_creative(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_post_to_ai(f"ad-creative/{current_user.id}/chat", payload=payload)
+
+@router.post("/ad-creative/chat/stream", summary="Chat Ad Creative Stream", tags=["AI - Marketing"])
+async def chat_stream_ad_creative(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_stream_to_ai(f"ad-creative/{current_user.id}/chat/stream", payload=payload)
+
+# ==========================================
+# Domain: MARKETING — Social Media
+# ==========================================
+@router.get("/social-media", summary="Get Social Media Strategy", response_model=dict, tags=["AI - Marketing"])
+async def get_social_media(current_user: User = Depends(get_current_user), idea_id: Optional[str] = Query(None)):
+    return await _forward_get_to_ai("social-media", str(current_user.id), params={"idea_id": idea_id} if idea_id else None)
+
+@router.post("/social-media", summary="Generate Social Media Strategy", response_model=dict, tags=["AI - Marketing"])
+async def generate_social_media(payload: dict[str, Any] = {}, current_user: User = Depends(get_current_user)):
+    body: dict[str, Any] = {}
+    if payload.get("idea_id"):
+        body["idea_id"] = payload["idea_id"]
+    return await _forward_post_to_ai("social-media", str(current_user.id), payload=body or None)
+
+@router.post("/social-media/regenerate", summary="Regenerate Social Media Strategy", response_model=dict, tags=["AI - Marketing"])
+async def regenerate_social_media(current_user: User = Depends(get_current_user)):
+    return await _forward_post_to_ai(f"social-media/{current_user.id}/regenerate", None)
+
+@router.post("/social-media/regenerate-custom", summary="Regenerate Social Media Custom", response_model=dict, tags=["AI - Marketing"])
+async def regenerate_custom_social_media(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_post_to_ai(f"social-media/{current_user.id}/regenerate-custom", payload=payload)
+
+@router.post("/social-media/chat", summary="Chat Social Media", response_model=dict, tags=["AI - Marketing"])
+async def chat_social_media(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_post_to_ai(f"social-media/{current_user.id}/chat", payload=payload)
+
+@router.post("/social-media/chat/stream", summary="Chat Social Media Stream", tags=["AI - Marketing"])
+async def chat_stream_social_media(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_stream_to_ai(f"social-media/{current_user.id}/chat/stream", payload=payload)
+
+# ==========================================
+# Domain: MARKETING — Marketing Ideas
+# ==========================================
+@router.get("/marketing-ideas", summary="Get Marketing Ideas", response_model=dict, tags=["AI - Marketing"])
+async def get_marketing_ideas(current_user: User = Depends(get_current_user), idea_id: Optional[str] = Query(None)):
+    return await _forward_get_to_ai("marketing-ideas", str(current_user.id), params={"idea_id": idea_id} if idea_id else None)
+
+@router.post("/marketing-ideas", summary="Generate Marketing Ideas", response_model=dict, tags=["AI - Marketing"])
+async def generate_marketing_ideas(payload: dict[str, Any] = {}, current_user: User = Depends(get_current_user)):
+    body: dict[str, Any] = {}
+    if payload.get("idea_id"):
+        body["idea_id"] = payload["idea_id"]
+    return await _forward_post_to_ai("marketing-ideas", str(current_user.id), payload=body or None)
+
+@router.post("/marketing-ideas/regenerate", summary="Regenerate Marketing Ideas", response_model=dict, tags=["AI - Marketing"])
+async def regenerate_marketing_ideas(current_user: User = Depends(get_current_user)):
+    return await _forward_post_to_ai(f"marketing-ideas/{current_user.id}/regenerate", None)
+
+@router.post("/marketing-ideas/regenerate-custom", summary="Regenerate Marketing Ideas Custom", response_model=dict, tags=["AI - Marketing"])
+async def regenerate_custom_marketing_ideas(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_post_to_ai(f"marketing-ideas/{current_user.id}/regenerate-custom", payload=payload)
+
+@router.post("/marketing-ideas/chat", summary="Chat Marketing Ideas", response_model=dict, tags=["AI - Marketing"])
+async def chat_marketing_ideas(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_post_to_ai(f"marketing-ideas/{current_user.id}/chat", payload=payload)
+
+@router.post("/marketing-ideas/chat/stream", summary="Chat Marketing Ideas Stream", tags=["AI - Marketing"])
+async def chat_stream_marketing_ideas(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_stream_to_ai(f"marketing-ideas/{current_user.id}/chat/stream", payload=payload)
+
 @_system_router.get("/health", summary="Health", tags=["AI - System"])
 async def get_health():
     return await _forward_get_to_ai("health", "")
