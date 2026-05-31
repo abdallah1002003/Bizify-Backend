@@ -69,6 +69,9 @@ class PartnerRepository(BaseRepository[PartnerProfile, Any, Any]):
                 or_(
                     self.model.company_name.ilike(term),
                     self.model.description.ilike(term),
+                    self.model.industry.ilike(term),
+                    self.model.city.ilike(term),
+                    self.model.area.ilike(term),
                 )
             )
         return (

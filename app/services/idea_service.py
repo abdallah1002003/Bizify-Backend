@@ -13,7 +13,12 @@ from app.repositories.idea_repo import idea_repo
 
 
 def _extract_budget_from_text(text: str) -> Optional[float]:
-    m = re.search(r"(?:startup[\s\-]cost|budget)[^:]*:\s*\$?\s*([\d,]+)", text, re.IGNORECASE)
+    # Tolerate an optional currency prefix (EGP / USD / $ / LE) before the number.
+    m = re.search(
+        r"(?:startup[\s\-]cost|budget)[^:]*:\s*(?:egp|usd|le|\$)?\s*([\d,]+)",
+        text,
+        re.IGNORECASE,
+    )
     if m:
         try:
             return float(m.group(1).replace(",", ""))

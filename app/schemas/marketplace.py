@@ -36,6 +36,51 @@ class MarketplacePartnerPublic(BaseModel):
     country: Optional[str] = None
     documents_json: Optional[Any] = None
 
+    # ── Rich supplier/manufacturer fields ──
+    whatsapp: Optional[str] = None
+    email: Optional[str] = None
+    website: Optional[str] = None
+    facebook_url: Optional[str] = None
+    facebook_followers: Optional[int] = None
+    instagram_url: Optional[str] = None
+    tiktok_url: Optional[str] = None
+    google_maps_url: Optional[str] = None
+    google_rating: Optional[float] = None
+    review_count: Optional[int] = None
+
+    address: Optional[str] = None
+    area: Optional[str] = None
+    city: Optional[str] = None
+    governorate: Optional[str] = None
+
+    industry: Optional[str] = None
+    business_model: Optional[str] = None
+    minimum_order_quantity: Optional[str] = None
+    delivery_available: Optional[bool] = None
+    estimated_size: Optional[str] = None
+
+    factory_name: Optional[str] = None
+    factory_address: Optional[str] = None
+    factory_area: Optional[str] = None
+    production_capacity: Optional[str] = None
+    private_label_available: Optional[bool] = None
+    exporting: Optional[bool] = None
+    year_founded: Optional[int] = None
+    employee_count: Optional[int] = None
+
+    verification_score: Optional[int] = None
+    last_verified_date: Optional[str] = None
+
+    industry_tags: Optional[Any] = None
+    product_tags: Optional[Any] = None
+    products: Optional[Any] = None
+    brands_distributed: Optional[Any] = None
+    distribution_areas: Optional[Any] = None
+    manufacturing_capabilities: Optional[Any] = None
+    certifications: Optional[Any] = None
+    export_countries: Optional[Any] = None
+    source_urls: Optional[Any] = None
+
     model_config = ConfigDict(from_attributes=True)
 
 
