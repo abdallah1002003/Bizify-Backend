@@ -485,6 +485,11 @@ async def generate_unit_economics(payload: dict[str, Any] = {}, current_user: Us
 async def regenerate_unit_economics(current_user: User = Depends(get_current_user)):
     return await _forward_post_to_ai(f"unit-economics/{current_user.id}/regenerate", None)
 
+@router.post("/unit-economics/statements", summary="Generate Financial Statements", response_model=dict, tags=["AI - Unit Economics"])
+async def generate_financial_statements(payload: dict[str, Any] = {}, current_user: User = Depends(get_current_user)):
+    body = {"idea_id": payload["idea_id"]} if payload.get("idea_id") else None
+    return await _forward_post_to_ai(f"unit-economics/{current_user.id}/statements", payload=body)
+
 @router.post("/unit-economics/regenerate-custom", summary="Regenerate UnitEconomics Custom", response_model=dict, tags=["AI - Unit Economics"])
 async def regenerate_custom_unit_economics(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
     payload["user_id"] = str(current_user.id)
