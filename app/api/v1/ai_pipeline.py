@@ -760,6 +760,78 @@ async def chat_stream_marketing_ideas(payload: dict[str, Any], current_user: Use
     payload["user_id"] = str(current_user.id)
     return await _forward_stream_to_ai(f"marketing-ideas/{current_user.id}/chat/stream", payload=payload)
 
+# ─── PDF Validation (forwards to AI service /pipeline/validate/...) ───────────
+_VALIDATION_TIMEOUT_SECONDS = 240  # validation runs web search + multiple LLM calls
+
+
+@router.get(
+    "/validate/result/{validation_id}",
+    summary="Get Validation Result",
+    response_model=dict,
+    tags=["AI - Validation"],
+)
+async def get_validation_result(
+    validation_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    # AI route is /pipeline/validate/result/{validation_id} (no user_id segment)
+    return await _forward_get_to_ai(f"validate/result/{validation_id}", "")
+
+
+@router.get(
+    "/validate/{section}",
+    summary="List Section Validations",
+    response_model=dict,
+    tags=["AI - Validation"],
+)
+async def list_section_validations(
+    section: str,
+    idea_id: Optional[str] = Query(None),
+    current_user: User = Depends(get_current_user),
+):
+    params = {"idea_id": idea_id} if idea_id else None
+    return await _forward_get_to_ai(f"validate/{section}", str(current_user.id), params=params)
+
+
+@router.post(
+    "/validate/{section}",
+    summary="Validate Section PDF",
+    response_model=dict,
+    tags=["AI - Validation"],
+)
+async def validate_section_pdf(
+    section: str,
+    file: UploadFile = File(...),
+    validation_mode: str = Form("generic"),
+    idea_id: Optional[str] = Form(None),
+    current_user: User = Depends(get_current_user),
+):
+    if not settings.AI_PIPELINE_API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI_PIPELINE_API_KEY not configured on server.",
+        )
+    target_url = f"{_AI_BASE_URL}/pipeline/validate/{section}/{current_user.id}"
+    headers = {"x-api-key": settings.AI_PIPELINE_API_KEY}
+
+    file_bytes = await file.read()
+    files = {"file": (file.filename or "document.pdf", file_bytes, file.content_type or "application/pdf")}
+    data: dict[str, str] = {"validation_mode": validation_mode}
+    if idea_id:
+        data["idea_id"] = idea_id
+
+    try:
+        async with httpx.AsyncClient(timeout=_VALIDATION_TIMEOUT_SECONDS) as client:
+            response = await client.post(target_url, headers=headers, files=files, data=data)
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+    except httpx.RequestError as exc:
+        logger.error("AI validate request failed: %s", exc)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI Service unavailable.")
+
+
 @_system_router.get("/health", summary="Health", tags=["AI - System"])
 async def get_health():
     return await _forward_get_to_ai("health", "")
