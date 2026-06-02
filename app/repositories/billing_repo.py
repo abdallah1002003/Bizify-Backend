@@ -131,6 +131,38 @@ class PaymentRepository(BaseRepository[Payment, Any, Any]):
             db.flush()
         return payment
 
+    def create_pending_paypal_payment(
+        self,
+        db: Session,
+        *,
+        user_id: uuid.UUID,
+        subscription_id: uuid.UUID,
+        amount: Decimal,
+        currency: str,
+        paypal_order_id: str,
+        commit: bool = True,
+    ) -> Payment:
+        """
+        Persist a `pending` PayPal payment at order-creation time so the
+        order_id is server-bound to a plan/amount. Capture reads this record
+        instead of trusting any client-supplied plan_id.
+        """
+        payment = Payment(
+            user_id=user_id,
+            subscription_id=subscription_id,
+            amount=amount,
+            currency=currency,
+            status="pending",
+            paypal_order_id=paypal_order_id,
+        )
+        db.add(payment)
+        if commit:
+            db.commit()
+            db.refresh(payment)
+        else:
+            db.flush()
+        return payment
+
 
 class SubscriptionRepository(BaseRepository[Subscription, Any, Any]):
     """Data-access helpers for subscriptions."""
@@ -186,6 +218,74 @@ class SubscriptionRepository(BaseRepository[Subscription, Any, Any]):
         else:
             db.flush()
 
+        return subscription
+
+    def create_pending(
+        self,
+        db: Session,
+        *,
+        user_id: uuid.UUID,
+        plan_id: uuid.UUID,
+        commit: bool = False,
+    ) -> Subscription:
+        """
+        Insert a new PENDING subscription for a payment that has been initiated
+        but not yet confirmed. It is intentionally NOT activated here and is
+        invisible to `get_active_by_user` until the payment gateway confirms
+        success via webhook/capture. This prevents granting paid features before
+        money is actually received.
+        """
+        subscription = Subscription(
+            user_id=user_id,
+            plan_id=plan_id,
+            status=SubscriptionStatus.PENDING,
+            start_date=datetime.utcnow(),
+        )
+        db.add(subscription)
+        if commit:
+            db.commit()
+            db.refresh(subscription)
+        else:
+            db.flush()
+        return subscription
+
+    def activate(
+        self,
+        db: Session,
+        subscription: Subscription,
+        *,
+        commit: bool = True,
+    ) -> Subscription:
+        """
+        Mark a (pending) subscription ACTIVE after confirmed payment, cancelling
+        any other currently-active subscription for the same user so a user only
+        ever has one active subscription at a time.
+        """
+        others = (
+            db.query(self.model)
+            .filter(
+                self.model.user_id == subscription.user_id,
+                self.model.status == SubscriptionStatus.ACTIVE,
+                self.model.id != subscription.id,
+            )
+            .all()
+        )
+        for other in others:
+            other.status = SubscriptionStatus.CANCELED
+            other.end_date = datetime.utcnow()
+            db.add(other)
+
+        subscription.status = SubscriptionStatus.ACTIVE
+        if subscription.start_date is None:
+            subscription.start_date = datetime.utcnow()
+        subscription.end_date = None
+        db.add(subscription)
+
+        if commit:
+            db.commit()
+            db.refresh(subscription)
+        else:
+            db.flush()
         return subscription
 
     def cancel(

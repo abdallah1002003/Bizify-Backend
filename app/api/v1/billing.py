@@ -43,6 +43,7 @@ async def create_subscription_order(
     """Create a PayPal order for the chosen plan."""
     result = await payment_service.create_paypal_order(
         plan_id=body.plan_id,
+        user_id=current_user.id,
         db=db,
     )
     return result

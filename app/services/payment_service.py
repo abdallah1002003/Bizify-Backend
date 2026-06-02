@@ -29,8 +29,12 @@ def get_plan_or_404(plan_id: uuid.UUID, db: Session) -> Plan:
     return plan
 
 
-async def create_paypal_order(plan_id: uuid.UUID, db: Session) -> dict[str, Any]:
-    """Create a PayPal order for the selected plan."""
+async def create_paypal_order(plan_id: uuid.UUID, user_id: uuid.UUID, db: Session) -> dict[str, Any]:
+    """
+    Create a PayPal order for the selected plan and persist a PENDING
+    subscription + payment so the order_id is server-bound to this plan/amount.
+    Capture later reads that record instead of trusting a client plan_id.
+    """
     plan = get_plan_or_404(plan_id, db)
 
     try:
@@ -42,7 +46,7 @@ async def create_paypal_order(plan_id: uuid.UUID, db: Session) -> dict[str, Any]
     except httpx.HTTPStatusError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"PayPal error: {exc.response.text}",
+            detail="PayPal payment is currently unavailable. Please try again later.",
         ) from exc
     except Exception as exc:
         raise HTTPException(
@@ -60,6 +64,20 @@ async def create_paypal_order(plan_id: uuid.UUID, db: Session) -> dict[str, Any]
             detail="PayPal did not return an approval URL.",
         )
 
+    # Bind this order to the chosen plan server-side via a pending subscription.
+    pending_sub = subscription_repo.create_pending(
+        db, user_id=user_id, plan_id=plan.id, commit=False,
+    )
+    payment_repo.create_pending_paypal_payment(
+        db,
+        user_id=user_id,
+        subscription_id=pending_sub.id,
+        amount=plan.price,
+        currency="USD",
+        paypal_order_id=order["id"],
+        commit=True,
+    )
+
     return {
         "order_id": order["id"],
         "approval_url": approval_url,
@@ -73,15 +91,51 @@ async def capture_payment(
     user_id: uuid.UUID,
     db: Session,
 ) -> dict[str, Any]:
-    """Capture a PayPal payment and persist billing records."""
-    plan = get_plan_or_404(plan_id, db)
+    """
+    Capture a PayPal payment and activate the subscription.
+
+    SECURITY: the plan is derived from the server-side pending payment that was
+    created with the order — the client-supplied `plan_id` is intentionally
+    ignored so a user cannot pay for a cheap plan and receive an expensive one.
+    The captured amount is also verified against the plan price.
+    """
+    payment = payment_repo.get_by_paypal_order(db, order_id)
+    if not payment or payment.subscription_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Payment order not found.",
+        )
+    if payment.user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This order does not belong to the current user.",
+        )
+
+    subscription = db.get(Subscription, payment.subscription_id)
+    if subscription is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Subscription for this order no longer exists.",
+        )
+
+    # Idempotency — if this order was already captured, don't double-activate.
+    if payment.status == "succeeded":
+        return {
+            "payment_id": payment.id,
+            "subscription_id": subscription.id,
+            "status": "succeeded",
+            "amount": payment.amount,
+            "currency": payment.currency,
+        }
+
+    plan = get_plan_or_404(subscription.plan_id, db)
 
     try:
         capture_result = await paypal_client.capture_order(order_id)
     except httpx.HTTPStatusError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"PayPal capture error: {exc.response.text}",
+            detail="PayPal payment capture is currently unavailable. Please contact support.",
         ) from exc
     except Exception as exc:
         raise HTTPException(
@@ -102,23 +156,23 @@ async def capture_payment(
     captured_amount = Decimal(capture_data["amount"]["value"])
     captured_currency = capture_data["amount"]["currency_code"]
 
-    subscription = subscription_repo.create_or_update(
-        db,
-        user_id=user_id,
-        plan_id=plan.id,
-        commit=False,
-    )
-    payment = payment_repo.create_payment(
-        db,
-        user_id=user_id,
-        subscription_id=subscription.id,
-        amount=captured_amount,
-        currency=captured_currency,
-        paypal_order_id=order_id,
-        paypal_capture_id=capture_id,
-        commit=True,
-    )
+    # Verify the captured amount matches the server-side plan price.
+    if captured_amount != Decimal(str(plan.price)):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Captured amount does not match the plan price.",
+        )
+
+    payment.status = "succeeded"
+    payment.paypal_capture_id = capture_id
+    payment.amount = captured_amount
+    payment.currency = captured_currency
+    db.add(payment)
+
+    subscription_repo.activate(db, subscription, commit=False)
+    db.commit()
     db.refresh(subscription)
+    db.refresh(payment)
 
     return {
         "payment_id": payment.id,
@@ -212,7 +266,9 @@ async def create_paymob_payment(
         result = await paymob_client.create_card_payment(
             amount=plan.price,
             currency="EGP",
-            merchant_order_id=str(plan.id),
+            # Must be unique per transaction — Paymob rejects duplicate
+            # merchant_order_ids, so we never reuse the plan id here.
+            merchant_order_id=f"sub-{user_id}-{uuid.uuid4().hex[:16]}",
             billing_data=billing_data,
         )
     except httpx.HTTPStatusError as exc:
@@ -226,8 +282,10 @@ async def create_paymob_payment(
             detail="Card payment is currently unavailable. Please use PayPal or contact support.",
         ) from exc
 
-    # Create an active subscription (or upgrade the existing one) immediately.
-    subscription = subscription_repo.create_or_update(
+    # Create a PENDING subscription — it is NOT active until Paymob confirms the
+    # payment via webhook, so the user does not get paid features for free by
+    # merely opening the card iframe.
+    subscription = subscription_repo.create_pending(
         db,
         user_id=user_id,
         plan_id=plan.id,
@@ -374,6 +432,23 @@ async def capture_ppf_paypal_payment(
     if not credit:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail="PPF credit record not found.")
+    if credit.user_id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="This order does not belong to the current user.")
+    # Idempotency — already credited.
+    if credit.status == "succeeded":
+        return {"ppf_credit_id": credit.id, "quantity": credit.quantity, "status": "succeeded"}
+
+    # Verify the captured amount matches the recorded purchase amount.
+    try:
+        captured_amount = Decimal(
+            capture_result["purchase_units"][0]["payments"]["captures"][0]["amount"]["value"]
+        )
+    except (KeyError, IndexError, TypeError):
+        captured_amount = None
+    if captured_amount is not None and captured_amount != Decimal(str(credit.amount_paid)):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Captured amount does not match the purchase amount.")
 
     ppf_credit_repo.confirm(db, credit)
     usage_repo.add_ppf_sections(db, user_id, credit.quantity)
@@ -418,17 +493,26 @@ async def handle_paymob_webhook(data: dict[str, Any], db: Session) -> None:
     if not payment:
         return
 
+    # Idempotency — ignore repeated callbacks for an already-settled payment.
+    if payment.status == "succeeded":
+        return
+
     new_status = "succeeded" if is_success else "failed"
     payment.status                = new_status
     payment.paymob_transaction_id = transaction_id
     db.add(payment)
 
-    # Activate the linked subscription on success.
-    if is_success and payment.subscription_id:
-        from app.models.subscription import SubscriptionStatus  # avoid circular import
+    if payment.subscription_id:
         subscription = db.get(Subscription, payment.subscription_id)
         if subscription:
-            subscription.status = SubscriptionStatus.ACTIVE
-            db.add(subscription)
+            if is_success:
+                # Activate only now that money is confirmed received.
+                subscription_repo.activate(db, subscription, commit=False)
+            else:
+                # Failed payment — discard the pending subscription so it never
+                # lingers and is never treated as active.
+                from app.models.subscription import SubscriptionStatus
+                if subscription.status != SubscriptionStatus.ACTIVE:
+                    subscription_repo.cancel(db, subscription, commit=False)
 
     db.commit()

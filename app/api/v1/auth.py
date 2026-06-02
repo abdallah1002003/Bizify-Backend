@@ -1,13 +1,19 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user, get_db, oauth2_scheme
+from app.api.dependencies import (
+    get_current_admin_user,
+    get_current_user,
+    get_db,
+    oauth2_scheme,
+)
 from app.core import google_client
 from app.core.config import settings
+from app.core.rate_limit import limiter
 from app.models.user import User
 from app.schemas.user import (
     GoogleCallbackRequest,
@@ -39,7 +45,9 @@ def get_google_auth_url() -> dict[str, str]:
 
 
 @router.post("/google/callback", response_model=Token)
+@limiter.limit("20/minute")
 async def google_auth_callback(
+    request: Request,
     data: GoogleCallbackRequest,
     db: Session = Depends(get_db),
 ) -> Any:
@@ -50,7 +58,9 @@ async def google_auth_callback(
 
 
 @router.post("/login", response_model=Token)
+@limiter.limit("10/minute")
 def login_access_token(
+    request: Request,
     db: Session = Depends(get_db),
     form_data: OAuth2PasswordRequestForm = Depends(),
 ) -> Any:
@@ -70,13 +80,16 @@ def logout(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)) -
 
 
 @router.post("/verify-otp")
-def verify_otp(data: OTPVerify, db: Session = Depends(get_db)) -> dict[str, str]:
+@limiter.limit("10/minute")
+def verify_otp(request: Request, data: OTPVerify, db: Session = Depends(get_db)) -> dict[str, str]:
     """Verify an account using an emailed OTP."""
     return AuthService.verify_otp(db, data)
 
 
 @router.post("/resend-verification-otp")
+@limiter.limit("5/minute")
 def resend_verification_otp(
+    request: Request,
     data: OTPResendRequest,
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
@@ -85,19 +98,23 @@ def resend_verification_otp(
 
 
 @router.post("/forgot-password")
-def forgot_password(data: OTPResendRequest, db: Session = Depends(get_db)) -> dict[str, str]:
+@limiter.limit("5/minute")
+def forgot_password(request: Request, data: OTPResendRequest, db: Session = Depends(get_db)) -> dict[str, str]:
     """Send a password reset code if the email exists."""
     return AuthService.forgot_password(db, data.email)
 
 
 @router.post("/verify-reset-code")
-def verify_reset_code(data: OTPVerify, db: Session = Depends(get_db)) -> dict[str, str]:
+@limiter.limit("10/minute")
+def verify_reset_code(request: Request, data: OTPVerify, db: Session = Depends(get_db)) -> dict[str, str]:
     """Verify a password reset code before allowing the user to type a new password."""
     return AuthService.verify_reset_code(db, data.email, data.otp_code)
 
 
 @router.post("/reset-password")
+@limiter.limit("10/minute")
 def reset_password(
+    request: Request,
     data: PasswordResetRequest,
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
@@ -131,11 +148,15 @@ def session_ping(current_user: User = Depends(get_current_user)) -> dict[str, st
     """Keep the current session active."""
     return {"message": "Session kept alive"}
 @router.get("/test-email")
-def test_email(email: str) -> dict[str, Any]:
+def test_email(
+    email: str,
+    _admin: User = Depends(get_current_admin_user),
+) -> dict[str, Any]:
     """
-    Diagnostic endpoint for email delivery. Returns the configured provider,
-    a config-validation summary, and (if reachable) the result of an actual send.
-    Safe to call in production — only the resolved provider is exposed, no secrets.
+    Admin-only diagnostic endpoint for email delivery. Returns the configured
+    provider, a config-validation summary, and (if reachable) the result of an
+    actual send. Restricted to admins because it triggers a real email send to
+    an arbitrary address and would otherwise be an email-bombing vector.
     """
     from app.core.mail import (
         EmailDeliveryError,

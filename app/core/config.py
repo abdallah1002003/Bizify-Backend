@@ -1,7 +1,11 @@
 import sys
 from typing import Optional
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Known insecure development default — must never be used in production.
+_INSECURE_SECRET_KEY = "your-super-secret-key-for-dev-only"
 
 
 class Settings(BaseSettings):
@@ -9,6 +13,10 @@ class Settings(BaseSettings):
 
     PROJECT_NAME: str = "Bizify"
     API_V1_STR: str = "/api/v1"
+
+    # Expose interactive API docs (/docs, /redoc). Off by default; enable only
+    # in trusted/dev environments.
+    ENABLE_DOCS: bool = False
 
     POSTGRES_SERVER: Optional[str] = None
     POSTGRES_USER: Optional[str] = None
@@ -20,7 +28,7 @@ class Settings(BaseSettings):
     REDIS_PORT: int = 6379
     REDIS_URL: Optional[str] = None
 
-    SECRET_KEY: str = "your-super-secret-key-for-dev-only"
+    SECRET_KEY: str = _INSECURE_SECRET_KEY
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080
 
@@ -66,6 +74,18 @@ class Settings(BaseSettings):
         case_sensitive=True,
         extra="ignore",
     )
+
+    @model_validator(mode="after")
+    def _enforce_secure_secret_key(self) -> "Settings":
+        """Refuse to boot in production with a missing/insecure JWT signing key."""
+        if "pytest" in sys.modules:
+            return self
+        if not self.SECRET_KEY or self.SECRET_KEY == _INSECURE_SECRET_KEY:
+            raise RuntimeError(
+                "SECRET_KEY must be set to a strong, unique value in production "
+                "(it is currently missing or using the insecure development default)."
+            )
+        return self
 
     def get_database_url(self) -> str:
         """Return the configured database URL or build it from components."""

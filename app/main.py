@@ -5,6 +5,8 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -12,6 +14,7 @@ from app.api.api import api_router
 from app.core.config import settings
 from app.core.database import engine, ensure_sqlite_compatibility_schema
 from app.core.mail import configured_provider, validate_email_config
+from app.core.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -44,20 +47,32 @@ async def lifespan(app: FastAPI):
     yield
 
 
+# Interactive API docs reveal the full endpoint surface — keep them off in
+# production unless explicitly enabled via ENABLE_DOCS=true.
+_docs_enabled = settings.ENABLE_DOCS
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="Bizify",
     version="1.0.0",
     lifespan=lifespan,
+    docs_url="/docs" if _docs_enabled else None,
+    redoc_url="/redoc" if _docs_enabled else None,
+    openapi_url="/openapi.json" if _docs_enabled else None,
 )
+
+# Rate limiting (auth/OTP/password-reset endpoints) — see app.core.rate_limit.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# In production, only the real frontend origin may make credentialed requests.
+# Localhost origins are added only in dev (when docs are enabled).
+_cors_origins = [settings.FRONTEND_URL]
+if _docs_enabled:
+    _cors_origins += ["http://localhost:3000", "http://127.0.0.1:3000"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        settings.FRONTEND_URL,
-    ],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

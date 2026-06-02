@@ -41,6 +41,30 @@ _AI_BASE_URL = settings.AI_PIPELINE_BASE_URL
 _REQUEST_TIMEOUT_SECONDS = 120
 
 
+def _http_exception_from_upstream(response: httpx.Response) -> HTTPException:
+    """
+    Translate an upstream AI-service error without leaking internal details.
+
+    4xx responses carry user-meaningful messages and are forwarded as-is; 5xx
+    responses are logged server-side and surfaced to the client as a generic
+    502 so internal stack traces / exception text never reach the browser.
+    """
+    if response.status_code >= 500:
+        logger.error("AI pipeline upstream %s: %s", response.status_code, response.text[:500])
+        return HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="AI service error. Please try again later.",
+        )
+    detail = "AI service error."
+    try:
+        data = response.json()
+        if isinstance(data, dict) and "detail" in data:
+            detail = str(data["detail"])[:500]
+    except Exception:
+        pass
+    return HTTPException(status_code=response.status_code, detail=detail)
+
+
 @router.post(
     "/chat",
     summary="Chatbot",
@@ -123,7 +147,7 @@ async def _forward_get_to_ai(path: str, user_id: str, params: Optional[dict] = N
             response.raise_for_status()
             return response.json()
     except httpx.HTTPStatusError as exc:
-        raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+        raise _http_exception_from_upstream(exc.response)
     except httpx.RequestError as exc:
         logger.error("AI pipeline request failed: %s", exc)
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI Service unavailable.")
@@ -144,7 +168,7 @@ async def _forward_post_to_ai(path: str, user_id: Optional[str] = None, payload:
             response.raise_for_status()
             return response.json()
     except httpx.HTTPStatusError as exc:
-        raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+        raise _http_exception_from_upstream(exc.response)
     except httpx.RequestError as exc:
         logger.error("AI pipeline request failed: %s", exc)
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI Service unavailable.")
@@ -167,7 +191,7 @@ async def _forward_stream_to_ai(path: str, payload: Optional[dict[str, Any]] = N
                     async for chunk in response.aiter_bytes():
                         yield chunk
         except httpx.HTTPStatusError as exc:
-            raise HTTPException(status_code=exc.response.status_code, detail=f"AI stream error: {exc.response.text}")
+            raise _http_exception_from_upstream(exc.response)
         except httpx.RequestError as exc:
             logger.error("AI stream unreachable: %s", exc)
             raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI stream service unreachable.")
@@ -193,7 +217,7 @@ async def trigger_pipeline(payload: dict[str, Any] = {}, current_user: User = De
             response.raise_for_status()
             return response.json()
     except httpx.HTTPStatusError as exc:
-        raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+        raise _http_exception_from_upstream(exc.response)
     except httpx.RequestError:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI Service unavailable.")
 
@@ -779,8 +803,11 @@ async def get_validation_result(
     validation_id: str,
     current_user: User = Depends(get_current_user),
 ):
-    # AI route is /pipeline/validate/result/{validation_id} (no user_id segment)
-    return await _forward_get_to_ai(f"validate/result/{validation_id}", "")
+    # AI route is /pipeline/validate/result/{validation_id} (no user_id segment).
+    # Forward the authenticated user id so the AI service can enforce ownership.
+    return await _forward_get_to_ai(
+        f"validate/result/{validation_id}", "", params={"user_id": str(current_user.id)}
+    )
 
 
 @router.get(
@@ -819,7 +846,15 @@ async def validate_section_pdf(
     target_url = f"{_AI_BASE_URL}/pipeline/validate/{section}/{current_user.id}"
     headers = {"x-api-key": settings.AI_PIPELINE_API_KEY}
 
-    file_bytes = await file.read()
+    # Cap the upload so a large file can't exhaust backend memory before the AI
+    # service rejects it. Read MAX+1 to detect overflow without loading more.
+    _MAX_UPLOAD_BYTES = 15 * 1024 * 1024  # 15 MB (matches AI service limit)
+    file_bytes = await file.read(_MAX_UPLOAD_BYTES + 1)
+    if len(file_bytes) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="PDF file is too large. Maximum size is 15 MB.",
+        )
     files = {"file": (file.filename or "document.pdf", file_bytes, file.content_type or "application/pdf")}
     data: dict[str, str] = {"validation_mode": validation_mode}
     if idea_id:
@@ -831,7 +866,7 @@ async def validate_section_pdf(
             response.raise_for_status()
             return response.json()
     except httpx.HTTPStatusError as exc:
-        raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+        raise _http_exception_from_upstream(exc.response)
     except httpx.RequestError as exc:
         logger.error("AI validate request failed: %s", exc)
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI Service unavailable.")

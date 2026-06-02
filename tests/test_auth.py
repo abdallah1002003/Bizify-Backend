@@ -1,3 +1,6 @@
+from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, patch
+
 from fastapi.testclient import TestClient
 
 
@@ -202,6 +205,105 @@ def test_session_status_without_token(client: TestClient):
     """A-09: Session status without token fails"""
     response = client.get("/api/v1/auth/session-status")
     assert response.status_code == 401
+
+
+def _patch_google(email: str, name: str = "Google User", google_id: str = "google-123"):
+    """Patch the Google OAuth client so no network call is made during tests."""
+    return (
+        patch(
+            "app.core.google_client.exchange_code_for_token",
+            new=AsyncMock(return_value="fake-google-access-token"),
+        ),
+        patch(
+            "app.core.google_client.get_google_user_info",
+            new=AsyncMock(return_value={"email": email, "id": google_id, "name": name}),
+        ),
+    )
+
+
+def test_google_login_existing_stale_user_not_locked_out(client: TestClient, db_session):
+    """
+    A-12 (regression): an existing user whose last_activity is older than the
+    inactivity window must still be able to log in via Google AND use the token.
+
+    Previously google_login never refreshed last_activity (unlike password
+    authenticate()), so the inactivity check in get_current_user 401'd the very
+    first request after a Google login — bouncing the user back to /login.
+    """
+    from app.core.config import settings
+    from app.models.user import User
+
+    email = "google_stale@bizify.com"
+
+    client.post(
+        "/api/v1/users/register",
+        json={
+            "email": email,
+            "full_name": "Google User",
+            "password": "StrongPassword123!",
+            "confirm_password": "StrongPassword123!",
+        },
+    )
+    user = db_session.query(User).filter_by(email=email).first()
+    user.is_verified = True
+    # Force the account to look idle well beyond the inactivity timeout.
+    user.last_activity = datetime.now(timezone.utc) - timedelta(
+        minutes=settings.SESSION_TIMEOUT_MINUTES + 60
+    )
+    db_session.commit()
+
+    exchange_patch, userinfo_patch = _patch_google(email)
+    with exchange_patch, userinfo_patch:
+        callback_resp = client.post(
+            "/api/v1/auth/google/callback",
+            json={"code": "fake-oauth-code"},
+        )
+
+    assert callback_resp.status_code == 200, callback_resp.json()
+    token = callback_resp.json()["access_token"]
+
+    # The first authenticated request after Google login must NOT 401.
+    me_resp = client.get(
+        "/api/v1/users/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert me_resp.status_code == 200, me_resp.json()
+    assert me_resp.json()["email"] == email
+
+    # last_activity should have been refreshed to "now" by the login.
+    db_session.refresh(user)
+    refreshed = user.last_activity
+    if refreshed.tzinfo is None:
+        refreshed = refreshed.replace(tzinfo=timezone.utc)
+    assert datetime.now(timezone.utc) - refreshed < timedelta(minutes=5)
+
+
+def test_google_login_new_user_succeeds(client: TestClient, db_session):
+    """A-13: A first-time Google sign-in creates the account and issues a usable token."""
+    from app.models.user import User
+
+    email = "google_new@bizify.com"
+
+    exchange_patch, userinfo_patch = _patch_google(email, name="Brand New")
+    with exchange_patch, userinfo_patch:
+        callback_resp = client.post(
+            "/api/v1/auth/google/callback",
+            json={"code": "fake-oauth-code"},
+        )
+
+    assert callback_resp.status_code == 200, callback_resp.json()
+    token = callback_resp.json()["access_token"]
+
+    user = db_session.query(User).filter_by(email=email).first()
+    assert user is not None
+    assert user.google_id == "google-123"
+
+    me_resp = client.get(
+        "/api/v1/users/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert me_resp.status_code == 200, me_resp.json()
+    assert me_resp.json()["email"] == email
 
 
 def test_logout_invalidates_token(client: TestClient, db_session):

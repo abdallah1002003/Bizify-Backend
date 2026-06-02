@@ -43,9 +43,13 @@ class AuthService:
         if user:
             if not user.google_id:
                 user.google_id = google_id
-                user_repo.save(db, db_obj=user)
 
             AuthService._validate_account_state(user)
+            # Refresh last_activity so the inactivity check in get_current_user
+            # doesn't 401 the very first request after a Google login (the check
+            # runs before it can update the timestamp). Mirrors authenticate().
+            user.last_activity = datetime.now(timezone.utc)
+            user_repo.save(db, db_obj=user)
             return AuthService.create_token_response(user)
 
         user = user_repo.create(

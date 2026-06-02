@@ -1,6 +1,5 @@
 import logging
-import random
-import string
+import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -19,6 +18,10 @@ from app.schemas.user import UserCreate
 from app.services.partner_service import PartnerService
 
 logger = logging.getLogger(__name__)
+
+# Max wrong guesses allowed against a single OTP before it is invalidated.
+MAX_OTP_ATTEMPTS = 5
+
 PARTNER_REGISTRATION_ROLES = {
     UserRole.MENTOR,
     UserRole.SUPPLIER,
@@ -124,7 +127,8 @@ class UserService:
                     detail=f"Please wait before sending another OTP {remaining} seconds",
                 )
 
-        otp = "".join(random.choices(string.digits, k=6))
+        # Cryptographically-secure 6-digit code (secrets, not random).
+        otp = "".join(secrets.choice("0123456789") for _ in range(6))
         hashed_otp = get_password_hash(otp)
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
         auth_repo.create_otp(
@@ -154,6 +158,28 @@ class UserService:
         return otp
 
     @staticmethod
+    def _verify_otp_or_count(db: Session, db_otp, otp_code: str) -> bool:
+        """
+        Verify a candidate OTP against the stored hash, counting failed attempts
+        and invalidating the code once the lockout threshold is reached. This
+        stops brute-force guessing of the short numeric code.
+        """
+        if db_otp.attempts >= MAX_OTP_ATTEMPTS:
+            auth_repo.delete_otp(db, db_otp, commit=True)
+            return False
+
+        if not verify_password(otp_code, db_otp.otp_hash):
+            db_otp.attempts += 1
+            if db_otp.attempts >= MAX_OTP_ATTEMPTS:
+                auth_repo.delete_otp(db, db_otp, commit=True)
+            else:
+                db.add(db_otp)
+                db.commit()
+            return False
+
+        return True
+
+    @staticmethod
     def verify_otp_status(db: Session, email: str, otp_code: str) -> bool:
         """Validate an account-verification OTP and mark the user as verified."""
         user = UserService.get_user_by_email(db, email=email)
@@ -168,7 +194,7 @@ class UserService:
         if not db_otp or db_otp.is_expired:
             return False
 
-        if not verify_password(otp_code, db_otp.otp_hash):
+        if not UserService._verify_otp_or_count(db, db_otp, otp_code):
             return False
 
         user.is_verified = True
@@ -198,7 +224,7 @@ class UserService:
         if not db_otp or db_otp.is_expired:
             return False
 
-        if not verify_password(otp_code, db_otp.otp_hash):
+        if not UserService._verify_otp_or_count(db, db_otp, otp_code):
             return False
 
         user.password_hash = get_password_hash(new_password)
@@ -223,7 +249,7 @@ class UserService:
         if not db_otp or db_otp.is_expired:
             return False
 
-        if not verify_password(otp_code, db_otp.otp_hash):
+        if not UserService._verify_otp_or_count(db, db_otp, otp_code):
             return False
 
         return True

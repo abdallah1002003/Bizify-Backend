@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, String
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -35,6 +35,9 @@ class AccountVerification(Base):
     )
     expires_at = Column(DateTime, nullable = False)
     created_at = Column(DateTime, default = datetime.utcnow)
+    # Number of failed verification attempts against this OTP. Used to lock out
+    # brute-force guessing of the 6-digit code.
+    attempts = Column(Integer, nullable = False, default = 0, server_default = "0")
 
     user = relationship("User", back_populates = "verification_codes")
 
