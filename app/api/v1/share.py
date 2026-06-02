@@ -2,6 +2,7 @@ import asyncio
 import logging
 import secrets
 import uuid
+from datetime import datetime, timedelta
 from typing import Any, Optional
 
 import httpx
@@ -47,9 +48,21 @@ _ANALYSIS_SECTIONS: list[tuple[str, str, str]] = [
 
 _AI_REQUEST_TIMEOUT_SECONDS = 30
 
+# Share links expire after this many days unless the caller asks for less/more.
+DEFAULT_SHARE_TTL_DAYS = 90
+MIN_SHARE_TTL_DAYS = 1
+MAX_SHARE_TTL_DAYS = 365
+
 
 def _generate_token() -> str:
     return secrets.token_urlsafe(32)
+
+
+def _resolve_expiry(expires_in_days: Optional[int]) -> datetime:
+    """Clamp the requested TTL and return an absolute expiry timestamp."""
+    ttl = expires_in_days if expires_in_days is not None else DEFAULT_SHARE_TTL_DAYS
+    ttl = max(MIN_SHARE_TTL_DAYS, min(MAX_SHARE_TTL_DAYS, ttl))
+    return datetime.utcnow() + timedelta(days=ttl)
 
 
 async def _fetch_section(
@@ -88,6 +101,7 @@ def create_share_links(
         raise HTTPException(status_code=400, detail="At least one idea ID is required")
 
     items: list[ShareItem] = []
+    expires_at = _resolve_expiry(payload.expires_in_days)
 
     for idea_id in payload.idea_ids:
         idea: Idea | None = db.query(Idea).filter(Idea.id == idea_id).first()
@@ -106,6 +120,7 @@ def create_share_links(
             created_by=current_user.id,
             token=token,
             is_public=True,
+            expires_at=expires_at,
         )
         db.add(link)
         items.append(
@@ -114,11 +129,30 @@ def create_share_links(
                 idea_title=idea.title or "Untitled idea",
                 token=token,
                 share_url=f"{FRONTEND_BASE}/share/{token}",
+                expires_at=expires_at,
             )
         )
 
     db.commit()
     return ShareResponse(items=items)
+
+
+@router.delete("/ideas/share/{token}", status_code=204)
+def revoke_share_link(
+    token: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Revoke a share link the current user owns (makes it immediately inaccessible)."""
+    link: ShareLink | None = db.query(ShareLink).filter(ShareLink.token == token).first()
+    if not link:
+        raise HTTPException(status_code=404, detail="Share link not found")
+    if link.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to revoke this link")
+
+    link.is_public = False
+    db.add(link)
+    db.commit()
 
 
 @public_router.get("/share/{token}", response_model=SharedIdeaRead)
@@ -130,6 +164,10 @@ async def get_shared_idea(token: str, db: Session = Depends(get_db)) -> SharedId
         .first()
     )
     if not link or not link.idea_id:
+        raise HTTPException(status_code=404, detail="Share link not found or expired")
+
+    # Reject expired links (treated the same as not-found so no info leaks).
+    if link.expires_at and link.expires_at < datetime.utcnow():
         raise HTTPException(status_code=404, detail="Share link not found or expired")
 
     idea: Idea | None = db.query(Idea).filter(Idea.id == link.idea_id).first()

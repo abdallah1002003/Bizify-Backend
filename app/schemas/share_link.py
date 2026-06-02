@@ -22,6 +22,9 @@ class ShareLinkRead(ShareLinkBase):
 
 class ShareRequest(BaseModel):
     idea_ids: list[uuid.UUID]
+    # How long the link stays valid. Omitted → server default (90 days).
+    # Clamped server-side to [1, 365].
+    expires_in_days: Optional[int] = None
 
 
 class ShareItem(BaseModel):
@@ -29,6 +32,7 @@ class ShareItem(BaseModel):
     idea_title: str
     token: str
     share_url: str
+    expires_at: Optional[datetime] = None
 
 
 class ShareResponse(BaseModel):
