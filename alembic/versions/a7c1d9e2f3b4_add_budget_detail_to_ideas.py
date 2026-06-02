@@ -23,11 +23,18 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _has_column(table: str, column: str) -> bool:
+    insp = sa.inspect(op.get_bind())
+    return column in {c["name"] for c in insp.get_columns(table)}
+
+
 def upgrade() -> None:
-    with op.batch_alter_table('ideas', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('budget_detail', sa.JSON(), nullable=True))
+    if not _has_column('ideas', 'budget_detail'):
+        with op.batch_alter_table('ideas', schema=None) as batch_op:
+            batch_op.add_column(sa.Column('budget_detail', sa.JSON(), nullable=True))
 
 
 def downgrade() -> None:
-    with op.batch_alter_table('ideas', schema=None) as batch_op:
-        batch_op.drop_column('budget_detail')
+    if _has_column('ideas', 'budget_detail'):
+        with op.batch_alter_table('ideas', schema=None) as batch_op:
+            batch_op.drop_column('budget_detail')
