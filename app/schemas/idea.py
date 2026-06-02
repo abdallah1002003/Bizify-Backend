@@ -29,6 +29,7 @@ class IdeaBase(BaseModel):
     problem_validation_score: Optional[float]      = None
     pipeline_complete:   Optional[bool]            = None
     budget:              Optional[float]           = None
+    budget_detail:       Optional[Any]             = None
     skills:              Optional[Any]             = None
     feasibility:         Optional[float]           = None
     # AI seed fields

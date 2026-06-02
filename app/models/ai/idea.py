@@ -55,6 +55,7 @@ class Idea(Base):
     
     problem_validation_score = Column(Float)
     budget = Column(Float)
+    budget_detail = Column(JSON)   # {amount_egp, is_estimate, basis, breakdown, note, source}
     skills = Column(JSON)
     feasibility = Column(Float)
     is_score_outdated    = Column(Boolean, default = False)
