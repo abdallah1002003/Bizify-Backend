@@ -12,9 +12,21 @@ connect_args = (
     else {}
 )
 
+_is_postgres = not settings.get_database_url().startswith("sqlite")
+
 engine = create_engine(
     settings.get_database_url(),
-    connect_args = connect_args
+    connect_args=connect_args,
+    # Keep the pool small on Render free tier (max 25 DB connections shared
+    # between this service and bizifyAI).  pool_pre_ping drops stale sockets
+    # silently; pool_timeout fails fast instead of waiting 30 s.
+    # Render free PostgreSQL caps at ~25 total connections shared with bizifyAI
+    # (which uses pool_size=3, max_overflow=3 = 6 max).  This leaves 19 for us.
+    pool_size=10 if _is_postgres else 1,
+    max_overflow=9 if _is_postgres else 0,
+    pool_timeout=10,
+    pool_pre_ping=True,
+    pool_recycle=300,
 )
 
 SessionLocal = sessionmaker(autocommit = False, autoflush = False, bind = engine)
