@@ -110,13 +110,22 @@ def get_all_users(
 ) -> list[UserRead]:
     """Return a paginated list of users."""
     try:
-        return user_repo.get_multi(db, skip=skip, limit=limit)
+        rows = user_repo.get_multi(db, skip=skip, limit=limit)
     except Exception as exc:
-        logger.error("Failed to fetch users: %s", exc, exc_info=True)
+        logger.error("Failed to query users: %s", exc, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch users. Please try again.",
         ) from exc
+
+    # Validate each row individually so one bad record never breaks the whole list.
+    result: list[UserRead] = []
+    for row in rows:
+        try:
+            result.append(UserRead.model_validate(row))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Skipping user id=%s from admin list — validation error: %s", getattr(row, "id", "?"), exc)
+    return result
 
 
 @router.get("/users/{user_id}", response_model=UserRead)

@@ -65,8 +65,11 @@ class UserBase(BaseModel):
     """
     Base Pydantic model for User data.
     """
-    
-    email: EmailStr
+
+    # str instead of EmailStr: stored emails may use internal/reserved domains
+    # (e.g. @partners.bizify.local seed accounts) which EmailStr rejects.
+    # Validation happens at registration time via RegistrationBase.email: EmailStr.
+    email: str
     full_name: Optional[str] = None
     role: Optional[UserRole] = UserRole.ENTREPRENEUR
     is_active: Optional[bool] = True
