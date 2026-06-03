@@ -1,12 +1,15 @@
+import logging
 import os
 from typing import Any, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import RoleChecker, get_db
 from app.models.partner_profile import ApprovalStatus
+from app.models.platform_setting import PlatformSetting
 from app.models.user import User, UserRole
 from app.repositories.user_repo import user_repo
 from app.schemas.partner_profile import PartnerProfileRead
@@ -15,6 +18,8 @@ from app.schemas.user import UserRead
 from app.services.admin_service import AdminService
 from app.services.partner_service import PartnerService
 from app.services.user_service import UserService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -104,7 +109,14 @@ def get_all_users(
     _current_admin: User = Depends(RoleChecker([UserRole.ADMIN])),
 ) -> list[UserRead]:
     """Return a paginated list of users."""
-    return user_repo.get_multi(db, skip=skip, limit=limit)
+    try:
+        return user_repo.get_multi(db, skip=skip, limit=limit)
+    except Exception as exc:
+        logger.error("Failed to fetch users: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch users. Please try again.",
+        ) from exc
 
 
 @router.get("/users/{user_id}", response_model=UserRead)
@@ -151,12 +163,18 @@ def unsuspend_user(
     )
 
 
-@router.get("/platform-config", response_model=dict[str, Any])
-def get_platform_config(
-    _current_admin: User = Depends(RoleChecker([UserRole.ADMIN])),
-) -> dict[str, Any]:
-    """Return read-only platform configuration derived from environment."""
-    return {
+_EDITABLE_SETTINGS = {
+    "allow_registration",
+    "require_email_verification",
+    "max_login_attempts",
+    "session_timeout_minutes",
+    "debug_mode",
+}
+
+
+def _load_platform_config(db: Session) -> dict[str, Any]:
+    """Build the platform config dict, giving DB overrides priority over env vars."""
+    defaults: dict[str, Any] = {
         "session_timeout_minutes": int(os.getenv("SESSION_TIMEOUT_MINUTES", "240")),
         "jwt_expire_minutes": int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "10080")),
         "environment": os.getenv("ENVIRONMENT", os.getenv("ENV", "production")),
@@ -166,3 +184,68 @@ def get_platform_config(
         "max_login_attempts": int(os.getenv("MAX_LOGIN_ATTEMPTS", "5")),
         "backend_version": os.getenv("APP_VERSION", "1.0.0"),
     }
+    rows = db.query(PlatformSetting).all()
+    for row in rows:
+        if row.key in defaults:
+            raw = row.value
+            existing = defaults[row.key]
+            if isinstance(existing, bool):
+                defaults[row.key] = raw.lower() in ("true", "1", "yes")
+            elif isinstance(existing, int):
+                try:
+                    defaults[row.key] = int(raw)
+                except ValueError:
+                    pass
+            else:
+                defaults[row.key] = raw
+    return defaults
+
+
+class PlatformConfigUpdate(BaseModel):
+    allow_registration: Optional[bool] = None
+    require_email_verification: Optional[bool] = None
+    max_login_attempts: Optional[int] = None
+    session_timeout_minutes: Optional[int] = None
+    debug_mode: Optional[bool] = None
+
+
+@router.get("/platform-config", response_model=dict[str, Any])
+def get_platform_config(
+    db: Session = Depends(get_db),
+    _current_admin: User = Depends(RoleChecker([UserRole.ADMIN])),
+) -> dict[str, Any]:
+    """Return platform configuration (DB overrides take priority over env vars)."""
+    return _load_platform_config(db)
+
+
+@router.patch("/platform-config", response_model=dict[str, Any])
+def update_platform_config(
+    payload: PlatformConfigUpdate,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(RoleChecker([UserRole.ADMIN])),
+) -> dict[str, Any]:
+    """Persist one or more editable settings to the database."""
+    updates = payload.model_dump(exclude_none=True)
+    if not updates:
+        raise HTTPException(status_code=400, detail="No settings provided")
+
+    for key, value in updates.items():
+        if key not in _EDITABLE_SETTINGS:
+            raise HTTPException(status_code=400, detail=f"Setting '{key}' is not editable")
+
+        row = db.query(PlatformSetting).filter(PlatformSetting.key == key).first()
+        str_value = str(value).lower() if isinstance(value, bool) else str(value)
+        if row:
+            row.value = str_value
+            row.updated_by = str(current_admin.email)
+        else:
+            db.add(PlatformSetting(key=key, value=str_value, updated_by=str(current_admin.email)))
+
+    try:
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        logger.error("Failed to update platform config: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to save settings") from exc
+
+    return _load_platform_config(db)

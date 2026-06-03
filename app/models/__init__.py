@@ -43,6 +43,7 @@ from app.models.group_message import GroupMessage
 from app.models.notification import DeliveryStatus, Notification, NotificationStatus
 from app.models.notification_setting import NotificationSetting
 from app.models.partner_category import PartnerCategory
+from app.models.platform_setting import PlatformSetting
 from app.models.partner_profile import ApprovalStatus, PartnerProfile, PartnerType
 from app.models.partner_request import PartnerRequest, RequestStatus
 from app.models.profile_view import ProfileView
@@ -67,6 +68,7 @@ __all__ = [
     "UserProfile",
     "AdminActionLog",
     "PartnerCategory",
+    "PlatformSetting",
     "PartnerProfile",
     "PartnerType",
     "ApprovalStatus",
