@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -32,7 +32,7 @@ def get_my_usage(
         features = sub.plan.features_json
         plan_name = sub.plan.name
 
-    plan_limit: int | None = features.get("ai_tokens")
+    plan_limit: Optional[int] = features.get("ai_tokens")
 
     info = usage_repo.get_usage_info(db, current_user.id, plan_limit)
     info["plan_name"] = plan_name

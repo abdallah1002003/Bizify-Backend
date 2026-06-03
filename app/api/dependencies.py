@@ -1,6 +1,7 @@
 import uuid
 from collections.abc import Generator
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
@@ -192,7 +193,7 @@ def check_ai_usage(
             detail="No Pay-Per-Feature credits remaining. Buy more sections to continue.",
         )
 
-    plan_limit: int | None = features.get("ai_tokens")
+    plan_limit: Optional[int] = features.get("ai_tokens")
     _, record = usage_repo.check_limit(db, current_user.id)
     active_limit = plan_limit if plan_limit is not None else (record.limit_value or 20_000)
     used = record.used or 0

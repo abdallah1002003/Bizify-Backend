@@ -1,4 +1,5 @@
 import uuid
+from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -58,7 +59,7 @@ class UsageRepository:
         within_limit = (record.used or 0) < limit
         return within_limit, record
 
-    def get_usage_info(self, db: Session, user_id: uuid.UUID, plan_limit: int | None = None) -> dict:
+    def get_usage_info(self, db: Session, user_id: uuid.UUID, plan_limit: Optional[int] = None) -> dict:
         """Return a dict with used / limit / remaining / percentage."""
         record = self.get_or_create(db, user_id)
         effective_limit = plan_limit if plan_limit is not None else (record.limit_value or AI_TOKEN_DEFAULT_LIMIT)

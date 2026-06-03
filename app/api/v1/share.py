@@ -104,7 +104,7 @@ def create_share_links(
     expires_at = _resolve_expiry(payload.expires_in_days)
 
     for idea_id in payload.idea_ids:
-        idea: Idea | None = db.query(Idea).filter(Idea.id == idea_id).first()
+        idea: Optional[Idea] = db.query(Idea).filter(Idea.id == idea_id).first()
         if not idea:
             raise HTTPException(status_code=404, detail=f"Idea {idea_id} not found")
         if idea.owner_id != current_user.id:
@@ -144,7 +144,7 @@ def revoke_share_link(
     current_user: User = Depends(get_current_user),
 ) -> None:
     """Revoke a share link the current user owns (makes it immediately inaccessible)."""
-    link: ShareLink | None = db.query(ShareLink).filter(ShareLink.token == token).first()
+    link: Optional[ShareLink] = db.query(ShareLink).filter(ShareLink.token == token).first()
     if not link:
         raise HTTPException(status_code=404, detail="Share link not found")
     if link.created_by != current_user.id:
@@ -158,7 +158,7 @@ def revoke_share_link(
 @public_router.get("/share/{token}", response_model=SharedIdeaRead)
 async def get_shared_idea(token: str, db: Session = Depends(get_db)) -> SharedIdeaRead:
     """Public endpoint — no auth required. Returns the idea plus its full AI analysis."""
-    link: ShareLink | None = (
+    link: Optional[ShareLink] = (
         db.query(ShareLink)
         .filter(ShareLink.token == token, ShareLink.is_public == True)  # noqa: E712
         .first()
@@ -170,7 +170,7 @@ async def get_shared_idea(token: str, db: Session = Depends(get_db)) -> SharedId
     if link.expires_at and link.expires_at < datetime.utcnow():
         raise HTTPException(status_code=404, detail="Share link not found or expired")
 
-    idea: Idea | None = db.query(Idea).filter(Idea.id == link.idea_id).first()
+    idea: Optional[Idea] = db.query(Idea).filter(Idea.id == link.idea_id).first()
     if not idea:
         raise HTTPException(status_code=404, detail="Idea no longer exists")
 
