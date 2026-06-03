@@ -14,9 +14,8 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Bizify"
     API_V1_STR: str = "/api/v1"
 
-    # Expose interactive API docs (/docs, /redoc). Off by default; enable only
-    # in trusted/dev environments.
-    ENABLE_DOCS: bool = False
+    # Expose interactive API docs (/docs, /redoc). Enabled by default.
+    ENABLE_DOCS: bool = True
 
     POSTGRES_SERVER: Optional[str] = None
     POSTGRES_USER: Optional[str] = None
