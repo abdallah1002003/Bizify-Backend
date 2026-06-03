@@ -74,12 +74,13 @@ class PartnerProfileRead(PartnerProfileBase):
     """
     Pydantic model for reading Partner Profile data.
     """
-    
+
     id: uuid.UUID
     user_id: uuid.UUID
     approval_status: ApprovalStatus
     approved_by: Optional[uuid.UUID] = None
     documents_json: Optional[Any] = None
+    linkedin_url: Optional[str] = None
     approved_at: Optional[datetime] = None
     created_at: datetime
     
