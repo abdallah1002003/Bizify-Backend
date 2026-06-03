@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user, get_db
 from app.models.partner_profile import PartnerType
 from app.models.user import User
+from app.repositories.partner_repo import partner_repo
 from app.schemas.marketplace import (
     MarketplacePartnerPublic,
     MarketplacePartnerRequestCreate,
@@ -73,6 +74,26 @@ def list_marketplace_partners(
     return MarketplaceService.list_partners(
         db, partner_type=partner_type, category_id=category_id, q=q, skip=skip, limit=limit
     )
+
+
+@router.get(
+    "/mentors/suggest",
+    summary="Suggest mentors for a list of skill gaps",
+    description=(
+        "Returns up to 3 approved mentors per skill whose skills match the requested skill name. "
+        "Pass one or more `skills` query params (e.g. ?skills=Ecommerce+Management&skills=Brand+Management)."
+    ),
+)
+def suggest_mentors_for_skills(
+    skills: list[str] = Query(..., description="Skill names to match against mentor profiles"),
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(get_current_user),
+) -> dict[str, list[MarketplacePartnerPublic]]:
+    suggestions = partner_repo.suggest_mentors_for_skills(db, skills=skills, limit_per_skill=3)
+    return {
+        skill: [MarketplaceService._to_public(m) for m in mentors]
+        for skill, mentors in suggestions.items()
+    }
 
 
 @router.get(

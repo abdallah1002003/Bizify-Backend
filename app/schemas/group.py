@@ -49,8 +49,12 @@ class GroupMemberResponse(BaseModel):
     status: GroupMemberStatus
     accessible_ideas: list[MemberIdeaInfo] = []
     joined_at: datetime
+    skill_role: Optional[str] = None
 
     model_config = ConfigDict(from_attributes = True)
+
+class GroupMemberSkillRoleUpdate(BaseModel):
+    skill_role: str = Field(..., min_length=1, max_length=100)
 
 class GroupMemberUpdate(BaseModel):
     role: Optional[GroupRole] = None

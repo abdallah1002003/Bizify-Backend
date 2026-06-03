@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, Enum, ForeignKey
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -43,6 +43,7 @@ class GroupMember(Base):
     )
     
     joined_at = Column(DateTime, default = lambda: datetime.now(timezone.utc))
+    skill_role = Column(String, nullable=True)  # business role assigned for a skill gap (e.g. "E-commerce Manager")
 
     group = relationship("Group", back_populates = "members")
     user = relationship("User")

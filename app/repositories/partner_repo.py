@@ -92,6 +92,35 @@ class PartnerRepository(BaseRepository[PartnerProfile, Any, Any]):
             .first()
         )
 
+    def suggest_mentors_for_skills(
+        self,
+        db: Session,
+        skills: list[str],
+        limit_per_skill: int = 3,
+    ) -> dict[str, list[PartnerProfile]]:
+        """Return up to `limit_per_skill` approved mentors whose skills_json overlaps with each requested skill."""
+        base_query = (
+            db.query(self.model)
+            .options(joinedload(PartnerProfile.user), joinedload(PartnerProfile.category_ref))
+            .filter(
+                self.model.approval_status == ApprovalStatus.APPROVED,
+                self.model.partner_type == PartnerType.MENTOR,
+                self.model.skills_json.isnot(None),
+            )
+        )
+        all_mentors = base_query.all()
+
+        result: dict[str, list[PartnerProfile]] = {}
+        for skill in skills:
+            skill_lower = skill.lower()
+            matched = [
+                m for m in all_mentors
+                if isinstance(m.skills_json, list)
+                and any(skill_lower in str(s).lower() for s in m.skills_json)
+            ]
+            result[skill] = matched[:limit_per_skill]
+        return result
+
     def list_categories(
         self, db: Session, *, partner_type: Optional[PartnerType] = None
     ) -> list[PartnerCategory]:

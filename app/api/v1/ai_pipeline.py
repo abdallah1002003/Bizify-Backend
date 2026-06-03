@@ -965,6 +965,37 @@ async def explain(payload: dict[str, Any], current_user: User = Depends(get_curr
     return await _forward_post_to_ai("explain", payload=payload, extra_headers=_ai_headers(current_user))
 
 
+@router.get(
+    "/ideas/{idea_id}/partner-suggestions",
+    summary="Get supplier/manufacturer suggestions for an idea",
+    tags=["AI - Pipeline"],
+)
+async def get_partner_suggestions(
+    idea_id: UUID,
+    current_user: User = Depends(get_current_user),
+    limit: int = Query(5, ge=1, le=20),
+) -> dict[str, Any]:
+    """Proxy to bizifyAI: returns keyword-matched supplier and manufacturer suggestions for an idea."""
+    if not settings.AI_PIPELINE_API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI_PIPELINE_API_KEY not configured on server.",
+        )
+    target_url = f"{_AI_BASE_URL}/partners/suggest-for-idea"
+    headers = {"x-api-key": settings.AI_PIPELINE_API_KEY}
+    params = {"idea_id": str(idea_id), "user_id": str(current_user.id), "limit": limit}
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.get(target_url, headers=headers, params=params)
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPStatusError as exc:
+        raise _http_exception_from_upstream(exc.response)
+    except httpx.RequestError as exc:
+        logger.error("AI partner suggestions request failed: %s", exc)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI Service unavailable.")
+
+
 @router.post("/ideas/{idea_id}/seed-context", summary="Seed Idea Context in BizifyAI", tags=["AI - Pipeline"])
 async def seed_idea_context(
     idea_id: UUID,

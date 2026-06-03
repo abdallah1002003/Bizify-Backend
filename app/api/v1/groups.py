@@ -16,12 +16,14 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user, get_db
 from app.core.config import settings
 from app.models.user import User
+from app.repositories.group_repo import group_repo
 from app.schemas.group import (
     GroupCreate,
     GroupInviteCreate,
     GroupInviteResponse,
     GroupJoinRequestResponse,
     GroupMemberResponse,
+    GroupMemberSkillRoleUpdate,
     GroupMemberUpdate,
     GroupResponse,
     GroupUpdate,
@@ -30,6 +32,7 @@ from app.schemas.group import (
 from app.schemas.group_message import GroupMessageCreate, GroupMessageResponse
 from app.services.group_message_service import GroupMessageService
 from app.services.group_service import GroupService
+from app.services.notification_service import NotificationService
 from app.services.user_service import UserService
 from app.sockets.group_manager import group_manager
 
@@ -47,6 +50,7 @@ def _build_member_response(member: Any) -> dict[str, Any]:
         "status": member.status,
         "accessible_ideas": member.accessible_ideas,
         "joined_at": member.joined_at,
+        "skill_role": getattr(member, "skill_role", None),
     }
 
 
@@ -254,6 +258,45 @@ def update_member(
         data.role,
         data.idea_ids,
     )
+    return _build_member_response(member)
+
+
+@router.patch("/groups/{group_id}/members/{member_id}/skill-role", response_model=GroupMemberResponse)
+async def assign_skill_role(
+    group_id: UUID,
+    member_id: UUID,
+    data: GroupMemberSkillRoleUpdate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> GroupMemberResponse:
+    """Assign a skill-gap role to a team member. Only the group owner can do this."""
+    group = group_repo.get_by_id(db, group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    GroupService._ensure_group_admin(group, current_user.id)
+
+    member = group_repo.get_member_by_id(db, member_id)
+    if not member or str(member.group_id) != str(group_id):
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    member.skill_role = data.skill_role
+    db.add(member)
+    db.commit()
+    db.refresh(member)
+
+    await NotificationService.notify_user(
+        db=db,
+        user_id=member.user_id,
+        title="New role assigned",
+        content=(
+            f"{current_user.full_name or current_user.email} assigned you the role "
+            f'"{data.skill_role}" in team "{group.name}".'
+        ),
+        notify_type="team_update",
+        background_tasks=background_tasks,
+    )
+
     return _build_member_response(member)
 
 
