@@ -17,6 +17,17 @@ class ProblemEvidence(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
+class OverviewDetail(BaseModel):
+    value_proposition:     str = ""
+    founder_market_fit:    str = ""
+    strategic_advantage:   str = ""
+    execution_advantage:   str = ""
+    why_now:               str = ""
+    why_this_should_exist: str = ""
+
+    model_config = ConfigDict(extra="allow")
+
+
 class IdeaBase(BaseModel):
     """
     Base Pydantic model for Business Idea data.
@@ -38,6 +49,7 @@ class IdeaBase(BaseModel):
     core_insight:        Optional[str]             = None
     target_segment:      Optional[str]             = None
     founding_hypothesis: Optional[str]             = None
+    overview_detail:     Optional[OverviewDetail]  = None
 
 
     @field_validator("status", mode="before")
@@ -74,6 +86,7 @@ class IdeaUpdate(BaseModel):
     core_insight:        Optional[str]              = None
     target_segment:      Optional[str]              = None
     founding_hypothesis: Optional[str]              = None
+    overview_detail:     Optional[OverviewDetail]   = None
 
     @field_validator("status", mode="before")
     @classmethod

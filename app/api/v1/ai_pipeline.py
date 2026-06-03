@@ -597,6 +597,34 @@ async def chat_stream_go_to_market(payload: dict[str, Any], current_user: User =
     return await _forward_stream_to_ai(f"go-to-market/{current_user.id}/chat/stream", payload=payload, extra_headers=_ai_headers(current_user))
 
 # ==========================================
+# Domain: AUDIT (cross-section Final Audit)
+# ==========================================
+@router.get("/audit", summary="Get Business Plan Audit", response_model=dict, tags=["AI - Audit"])
+async def get_audit(current_user: User = Depends(get_current_user), idea_id: Optional[str] = Query(None)):
+    return await _forward_get_to_ai("audit", str(current_user.id), params={"idea_id": idea_id} if idea_id else None, extra_headers=_ai_headers(current_user))
+
+@router.post("/audit", summary="Generate Business Plan Audit", response_model=dict, tags=["AI - Audit"])
+async def generate_audit(payload: dict[str, Any] = {}, current_user: User = Depends(get_current_user)):
+    body: dict[str, Any] = {}
+    if payload.get("idea_id"):
+        body["idea_id"] = payload["idea_id"]
+    return await _forward_post_to_ai("audit", str(current_user.id), payload=body or None, extra_headers=_ai_headers(current_user))
+
+@router.post("/audit/regenerate", summary="Regenerate Business Plan Audit", response_model=dict, tags=["AI - Audit"])
+async def regenerate_audit(current_user: User = Depends(get_current_user)):
+    return await _forward_post_to_ai(f"audit/{current_user.id}/regenerate", None, extra_headers=_ai_headers(current_user))
+
+@router.post("/audit/regenerate-custom", summary="Regenerate Business Plan Audit Custom", response_model=dict, tags=["AI - Audit"])
+async def regenerate_custom_audit(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_post_to_ai(f"audit/{current_user.id}/regenerate-custom", payload=payload, extra_headers=_ai_headers(current_user))
+
+@router.post("/audit/chat", summary="Chat Business Plan Audit", response_model=dict, tags=["AI - Audit"])
+async def chat_audit(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_post_to_ai(f"audit/{current_user.id}/chat", payload=payload, extra_headers=_ai_headers(current_user))
+
+# ==========================================
 # Domain: MARKETING — Customer Research
 # ==========================================
 @router.get("/customer-research", summary="Get Customer Research", response_model=dict, tags=["AI - Marketing"])

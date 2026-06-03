@@ -73,6 +73,7 @@ class Idea(Base):
     core_insight        = Column(Text,    nullable = True)
     target_segment      = Column(Text,    nullable = True)
     founding_hypothesis = Column(Text,    nullable = True)
+    overview_detail     = Column(JSON,    nullable = True)
 
     owner = relationship("User", back_populates = "ideas")
     business = relationship("Business", foreign_keys = [business_id])
