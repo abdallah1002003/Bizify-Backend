@@ -27,7 +27,7 @@ class MarketplaceService:
     @staticmethod
     def _to_public(partner: PartnerProfile) -> MarketplacePartnerPublic:
         user = partner.user
-        display = (user.full_name if user else None) or partner.company_name
+        display = partner.company_name or (user.full_name if user else None)
         cat = partner.category_ref
         d: dict = partner.details_json or {}
         return MarketplacePartnerPublic(
