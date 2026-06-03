@@ -959,6 +959,20 @@ async def idea_intake_chat_stream(payload: dict[str, Any], current_user: User = 
 async def get_idea_intake(current_user: User = Depends(get_current_user)):
     return await _forward_get_to_ai("idea-intake", str(current_user.id), extra_headers=_ai_headers(current_user))
 
+@router.get("/idea-intake/draft", summary="Get Idea Draft (pre-approval)", tags=["AI - Idea Intake"])
+async def get_idea_draft(current_user: User = Depends(get_current_user)):
+    return await _forward_get_to_ai("idea-intake/draft", str(current_user.id), extra_headers=_ai_headers(current_user))
+
+@router.post("/idea-intake/approve", summary="Approve Idea Draft", tags=["AI - Idea Intake"])
+async def idea_intake_approve(payload: dict[str, Any] = {}, current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_post_to_ai("idea-intake/approve", payload=payload, extra_headers=_ai_headers(current_user))
+
+@router.post("/idea-intake/manual", summary="Manual Idea Create (enriched)", tags=["AI - Idea Intake"])
+async def idea_intake_manual(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_post_to_ai("idea-intake/manual", payload=payload, extra_headers=_ai_headers(current_user))
+
 @router.post("/explain", summary="Explain", tags=["AI - General Chat"])
 async def explain(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
     payload["user_id"] = str(current_user.id)
