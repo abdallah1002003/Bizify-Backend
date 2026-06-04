@@ -118,6 +118,7 @@ def get_current_user(
         user.last_activity = now
         user_repo.save(db, db_obj=user)
         db.commit()
+        db.refresh(user)   # reload attributes before detaching — commit expires them
         # Detach the user from the session so it can be used after db.close()
         db.expunge(user)
         return user
