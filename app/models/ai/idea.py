@@ -67,6 +67,8 @@ class Idea(Base):
     updated_at          = Column(DateTime, default = datetime.utcnow, onupdate = datetime.utcnow)
     converted_at        = Column(DateTime)
 
+    language            = Column(String(2), default="en", nullable=False)
+
     # AI-generated seed fields
     domain              = Column(String,  nullable = True)
     problem_evidence    = Column(JSON,    nullable = True)
@@ -85,3 +87,4 @@ class Idea(Base):
     chat_sessions = relationship("ChatSession", back_populates = "idea")
     comparison_items = relationship("ComparisonItem", back_populates = "idea")
     agent_runs = relationship("AgentRun", back_populates = "idea")
+    translations = relationship("IdeaTranslation", back_populates = "idea", cascade="all, delete-orphan")

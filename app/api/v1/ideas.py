@@ -1,10 +1,13 @@
 from typing import Optional
 from uuid import UUID
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, get_db
+from app.core.config import settings
+from app.models.ai.idea_translation import IdeaTranslation
 from app.models.user import User
 from app.schemas.idea import IdeaCreate, IdeaRead, IdeaUpdate
 from app.services.idea_service import IdeaService
@@ -58,6 +61,7 @@ def create_idea(
         budget=idea_in.budget,
         feasibility=idea_in.feasibility,
         skills=idea_in.skills,
+        language=idea_in.language,
     )
 
 
@@ -130,3 +134,83 @@ def delete_idea(
 ) -> None:
     """Permanently delete an idea owned by the authenticated user."""
     IdeaService.delete_idea(db=db, idea_id=idea_id, user_id=current_user.id)
+
+
+@router.get("/{idea_id}/translations")
+def get_idea_translations(
+    idea_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Return which languages have cached translations for this idea."""
+    idea = IdeaService.get_idea(db=db, idea_id=idea_id, user_id=current_user.id)
+    rows = db.query(IdeaTranslation).filter(IdeaTranslation.idea_id == idea_id).all()
+    languages = list({r.language for r in rows})
+    return {"source_language": idea.language, "translated_languages": languages}
+
+
+@router.post("/{idea_id}/translate")
+async def translate_idea(
+    idea_id: UUID,
+    target_language: str = Query(..., pattern="^(en|ar)$"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """
+    Trigger a full-idea translation to target_language.
+    Calls bizifyAI, caches results in idea_translations.
+    """
+    idea = IdeaService.get_idea(db=db, idea_id=idea_id, user_id=current_user.id)
+
+    if idea.language == target_language:
+        raise HTTPException(status_code=400, detail="Idea is already in the requested language.")
+
+    try:
+        async with httpx.AsyncClient(timeout=120) as client:
+            resp = await client.post(
+                f"{settings.AI_PIPELINE_BASE_URL}/translate/idea",
+                json={"idea_id": str(idea_id), "target_language": target_language},
+                headers={"X-API-Key": settings.AI_PIPELINE_API_KEY or ""},
+            )
+            resp.raise_for_status()
+            translated: dict = resp.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Translation service error: {e}")
+
+    # Delete stale cached translations for this language, then insert fresh ones
+    db.query(IdeaTranslation).filter(
+        IdeaTranslation.idea_id == idea_id,
+        IdeaTranslation.language == target_language,
+    ).delete()
+
+    for section_name, content in translated.get("sections", {}).items():
+        db.add(IdeaTranslation(
+            idea_id=idea_id,
+            language=target_language,
+            section_name=section_name,
+            content=content,
+            model_used=translated.get("model_used"),
+        ))
+
+    db.commit()
+    return {"status": "ok", "translated_sections": list(translated.get("sections", {}).keys())}
+
+
+@router.get("/{idea_id}/content")
+def get_idea_content_in_language(
+    idea_id: UUID,
+    lang: str = Query("en", pattern="^(en|ar)$"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """
+    Return translated section content for an idea.
+    Falls back to source if translation not available.
+    """
+    IdeaService.get_idea(db=db, idea_id=idea_id, user_id=current_user.id)  # access check
+    rows = (
+        db.query(IdeaTranslation)
+        .filter(IdeaTranslation.idea_id == idea_id, IdeaTranslation.language == lang)
+        .all()
+    )
+    return {r.section_name: r.content for r in rows}

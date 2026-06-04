@@ -207,6 +207,7 @@ class IdeaService:
         budget: Optional[float] = None,
         feasibility: Optional[float] = None,
         skills: Optional[object] = None,
+        language: str = "en",
     ) -> Idea:
         """Create a new draft idea, auto-extracting budget/feasibility when not provided."""
         clean_desc = _clean_idea_description(description) if description else description
@@ -221,6 +222,7 @@ class IdeaService:
             "title":       title,
             "description": clean_desc,
             "status":      IdeaStatus.DRAFT,
+            "language":    language,
         }
         if budget is not None:
             obj["budget"] = budget

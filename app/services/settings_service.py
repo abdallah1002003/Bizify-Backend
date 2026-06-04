@@ -15,6 +15,7 @@ from app.repositories.privacy_repo import privacy_repo
 from app.repositories.profile_repo import profile_repo
 from app.repositories.user_repo import user_repo
 from app.schemas.settings import (
+    LanguageUpdate,
     NotificationUpdate,
     PasswordChange,
     PrivacyUpdate,
@@ -173,6 +174,14 @@ class SettingsService:
             update_data["push_enabled"] = data.push_enabled
 
         return notification_repo.update_settings(db, user.id, update_data)
+
+    @staticmethod
+    def update_language(db: Session, user: User, data: LanguageUpdate) -> dict[str, str]:
+        """Persist the user's preferred UI and AI-generation language."""
+        profile = profile_repo.get_or_create(db, user.id)
+        profile.preferred_language = data.preferred_language
+        profile_repo.save(db, db_obj=profile, commit=True, refresh=False)
+        return {"preferred_language": data.preferred_language}
 
     @staticmethod
     def delete_account(

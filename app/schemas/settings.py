@@ -49,6 +49,14 @@ class NotificationUpdate(BaseModel):
     model_config = ConfigDict(from_attributes = True)
 
 
+class LanguageUpdate(BaseModel):
+    """
+    Pydantic model for updating the user's preferred language.
+    """
+
+    preferred_language: str = Field(..., pattern="^(en|ar)$")
+
+
 class SettingsResponse(BaseModel):
     """
     Pydantic model for reading the full user settings.
@@ -58,6 +66,7 @@ class SettingsResponse(BaseModel):
     is_active: bool
     last_password_change: Optional[datetime]
     full_name: Optional[str]
+    preferred_language: str = "en"
     privacy: Optional[PrivacyUpdate]
     notifications: Optional[NotificationUpdate]
 

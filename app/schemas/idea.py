@@ -35,6 +35,7 @@ class IdeaBase(BaseModel):
 
     title:               str
     description:         Optional[str]            = None
+    language:            str                       = "en"
     status:              IdeaStatus                = IdeaStatus.DRAFT
     is_archived:         Optional[bool]            = False
     problem_validation_score: Optional[float]      = None
