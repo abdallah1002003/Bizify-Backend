@@ -30,86 +30,99 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def get_current_user(
-    db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme),
 ) -> User:
-    """Validate the JWT and return the current authenticated user."""
+    """Validate the JWT and return the current authenticated user.
+
+    Opens and closes its own DB session so the connection is returned to
+    the pool immediately after auth completes — before long-running route
+    handlers (e.g. AI forwarding, 30-120 s waits) even start executing.
+    Using Depends(get_db) here would hold the connection open for the
+    entire request lifetime, quickly exhausting the pool under load.
+    """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    if auth_repo.is_token_blacklisted(db, token):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has been revoked (logged out)",
-        )
-
+    db = SessionLocal()
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        user_id: str = payload.get("sub")
-        issued_at_timestamp = payload.get("iat")
-        if user_id is None:
+        if auth_repo.is_token_blacklisted(db, token):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked (logged out)",
+            )
+
+        try:
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            user_id: str = payload.get("sub")
+            issued_at_timestamp = payload.get("iat")
+            if user_id is None:
+                raise credentials_exception
+        except JWTError as exc:
+            raise credentials_exception from exc
+
+        try:
+            user_uuid = uuid.UUID(user_id)
+        except (ValueError, AttributeError) as exc:
+            raise credentials_exception from exc
+
+        user = user_repo.get(db, user_uuid)
+        if user is None:
             raise credentials_exception
-    except JWTError as exc:
-        raise credentials_exception from exc
 
-    try:
-        user_uuid = uuid.UUID(user_id)
-    except (ValueError, AttributeError) as exc:
-        raise credentials_exception from exc
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User account is deactivated",
+            )
 
-    user = user_repo.get(db, user_uuid)
-    if user is None:
-        raise credentials_exception
+        if issued_at_timestamp:
+            issued_at = datetime.fromtimestamp(issued_at_timestamp, tz=timezone.utc)
 
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User account is deactivated",
-        )
+            if user.revoked_at:
+                revoked_at = user.revoked_at
+                if revoked_at.tzinfo is None:
+                    revoked_at = revoked_at.replace(tzinfo=timezone.utc)
+                if issued_at < revoked_at:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Token has been revoked",
+                    )
 
-    if issued_at_timestamp:
-        issued_at = datetime.fromtimestamp(issued_at_timestamp, tz=timezone.utc)
+            if user.last_password_change:
+                last_change = user.last_password_change
+                if last_change.tzinfo is None:
+                    last_change = last_change.replace(tzinfo=timezone.utc)
+                if issued_at < last_change:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Session expired due to password change",
+                    )
 
-        if user.revoked_at:
-            revoked_at = user.revoked_at
-            if revoked_at.tzinfo is None:
-                revoked_at = revoked_at.replace(tzinfo=timezone.utc)
-            if issued_at < revoked_at:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Token has been revoked",
-                )
+        now = datetime.now(timezone.utc)
+        last_activity = user.last_activity
+        if last_activity and last_activity.tzinfo is None:
+            last_activity = last_activity.replace(tzinfo=timezone.utc)
+        else:
+            last_activity = last_activity or now
 
-        if user.last_password_change:
-            last_change = user.last_password_change
-            if last_change.tzinfo is None:
-                last_change = last_change.replace(tzinfo=timezone.utc)
-            if issued_at < last_change:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Session expired due to password change",
-                )
+        if now - last_activity > timedelta(minutes=settings.SESSION_TIMEOUT_MINUTES):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Session expired due to inactivity",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
-    now = datetime.now(timezone.utc)
-    last_activity = user.last_activity
-    if last_activity and last_activity.tzinfo is None:
-        last_activity = last_activity.replace(tzinfo=timezone.utc)
-    else:
-        last_activity = last_activity or now
-
-    if now - last_activity > timedelta(minutes=settings.SESSION_TIMEOUT_MINUTES):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Session expired due to inactivity",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    user.last_activity = now
-    user_repo.save(db, db_obj=user)
-    return user
+        user.last_activity = now
+        user_repo.save(db, db_obj=user)
+        db.commit()
+        # Detach the user from the session so it can be used after db.close()
+        db.expunge(user)
+        return user
+    finally:
+        db.close()  # connection returned to pool BEFORE the route handler starts
 
 
 class RoleChecker:
@@ -152,10 +165,14 @@ get_current_admin_user = RoleChecker([UserRole.ADMIN])
 def check_ai_usage(
     request: Request,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
 ) -> User:
     """
     Gate-check AI token limits before forwarding to the AI service.
+
+    Opens and closes its own DB session immediately so the connection is
+    returned to the pool before the AI forwarding call starts. The old
+    Depends(get_db) signature held the connection open for the entire
+    30-120 s AI request wait, exhausting the pool under concurrent load.
 
     Token counting strategy:
     - The bizifyAI service writes REAL token counts (from Groq usage.total_tokens)
@@ -166,52 +183,58 @@ def check_ai_usage(
       If the user is already over their limit, the request is rejected here
       before any AI compute is consumed.
     """
-    sub = subscription_repo.get_active_by_user(db, current_user.id)
-    features: dict = {}
-    if sub and sub.plan and sub.plan.features_json:
-        features = sub.plan.features_json
-
-    if features.get("ai_analysis") is False:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Your current plan does not include AI analysis features. Please upgrade your plan.",
-        )
-
     # GET requests only read cached data — never count against quota
     if request.method == "GET":
         return current_user
 
-    # PPF plan — skip subscription token check, only use credit balance
-    if features.get("is_ppf"):
+    db = SessionLocal()
+    try:
+        sub = subscription_repo.get_active_by_user(db, current_user.id)
+        features: dict = {}
+        if sub and sub.plan and sub.plan.features_json:
+            features = sub.plan.features_json
+
+        if features.get("ai_analysis") is False:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your current plan does not include AI analysis features. Please upgrade your plan.",
+            )
+
+        # PPF plan — skip subscription token check, only use credit balance
+        if features.get("is_ppf"):
+            ppf_balance = usage_repo.get_ppf_balance(db, current_user.id)
+            if ppf_balance > 0:
+                usage_repo.consume_ppf_section(db, current_user.id)
+                usage_repo.add_tokens(db, current_user.id, PPF_TOKENS_PER_SECTION)
+                db.commit()
+                return current_user
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail="No Pay-Per-Feature credits remaining. Buy more sections to continue.",
+            )
+
+        plan_limit: Optional[int] = features.get("ai_tokens")
+        _, record = usage_repo.check_limit(db, current_user.id)
+        active_limit = plan_limit if plan_limit is not None else (record.limit_value or 20_000)
+        used = record.used or 0
+
+        if active_limit == -1 or used < active_limit:
+            return current_user
+
+        # Subscription quota exhausted — fall back to PPF credits if any
         ppf_balance = usage_repo.get_ppf_balance(db, current_user.id)
         if ppf_balance > 0:
             usage_repo.consume_ppf_section(db, current_user.id)
             usage_repo.add_tokens(db, current_user.id, PPF_TOKENS_PER_SECTION)
+            db.commit()
             return current_user
+
         raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="No Pay-Per-Feature credits remaining. Buy more sections to continue.",
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=(
+                f"AI token limit reached ({used:,}/{active_limit:,} tokens used). "
+                "Upgrade your plan or buy Pay-Per-Feature credits to continue."
+            ),
         )
-
-    plan_limit: Optional[int] = features.get("ai_tokens")
-    _, record = usage_repo.check_limit(db, current_user.id)
-    active_limit = plan_limit if plan_limit is not None else (record.limit_value or 20_000)
-    used = record.used or 0
-
-    if active_limit == -1 or used < active_limit:
-        return current_user
-
-    # Subscription quota exhausted — fall back to PPF credits if any
-    ppf_balance = usage_repo.get_ppf_balance(db, current_user.id)
-    if ppf_balance > 0:
-        usage_repo.consume_ppf_section(db, current_user.id)
-        usage_repo.add_tokens(db, current_user.id, PPF_TOKENS_PER_SECTION)
-        return current_user
-
-    raise HTTPException(
-        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-        detail=(
-            f"AI token limit reached ({used:,}/{active_limit:,} tokens used). "
-            "Upgrade your plan or buy Pay-Per-Feature credits to continue."
-        ),
-    )
+    finally:
+        db.close()  # connection returned to pool BEFORE the AI forwarding call
