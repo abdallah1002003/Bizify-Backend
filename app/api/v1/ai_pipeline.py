@@ -110,6 +110,7 @@ async def general_chat(
         user_id=current_user.id,
         message=request.message,
         history=request.history,
+        settings_language=request.settings_language,
     )
 
 
@@ -128,6 +129,7 @@ async def general_chat_stream(
             user_id=current_user.id,
             message=request.message,
             history=request.history,
+            settings_language=request.settings_language,
         ):
             yield chunk
 

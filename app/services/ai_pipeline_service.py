@@ -154,12 +154,14 @@ class AIPipelineService:
         user_id: uuid.UUID,
         message: str,
         history: Optional[list[dict[str, Any]]] = None,
+        settings_language: str = "en",
     ) -> dict[str, Any]:
         """Send a message to the General Chatbot and return the response."""
         body = {
             "user_id": str(user_id),
             "message": message,
             "history": history or [],
+            "settings_language": settings_language,
         }
         return await AIPipelineService._call_ai_api("POST", "general-chat", body)
 
@@ -168,6 +170,7 @@ class AIPipelineService:
         user_id: uuid.UUID,
         message: str,
         history: Optional[list[dict[str, Any]]] = None,
+        settings_language: str = "en",
     ) -> AsyncGenerator[bytes, None]:
         """Stream a response from the General Chatbot."""
         if not settings.AI_PIPELINE_API_KEY:
@@ -184,6 +187,7 @@ class AIPipelineService:
             "user_id": str(user_id),
             "message": message,
             "history": history or [],
+            "settings_language": settings_language,
         }
         try:
             async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS) as client:
