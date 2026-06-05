@@ -239,6 +239,36 @@ async def _forward_stream_to_ai(
     return StreamingResponse(stream_generator(), media_type="text/event-stream")
 
 
+async def _forward_write_to_ai(
+    method: str,
+    path: str,
+    payload: Optional[dict[str, Any]] = None,
+    params: Optional[dict] = None,
+    extra_headers: Optional[dict] = None,
+) -> dict:
+    """
+    Forward a PATCH/DELETE/PUT to the AI pipeline. `path` is the full AI path
+    after /pipeline/ (e.g. "roadmap/task/<id>/status") — no user_id is appended.
+    """
+    if not settings.AI_PIPELINE_API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI_PIPELINE_API_KEY not configured on server.",
+        )
+    target_url = f"{_AI_BASE_URL}/pipeline/{path}"
+    headers = {"x-api-key": settings.AI_PIPELINE_API_KEY, "Content-Type": "application/json", **(extra_headers or {})}
+    try:
+        async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS) as client:
+            response = await client.request(method, target_url, headers=headers, json=payload, params=params)
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPStatusError as exc:
+        raise _http_exception_from_upstream(exc.response)
+    except httpx.RequestError as exc:
+        logger.error("AI pipeline request failed: %s", exc)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI Service unavailable.")
+
+
 @router.post("/run", summary="Trigger AI Pipeline", tags=["AI - System"])
 async def trigger_pipeline(payload: dict[str, Any] = {}, current_user: User = Depends(get_current_user)):
     if not settings.AI_PIPELINE_API_KEY:
@@ -625,6 +655,94 @@ async def regenerate_custom_audit(payload: dict[str, Any], current_user: User = 
 async def chat_audit(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
     payload["user_id"] = str(current_user.id)
     return await _forward_post_to_ai(f"audit/{current_user.id}/chat", payload=payload, extra_headers=_ai_headers(current_user))
+
+# ==========================================
+# Domain: EXECUTION ROADMAP (Hero Execution Roadmap)
+# ==========================================
+@router.post("/roadmap/generate", summary="Generate Execution Roadmap", response_model=dict, tags=["AI - Roadmap"])
+async def generate_roadmap(payload: dict[str, Any] = {}, current_user: User = Depends(get_current_user)):
+    body: dict[str, Any] = {}
+    if payload.get("idea_id"):
+        body["idea_id"] = payload["idea_id"]
+    if payload.get("business_type"):
+        body["business_type"] = payload["business_type"]
+    if payload.get("language"):
+        body["language"] = payload["language"]
+    return await _forward_post_to_ai("roadmap", str(current_user.id), payload=body or None,
+                                     extra_headers=_ai_headers(current_user))
+
+
+@router.get("/roadmap", summary="Get Execution Roadmap", response_model=dict, tags=["AI - Roadmap"])
+async def get_roadmap(current_user: User = Depends(get_current_user), idea_id: Optional[str] = Query(None)):
+    return await _forward_get_to_ai("roadmap", str(current_user.id),
+                                    params={"idea_id": idea_id} if idea_id else None,
+                                    extra_headers=_ai_headers(current_user))
+
+
+@router.get("/roadmap/status", summary="Get Roadmap Generation Status", response_model=dict, tags=["AI - Roadmap"])
+async def get_roadmap_status(current_user: User = Depends(get_current_user), idea_id: Optional[str] = Query(None)):
+    return await _forward_get_to_ai(f"roadmap/{current_user.id}/status", "",
+                                    params={"idea_id": idea_id} if idea_id else None,
+                                    extra_headers=_ai_headers(current_user))
+
+
+@router.get("/roadmap/next-actions", summary="Get Roadmap Next Actions", response_model=dict, tags=["AI - Roadmap"])
+async def get_roadmap_next_actions(current_user: User = Depends(get_current_user),
+                                   idea_id: Optional[str] = Query(None), limit: int = Query(3, ge=1, le=10)):
+    params: dict[str, Any] = {"limit": limit}
+    if idea_id:
+        params["idea_id"] = idea_id
+    return await _forward_get_to_ai(f"roadmap/{current_user.id}/next-actions", "",
+                                    params=params, extra_headers=_ai_headers(current_user))
+
+
+@router.post("/roadmap/chat", summary="Execution Roadmap Coach Chat", response_model=dict, tags=["AI - Roadmap"])
+async def chat_roadmap(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    payload["user_id"] = str(current_user.id)
+    return await _forward_post_to_ai(f"roadmap/{current_user.id}/chat", payload=payload,
+                                     extra_headers=_ai_headers(current_user))
+
+
+@router.patch("/roadmap/task/{task_id}/status", summary="Update Task Status", response_model=dict, tags=["AI - Roadmap"])
+async def update_roadmap_task_status(task_id: str, payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    body = {"user_id": str(current_user.id), "status": payload.get("status")}
+    return await _forward_write_to_ai("PATCH", f"roadmap/task/{task_id}/status", payload=body,
+                                      extra_headers=_ai_headers(current_user))
+
+
+@router.patch("/roadmap/task/{task_id}", summary="Edit Task", response_model=dict, tags=["AI - Roadmap"])
+async def edit_roadmap_task(task_id: str, payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    body = {"user_id": str(current_user.id), "fields": payload.get("fields", {})}
+    return await _forward_write_to_ai("PATCH", f"roadmap/task/{task_id}", payload=body,
+                                      extra_headers=_ai_headers(current_user))
+
+
+@router.delete("/roadmap/task/{task_id}", summary="Delete Task", response_model=dict, tags=["AI - Roadmap"])
+async def delete_roadmap_task(task_id: str, current_user: User = Depends(get_current_user)):
+    return await _forward_write_to_ai("DELETE", f"roadmap/task/{task_id}",
+                                      params={"user_id": str(current_user.id)},
+                                      extra_headers=_ai_headers(current_user))
+
+
+@router.patch("/roadmap/subtask/{subtask_id}", summary="Update Subtask", response_model=dict, tags=["AI - Roadmap"])
+async def update_roadmap_subtask(subtask_id: str, payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    body: dict[str, Any] = {"user_id": str(current_user.id)}
+    if payload.get("status") is not None:
+        body["status"] = payload["status"]
+    if payload.get("action_items") is not None:
+        body["action_items"] = payload["action_items"]
+    return await _forward_write_to_ai("PATCH", f"roadmap/subtask/{subtask_id}", payload=body,
+                                      extra_headers=_ai_headers(current_user))
+
+
+@router.post("/roadmap/task", summary="Add Custom Task", response_model=dict, tags=["AI - Roadmap"])
+async def add_roadmap_custom_task(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
+    body = {
+        "user_id": str(current_user.id),
+        "milestone_id": payload.get("milestone_id"),
+        "fields": payload.get("fields", {}),
+    }
+    return await _forward_post_to_ai("roadmap/task", payload=body, extra_headers=_ai_headers(current_user))
 
 # ==========================================
 # Domain: MARKETING — Customer Research
