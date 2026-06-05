@@ -28,6 +28,7 @@ class GeneralChatRequest(BaseModel):
 
     message: str
     history: list[dict[str, Any]] = []
+    settings_language: str = "en"
 
 
 class GeneralChatResponse(BaseModel):

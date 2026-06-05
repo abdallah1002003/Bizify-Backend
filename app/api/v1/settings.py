@@ -6,12 +6,14 @@ from sqlalchemy.orm import Session
 from app.api import dependencies as deps
 from app.models.user import User
 from app.schemas.settings import (
+    LanguageUpdate,
     NotificationUpdate,
     PasswordChange,
     PrivacyUpdate,
     ProfileUpdate,
     SettingsResponse,
 )
+from app.repositories.profile_repo import profile_repo
 from app.schemas.user_profile import UserProfileRead
 from app.services.settings_service import SettingsService
 
@@ -27,12 +29,14 @@ def get_my_settings(
     Get all current settings (profile, notifications, privacy).
     """
     user = SettingsService.get_user_settings(db, current_user)
-    
+    profile = profile_repo.get_by_user_id(db, current_user.id)
+
     return {
         "email": user.email,
         "is_active": user.is_active,
         "last_password_change": user.last_password_change,
         "full_name": user.full_name,
+        "preferred_language": profile.preferred_language if profile else "en",
         "privacy": user.privacy_settings if user.privacy_settings else None,
         "notifications": user.notification_settings if user.notification_settings else None
     }
@@ -74,6 +78,16 @@ def update_my_notifications(
     Update notification settings for the user.
     """
     return SettingsService.update_notifications(db, current_user, data)
+
+
+@router.patch("/language")
+def update_my_language(
+    data: LanguageUpdate,
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user)
+) -> dict[str, str]:
+    """Save the user's preferred language (en | ar)."""
+    return SettingsService.update_language(db, current_user, data)
 
 
 @router.patch("/privacy", response_model = PrivacyUpdate)

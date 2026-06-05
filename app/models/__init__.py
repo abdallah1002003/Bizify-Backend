@@ -18,6 +18,7 @@ from app.models.ai import (
     IdeaComparison,
     IdeaMetric,
     IdeaStatus,
+    IdeaTranslation,
     IdeaVersion,
     MessageRole,
     RoadmapStage,
