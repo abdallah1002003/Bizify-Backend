@@ -7,6 +7,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models.ai.idea import Idea, IdeaStatus
+from app.models.ai.idea_favorite import IdeaFavorite
 from app.models.group_member import GroupRole
 from app.repositories.group_repo import group_repo
 from app.repositories.idea_repo import idea_repo
@@ -143,14 +144,31 @@ class IdeaService:
         return [idea for idea, _ in filtered_items]
 
     @staticmethod
-    def get_ideas_shared_with_user(db: Session, user_id: uuid.UUID) -> list[Idea]:
-        """Return ideas shared with the user via group membership that the user does not own."""
-        shared: list[Idea] = []
+    def get_ideas_shared_with_user(db: Session, user_id: uuid.UUID) -> list[dict]:
+        """Return ideas shared with the user via group membership, each paired with the user's role."""
+        seen: dict[uuid.UUID, dict] = {}
         for collab in group_repo.get_active_members_for_user(db, user_id):
+            role = collab.role.value if hasattr(collab.role, "value") else str(collab.role)
             for idea in collab.accessible_ideas:
                 if idea.owner_id != user_id and not idea.is_archived:
-                    shared.append(idea)
-        return list({idea.id: idea for idea in shared}.values())
+                    if idea.id not in seen:
+                        seen[idea.id] = {"idea": idea, "role": role}
+        return list(seen.values())
+
+    @staticmethod
+    def _can_edit_idea(db: Session, idea_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+        """Return True if the user may edit the idea (owns it or is a group EDITOR/OWNER)."""
+        idea = idea_repo.get(db, id=idea_id)
+        if not idea:
+            return False
+        if idea.owner_id == user_id:
+            return True
+        for collab in group_repo.get_active_members_for_user(db, user_id):
+            if collab.role not in [GroupRole.OWNER, GroupRole.EDITOR]:
+                continue
+            if any(a.id == idea_id for a in collab.accessible_ideas):
+                return True
+        return False
 
     @staticmethod
     def get_archived_user_ideas(db: Session, user_id: uuid.UUID) -> list[Idea]:
@@ -189,11 +207,11 @@ class IdeaService:
         user_id: uuid.UUID,
         updates: dict,
     ) -> Idea:
-        """Update an idea the user owns."""
+        """Update an idea the user owns or has editor-level group access to."""
         idea = idea_repo.get(db, id=idea_id)
         if not idea:
             raise HTTPException(status_code=404, detail="Idea not found")
-        if idea.owner_id != user_id:
+        if not IdeaService._can_edit_idea(db, idea_id, user_id):
             raise HTTPException(status_code=403, detail="Not authorized to modify this idea")
         updated = idea_repo.update(db, db_obj=idea, obj_in=updates)
         return IdeaService._maybe_promote_to_validated(db, updated)
@@ -289,6 +307,42 @@ class IdeaService:
                 status_code=500,
                 detail="An error occurred while archiving the idea. Please try again later.",
             ) from exc
+
+    @staticmethod
+    def get_favorited_ideas(db: Session, user_id: uuid.UUID) -> list[Idea]:
+        """Return all ideas the user has favorited, excluding archived ones."""
+        rows = (
+            db.query(IdeaFavorite)
+            .filter(IdeaFavorite.user_id == user_id)
+            .all()
+        )
+        ideas = []
+        for row in rows:
+            idea = idea_repo.get(db, id=row.idea_id)
+            if idea and not idea.is_archived:
+                ideas.append(idea)
+        return ideas
+
+    @staticmethod
+    def favorite_idea(db: Session, idea_id: uuid.UUID, user_id: uuid.UUID) -> None:
+        """Add an idea to the user's favorites (idempotent)."""
+        IdeaService.get_idea(db=db, idea_id=idea_id, user_id=user_id)  # access check
+        existing = (
+            db.query(IdeaFavorite)
+            .filter(IdeaFavorite.user_id == user_id, IdeaFavorite.idea_id == idea_id)
+            .first()
+        )
+        if not existing:
+            db.add(IdeaFavorite(user_id=user_id, idea_id=idea_id))
+            db.commit()
+
+    @staticmethod
+    def unfavorite_idea(db: Session, idea_id: uuid.UUID, user_id: uuid.UUID) -> None:
+        """Remove an idea from the user's favorites (idempotent)."""
+        db.query(IdeaFavorite).filter(
+            IdeaFavorite.user_id == user_id, IdeaFavorite.idea_id == idea_id
+        ).delete()
+        db.commit()
 
     @staticmethod
     def unarchive_idea(db: Session, idea_id: uuid.UUID, user_id: uuid.UUID) -> Idea:

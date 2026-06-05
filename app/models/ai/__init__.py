@@ -9,6 +9,7 @@ from app.models.ai.document import Document
 from app.models.ai.embedding import Embedding
 from app.models.ai.experiment import Experiment
 from app.models.ai.idea import Idea, IdeaStatus
+from app.models.ai.idea_favorite import IdeaFavorite
 from app.models.ai.idea_translation import IdeaTranslation
 from app.models.ai.idea_comparison import IdeaComparison
 from app.models.ai.idea_metric import IdeaMetric
@@ -17,6 +18,7 @@ from app.models.ai.roadmap_stage import RoadmapStage, StageStatus, StageType
 
 __all__ = [
     "Idea",
+    "IdeaFavorite",
     "IdeaStatus",
     "IdeaVersion",
     "IdeaMetric",
