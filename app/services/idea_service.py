@@ -143,6 +143,16 @@ class IdeaService:
         return [idea for idea, _ in filtered_items]
 
     @staticmethod
+    def get_ideas_shared_with_user(db: Session, user_id: uuid.UUID) -> list[Idea]:
+        """Return ideas shared with the user via group membership that the user does not own."""
+        shared: list[Idea] = []
+        for collab in group_repo.get_active_members_for_user(db, user_id):
+            for idea in collab.accessible_ideas:
+                if idea.owner_id != user_id and not idea.is_archived:
+                    shared.append(idea)
+        return list({idea.id: idea for idea in shared}.values())
+
+    @staticmethod
     def get_archived_user_ideas(db: Session, user_id: uuid.UUID) -> list[Idea]:
         """Return only archived ideas accessible to the user."""
         return [

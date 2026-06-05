@@ -61,6 +61,15 @@ def create_idea(
     )
 
 
+@router.get("/shared-with-me", response_model=list[IdeaRead])
+def get_shared_with_me(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[IdeaRead]:
+    """Return ideas shared with the current user through team membership."""
+    return IdeaService.get_ideas_shared_with_user(db=db, user_id=current_user.id)
+
+
 @router.get("/archived", response_model=list[IdeaRead])
 def get_archived_ideas(
     db: Session = Depends(get_db),
