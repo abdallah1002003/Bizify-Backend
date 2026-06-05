@@ -34,6 +34,24 @@ class IdeaRepository(BaseRepository[Idea, Any, Any]):
             .all()
         )
 
+    def get_by_ids_owned_by(
+        self,
+        db: Session,
+        idea_ids: list[uuid.UUID],
+        owner_id: uuid.UUID,
+    ) -> list[Idea]:
+        """Fetch ideas by IDs that are owned by a specific user."""
+        if not idea_ids:
+            return []
+        return (
+            db.query(self.model)
+            .filter(
+                self.model.id.in_(idea_ids),
+                self.model.owner_id == owner_id,
+            )
+            .all()
+        )
+
     def count_all(self, db: Session) -> int:
         """Return the total number of ideas."""
         return db.query(self.model).count()

@@ -253,7 +253,7 @@ class GroupService:
         )
 
         if idea_ids:
-            ideas = idea_repo.get_by_ids_in_business(db, idea_ids, group.business_id)
+            ideas = idea_repo.get_by_ids_owned_by(db, idea_ids, group.business.owner_id)
             invite.accessible_ideas.extend(ideas)
 
         group_repo.create_invite(db, invite)
@@ -354,10 +354,10 @@ class GroupService:
                 role=role or join_request.group.default_role,
             )
             if idea_ids:
-                ideas = idea_repo.get_by_ids_in_business(
+                ideas = idea_repo.get_by_ids_owned_by(
                     db,
                     idea_ids,
-                    join_request.group.business_id,
+                    join_request.group.business.owner_id,
                 )
                 member.accessible_ideas.extend(ideas)
             group_repo.create_member(db, member, commit=False)
@@ -428,7 +428,9 @@ class GroupService:
             member.role = role
 
         if idea_ids is not None:
-            ideas = idea_repo.get_by_ids_in_business(db, idea_ids, member.group.business_id)
+            ideas = idea_repo.get_by_ids_owned_by(
+                db, idea_ids, member.group.business.owner_id
+            )
             member.accessible_ideas = ideas
 
         updated_member = group_repo.save_member(db, member)

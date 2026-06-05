@@ -58,7 +58,12 @@ class IdeaService:
 
     @staticmethod
     def _get_accessible_ideas(db: Session, user_id: uuid.UUID) -> list[Idea]:
-        """Collect ideas the user owns or can access through groups."""
+        """Collect ideas the user owns or can access through groups.
+
+        Convention: an empty ``accessible_ideas`` on a membership means
+        unrestricted — the member can access every idea owned by the group
+        owner. A non-empty list restricts access to exactly those ideas.
+        """
         owned_ideas = idea_repo.get_by_owner(db, user_id)
         shared_ideas: list[Idea] = []
         collaborations = group_repo.get_active_members_for_user(db, user_id)
@@ -66,14 +71,11 @@ class IdeaService:
         for collaboration in collaborations:
             if collaboration.accessible_ideas:
                 shared_ideas.extend(collaboration.accessible_ideas)
-
-            if (
-                collaboration.role in [GroupRole.OWNER, GroupRole.EDITOR]
-                and collaboration.group
-                and collaboration.group.business_id
-            ):
+            elif collaboration.group and collaboration.group.business:
                 shared_ideas.extend(
-                    idea_repo.get_by_business(db, collaboration.group.business_id)
+                    idea_repo.get_by_owner(
+                        db, collaboration.group.business.owner_id
+                    )
                 )
 
         return list({idea.id: idea for idea in owned_ideas + shared_ideas}.values())
@@ -145,11 +147,27 @@ class IdeaService:
 
     @staticmethod
     def get_ideas_shared_with_user(db: Session, user_id: uuid.UUID) -> list[dict]:
-        """Return ideas shared with the user via group membership, each paired with the user's role."""
+        """Return ideas shared with the user via group membership, each paired with the user's role.
+
+        Honors the same empty-list-means-unrestricted convention as
+        ``_get_accessible_ideas``: when a membership has no explicit
+        ``accessible_ideas``, the member can see every idea owned by the
+        group owner (still excluding their own ideas and archived ones).
+        """
         seen: dict[uuid.UUID, dict] = {}
         for collab in group_repo.get_active_members_for_user(db, user_id):
             role = collab.role.value if hasattr(collab.role, "value") else str(collab.role)
-            for idea in collab.accessible_ideas:
+
+            if collab.accessible_ideas:
+                candidate_ideas = collab.accessible_ideas
+            elif collab.group and collab.group.business:
+                candidate_ideas = idea_repo.get_by_owner(
+                    db, collab.group.business.owner_id
+                )
+            else:
+                candidate_ideas = []
+
+            for idea in candidate_ideas:
                 if idea.owner_id != user_id and not idea.is_archived:
                     if idea.id not in seen:
                         seen[idea.id] = {"idea": idea, "role": role}
@@ -166,8 +184,12 @@ class IdeaService:
         for collab in group_repo.get_active_members_for_user(db, user_id):
             if collab.role not in [GroupRole.OWNER, GroupRole.EDITOR]:
                 continue
-            if any(a.id == idea_id for a in collab.accessible_ideas):
-                return True
+            if collab.accessible_ideas:
+                if any(a.id == idea_id for a in collab.accessible_ideas):
+                    return True
+            elif collab.group and collab.group.business:
+                if idea.owner_id == collab.group.business.owner_id:
+                    return True
         return False
 
     @staticmethod
