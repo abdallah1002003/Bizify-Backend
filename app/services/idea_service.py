@@ -7,6 +7,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models.ai.idea import Idea, IdeaStatus
+from app.models.ai.idea_favorite import IdeaFavorite
 from app.models.group_member import GroupRole
 from app.repositories.group_repo import group_repo
 from app.repositories.idea_repo import idea_repo
@@ -57,7 +58,12 @@ class IdeaService:
 
     @staticmethod
     def _get_accessible_ideas(db: Session, user_id: uuid.UUID) -> list[Idea]:
-        """Collect ideas the user owns or can access through groups."""
+        """Collect ideas the user owns or can access through groups.
+
+        Convention: an empty ``accessible_ideas`` on a membership means
+        unrestricted — the member can access every idea owned by the group
+        owner. A non-empty list restricts access to exactly those ideas.
+        """
         owned_ideas = idea_repo.get_by_owner(db, user_id)
         shared_ideas: list[Idea] = []
         collaborations = group_repo.get_active_members_for_user(db, user_id)
@@ -65,14 +71,11 @@ class IdeaService:
         for collaboration in collaborations:
             if collaboration.accessible_ideas:
                 shared_ideas.extend(collaboration.accessible_ideas)
-
-            if (
-                collaboration.role in [GroupRole.OWNER, GroupRole.EDITOR]
-                and collaboration.group
-                and collaboration.group.business_id
-            ):
+            elif collaboration.group and collaboration.group.business:
                 shared_ideas.extend(
-                    idea_repo.get_by_business(db, collaboration.group.business_id)
+                    idea_repo.get_by_owner(
+                        db, collaboration.group.business.owner_id
+                    )
                 )
 
         return list({idea.id: idea for idea in owned_ideas + shared_ideas}.values())
@@ -143,6 +146,53 @@ class IdeaService:
         return [idea for idea, _ in filtered_items]
 
     @staticmethod
+    def get_ideas_shared_with_user(db: Session, user_id: uuid.UUID) -> list[dict]:
+        """Return ideas shared with the user via group membership, each paired with the user's role.
+
+        Honors the same empty-list-means-unrestricted convention as
+        ``_get_accessible_ideas``: when a membership has no explicit
+        ``accessible_ideas``, the member can see every idea owned by the
+        group owner (still excluding their own ideas and archived ones).
+        """
+        seen: dict[uuid.UUID, dict] = {}
+        for collab in group_repo.get_active_members_for_user(db, user_id):
+            role = collab.role.value if hasattr(collab.role, "value") else str(collab.role)
+
+            if collab.accessible_ideas:
+                candidate_ideas = collab.accessible_ideas
+            elif collab.group and collab.group.business:
+                candidate_ideas = idea_repo.get_by_owner(
+                    db, collab.group.business.owner_id
+                )
+            else:
+                candidate_ideas = []
+
+            for idea in candidate_ideas:
+                if idea.owner_id != user_id and not idea.is_archived:
+                    if idea.id not in seen:
+                        seen[idea.id] = {"idea": idea, "role": role}
+        return list(seen.values())
+
+    @staticmethod
+    def _can_edit_idea(db: Session, idea_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+        """Return True if the user may edit the idea (owns it or is a group EDITOR/OWNER)."""
+        idea = idea_repo.get(db, id=idea_id)
+        if not idea:
+            return False
+        if idea.owner_id == user_id:
+            return True
+        for collab in group_repo.get_active_members_for_user(db, user_id):
+            if collab.role not in [GroupRole.OWNER, GroupRole.EDITOR]:
+                continue
+            if collab.accessible_ideas:
+                if any(a.id == idea_id for a in collab.accessible_ideas):
+                    return True
+            elif collab.group and collab.group.business:
+                if idea.owner_id == collab.group.business.owner_id:
+                    return True
+        return False
+
+    @staticmethod
     def get_archived_user_ideas(db: Session, user_id: uuid.UUID) -> list[Idea]:
         """Return only archived ideas accessible to the user."""
         return [
@@ -179,11 +229,11 @@ class IdeaService:
         user_id: uuid.UUID,
         updates: dict,
     ) -> Idea:
-        """Update an idea the user owns."""
+        """Update an idea the user owns or has editor-level group access to."""
         idea = idea_repo.get(db, id=idea_id)
         if not idea:
             raise HTTPException(status_code=404, detail="Idea not found")
-        if idea.owner_id != user_id:
+        if not IdeaService._can_edit_idea(db, idea_id, user_id):
             raise HTTPException(status_code=403, detail="Not authorized to modify this idea")
         updated = idea_repo.update(db, db_obj=idea, obj_in=updates)
         return IdeaService._maybe_promote_to_validated(db, updated)
@@ -279,6 +329,42 @@ class IdeaService:
                 status_code=500,
                 detail="An error occurred while archiving the idea. Please try again later.",
             ) from exc
+
+    @staticmethod
+    def get_favorited_ideas(db: Session, user_id: uuid.UUID) -> list[Idea]:
+        """Return all ideas the user has favorited, excluding archived ones."""
+        rows = (
+            db.query(IdeaFavorite)
+            .filter(IdeaFavorite.user_id == user_id)
+            .all()
+        )
+        ideas = []
+        for row in rows:
+            idea = idea_repo.get(db, id=row.idea_id)
+            if idea and not idea.is_archived:
+                ideas.append(idea)
+        return ideas
+
+    @staticmethod
+    def favorite_idea(db: Session, idea_id: uuid.UUID, user_id: uuid.UUID) -> None:
+        """Add an idea to the user's favorites (idempotent)."""
+        IdeaService.get_idea(db=db, idea_id=idea_id, user_id=user_id)  # access check
+        existing = (
+            db.query(IdeaFavorite)
+            .filter(IdeaFavorite.user_id == user_id, IdeaFavorite.idea_id == idea_id)
+            .first()
+        )
+        if not existing:
+            db.add(IdeaFavorite(user_id=user_id, idea_id=idea_id))
+            db.commit()
+
+    @staticmethod
+    def unfavorite_idea(db: Session, idea_id: uuid.UUID, user_id: uuid.UUID) -> None:
+        """Remove an idea from the user's favorites (idempotent)."""
+        db.query(IdeaFavorite).filter(
+            IdeaFavorite.user_id == user_id, IdeaFavorite.idea_id == idea_id
+        ).delete()
+        db.commit()
 
     @staticmethod
     def unarchive_idea(db: Session, idea_id: uuid.UUID, user_id: uuid.UUID) -> Idea:

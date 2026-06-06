@@ -97,6 +97,14 @@ class IdeaUpdate(BaseModel):
         return v
 
 
+class SharedIdeaItem(BaseModel):
+    """An idea shared with a user via group membership, together with their role."""
+    idea: "IdeaRead"
+    role: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class IdeaRead(IdeaBase):
     """
     Pydantic model for reading Business Idea data.

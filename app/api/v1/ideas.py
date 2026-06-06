@@ -9,7 +9,7 @@ from app.api.dependencies import get_current_user, get_db
 from app.core.config import settings
 from app.models.ai.idea_translation import IdeaTranslation
 from app.models.user import User
-from app.schemas.idea import IdeaCreate, IdeaRead, IdeaUpdate
+from app.schemas.idea import IdeaCreate, IdeaRead, IdeaUpdate, SharedIdeaItem
 from app.services.idea_service import IdeaService
 
 router = APIRouter()
@@ -63,6 +63,44 @@ def create_idea(
         skills=idea_in.skills,
         language=idea_in.language,
     )
+
+
+@router.get("/shared-with-me", response_model=list[SharedIdeaItem])
+def get_shared_with_me(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[SharedIdeaItem]:
+    """Return ideas shared with the current user through team membership, with per-idea role."""
+    return IdeaService.get_ideas_shared_with_user(db=db, user_id=current_user.id)
+
+
+@router.get("/favorites", response_model=list[IdeaRead])
+def get_favorite_ideas(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[IdeaRead]:
+    """Return all ideas the current user has favorited."""
+    return IdeaService.get_favorited_ideas(db=db, user_id=current_user.id)
+
+
+@router.post("/{idea_id}/favorite", status_code=204)
+def favorite_idea(
+    idea_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Add an idea to the current user's favorites."""
+    IdeaService.favorite_idea(db=db, idea_id=idea_id, user_id=current_user.id)
+
+
+@router.delete("/{idea_id}/favorite", status_code=204)
+def unfavorite_idea(
+    idea_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Remove an idea from the current user's favorites."""
+    IdeaService.unfavorite_idea(db=db, idea_id=idea_id, user_id=current_user.id)
 
 
 @router.get("/archived", response_model=list[IdeaRead])
