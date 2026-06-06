@@ -79,12 +79,7 @@ class Idea(Base):
 
     owner = relationship("User", back_populates = "ideas")
     business = relationship("Business", foreign_keys = [business_id])
-    
-    versions = relationship("IdeaVersion", back_populates = "idea")
-    metrics = relationship("IdeaMetric", back_populates = "idea")
-    experiments = relationship("Experiment", back_populates = "idea")
+
     share_links = relationship("ShareLink", back_populates = "idea")
     chat_sessions = relationship("ChatSession", back_populates = "idea")
-    comparison_items = relationship("ComparisonItem", back_populates = "idea")
-    agent_runs = relationship("AgentRun", back_populates = "idea")
     translations = relationship("IdeaTranslation", back_populates = "idea", cascade="all, delete-orphan")
