@@ -38,4 +38,3 @@ class ChatMessage(Base):
     created_at = Column(DateTime, default = datetime.utcnow)
 
     session = relationship("ChatSession", back_populates = "messages")
-    agent_runs = relationship("AgentRun", back_populates = "chat_message")

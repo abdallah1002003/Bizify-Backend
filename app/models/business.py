@@ -52,8 +52,6 @@ class Business(Base):
     owner = relationship("User", back_populates = "businesses")
     converted_idea = relationship("Idea", foreign_keys = [idea_id])
     groups = relationship("Group", back_populates = "business", cascade="all, delete-orphan")
-    roadmap = relationship("BusinessRoadmap", back_populates = "business", uselist = False)
     partner_requests = relationship("PartnerRequest", back_populates = "business")
-    embeddings = relationship("Embedding", back_populates = "business")
     chat_sessions = relationship("ChatSession", back_populates = "business")
     share_links = relationship("ShareLink", back_populates = "business")

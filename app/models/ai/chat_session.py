@@ -46,4 +46,3 @@ class ChatSession(Base):
     business = relationship("Business", back_populates = "chat_sessions")
     idea = relationship("Idea", back_populates = "chat_sessions")
     messages = relationship("ChatMessage", back_populates = "session")
-    agent_runs = relationship("AgentRun", back_populates = "chat_session")

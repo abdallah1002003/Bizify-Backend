@@ -84,7 +84,6 @@ class User(Base):
     )
     
     admin_logs = relationship("AdminActionLog", back_populates = "admin")
-    comparisons = relationship("IdeaComparison", back_populates = "user", cascade="all, delete-orphan")
     share_links = relationship("ShareLink", back_populates = "creator", cascade="all, delete-orphan")
     chat_sessions = relationship("ChatSession", back_populates = "user", cascade="all, delete-orphan")
     group_messages = relationship("GroupMessage", back_populates = "sender", cascade="all, delete-orphan")
