@@ -1156,7 +1156,7 @@ async def get_partner_suggestions(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="AI_PIPELINE_API_KEY not configured on server.",
         )
-    target_url = f"{_AI_BASE_URL}/partners/suggest-for-idea"
+    target_url = f"{_AI_BASE_URL}/pipeline/partners/suggest-for-idea"
     headers = {"x-api-key": settings.AI_PIPELINE_API_KEY}
     params = {"idea_id": str(idea_id), "user_id": str(current_user.id), "limit": limit}
     try:
