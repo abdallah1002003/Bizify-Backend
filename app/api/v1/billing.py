@@ -202,6 +202,7 @@ async def buy_ppf_paymob(
     return await payment_service.create_ppf_paymob_payment(
         quantity=body.quantity, user_id=current_user.id, db=db,
         feature_key=body.feature_key, billing_data=billing_data,
+        total_amount_override=body.total_amount_egp,
     )
 
 
@@ -216,7 +217,8 @@ async def buy_ppf_paypal(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="quantity must be between 1 and 10.")
     return await payment_service.create_ppf_paypal_payment(
-        quantity=body.quantity, user_id=current_user.id, db=db, feature_key=body.feature_key,
+        quantity=body.quantity, user_id=current_user.id, db=db,
+        feature_key=body.feature_key, total_amount_override=body.total_amount_egp,
     )
 
 

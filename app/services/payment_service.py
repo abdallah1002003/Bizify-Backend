@@ -334,10 +334,11 @@ async def create_ppf_paymob_payment(
     db: Session,
     feature_key: str = "unknown",
     billing_data: Optional[dict[str, str]] = None,
+    total_amount_override: Optional[Decimal] = None,
 ) -> dict[str, Any]:
     """Initiate a Paymob card payment for `quantity` PAYG feature runs."""
     unit_price = get_ppf_price(feature_key)
-    total = unit_price * quantity
+    total = total_amount_override if total_amount_override is not None else (unit_price * quantity)
 
     billing_data = billing_data or {
         "apartment": "NA", "email": "NA", "floor": "NA",
@@ -384,10 +385,11 @@ async def create_ppf_paypal_payment(
     user_id: uuid.UUID,
     db: Session,
     feature_key: str = "unknown",
+    total_amount_override: Optional[Decimal] = None,
 ) -> dict[str, Any]:
     """Create a PayPal order for `quantity` PAYG feature runs."""
     unit_price = get_ppf_price(feature_key)
-    total = unit_price * quantity
+    total = total_amount_override if total_amount_override is not None else (unit_price * quantity)
 
     try:
         order = await paypal_client.create_order(
