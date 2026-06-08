@@ -317,17 +317,27 @@ async def create_paymob_payment(
 #  Pay-Per-Feature (PPF) – one-time section purchase
 # ─────────────────────────────────────────────
 
-PPF_PRICE_PER_SECTION = Decimal("135.00")   # EGP — midpoint of 120-150 range
+from app.constants.credit_costs import PAYG_FEATURE_PRICES, PAYG_TIER_2
+
+# Kept for backward-compatibility; new code should use PAYG_FEATURE_PRICES.
+PPF_PRICE_PER_SECTION = PAYG_TIER_2
+
+
+def get_ppf_price(feature_key: str) -> Decimal:
+    """Return the EGP price for a single PAYG feature run."""
+    return PAYG_FEATURE_PRICES.get(feature_key, PAYG_TIER_2)
 
 
 async def create_ppf_paymob_payment(
     quantity: int,
     user_id: uuid.UUID,
     db: Session,
+    feature_key: str = "unknown",
     billing_data: Optional[dict[str, str]] = None,
 ) -> dict[str, Any]:
-    """Initiate a Paymob card payment for `quantity` PPF sections."""
-    total = PPF_PRICE_PER_SECTION * quantity
+    """Initiate a Paymob card payment for `quantity` PAYG feature runs."""
+    unit_price = get_ppf_price(feature_key)
+    total = unit_price * quantity
 
     billing_data = billing_data or {
         "apartment": "NA", "email": "NA", "floor": "NA",
@@ -340,7 +350,7 @@ async def create_ppf_paymob_payment(
         result = await paymob_client.create_card_payment(
             amount=total,
             currency="EGP",
-            merchant_order_id=f"ppf-{user_id}-{quantity}",
+            merchant_order_id=f"ppf-{user_id}-{feature_key}-{quantity}",
             billing_data=billing_data,
         )
     except Exception as exc:
@@ -360,7 +370,9 @@ async def create_ppf_paymob_payment(
 
     return {
         "ppf_credit_id":  credit.id,
+        "feature_key":     feature_key,
         "quantity":        quantity,
+        "unit_price":      unit_price,
         "amount":          total,
         "paymob_order_id": result["paymob_order_id"],
         "iframe_url":      result["iframe_url"],
@@ -371,15 +383,17 @@ async def create_ppf_paypal_payment(
     quantity: int,
     user_id: uuid.UUID,
     db: Session,
+    feature_key: str = "unknown",
 ) -> dict[str, Any]:
-    """Create a PayPal order for `quantity` PPF sections."""
-    total = PPF_PRICE_PER_SECTION * quantity
+    """Create a PayPal order for `quantity` PAYG feature runs."""
+    unit_price = get_ppf_price(feature_key)
+    total = unit_price * quantity
 
     try:
         order = await paypal_client.create_order(
             amount=str(total),
             currency="USD",
-            plan_id=f"ppf-{quantity}",
+            plan_id=f"ppf-{feature_key}-{quantity}",
         )
     except Exception as exc:
         raise HTTPException(
@@ -405,7 +419,9 @@ async def create_ppf_paypal_payment(
 
     return {
         "ppf_credit_id": credit.id,
+        "feature_key":    feature_key,
         "quantity":       quantity,
+        "unit_price":     unit_price,
         "amount":         total,
         "order_id":       order["id"],
         "approval_url":   approval_url,
