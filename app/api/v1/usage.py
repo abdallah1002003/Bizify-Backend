@@ -53,6 +53,11 @@ def get_my_usage(
     # Grant monthly renewal before returning balance (so the UI shows the refreshed amount)
     if plan_type == "free":
         usage_repo.maybe_grant_free_monthly_credits(db, current_user.id)
+    elif plan_type in ("pro", "premium"):
+        # Self-heal a stale credit_limit (e.g. a Premium sub still on the Free
+        # starter 15, or the old 9999 sentinel) so the widget shows the correct
+        # plan allowance (Pro 90 / Premium 150).
+        usage_repo.reconcile_subscriber_credit_limit(db, current_user.id, plan_type)
 
     credit_info = usage_repo.get_credit_info(db, current_user.id)
 

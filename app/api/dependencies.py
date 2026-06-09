@@ -271,15 +271,18 @@ def check_ai_usage(
                 detail="No Pay-As-You-Go credits remaining. Purchase a feature run to continue.",
             )
 
-        # Premium: unlimited — skip credit check entirely
-        if plan_type == "premium":
-            return current_user
-
-        # Subscription path (Free, Pro)
+        # Subscription path (Free, Pro, Premium). Chat is already free/unlimited
+        # for Pro & Premium (handled above); here we only gate credit-bearing
+        # generation/regeneration routes against the plan's monthly credit pool.
+        # Premium is NOT unlimited — it has a 150-credit/month allowance.
         if plan_type == "free":
             usage_repo.maybe_grant_free_monthly_credits(db, current_user.id)
         elif plan_type == "pro":
             usage_repo.maybe_grant_pro_monthly_credits(db, current_user.id)
+            usage_repo.reconcile_subscriber_credit_limit(db, current_user.id, plan_type)
+        elif plan_type == "premium":
+            usage_repo.maybe_grant_premium_monthly_credits(db, current_user.id)
+            usage_repo.reconcile_subscriber_credit_limit(db, current_user.id, plan_type)
 
         remaining = usage_repo.get_credits_remaining(db, current_user.id)
         if remaining >= cost:

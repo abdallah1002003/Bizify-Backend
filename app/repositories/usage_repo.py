@@ -18,12 +18,13 @@ PPF_TOKENS_PER_SECTION = 3_000
 FREE_STARTER_CREDITS = 15
 FREE_MONTHLY_RENEWAL = 5
 
-# Pro plan: 90 credits/month
+# Pro plan: 90 credits/month (chat is free/unlimited; feature credits are capped)
 PRO_MONTHLY_CREDITS = 90
 
-# Premium plan: treated as unlimited — set_plan_credits uses this sentinel;
-# check_ai_usage short-circuits before the credit check for premium users.
-PREMIUM_MONTHLY_CREDITS = 9999
+# Premium plan: 150 credits/month (chat is free/unlimited; feature credits are
+# capped — Premium is NOT unlimited for feature generations). See
+# files/AI_FEATURES_CREDIT_COSTS.md → "Premium Plan — 600 EGP/month".
+PREMIUM_MONTHLY_CREDITS = 150
 
 # Daily general-chat turn limit for Free and PAYG users
 CHAT_DAILY_LIMIT = 20
@@ -141,6 +142,44 @@ class UsageRepository:
         if today.year > period_start.year or today.month > period_start.month:
             record.credits_used = 0
             record.credits_limit = PRO_MONTHLY_CREDITS
+            record.period_start = date(today.year, today.month, 1)
+            db.commit()
+            db.refresh(record)
+            return True
+        return False
+
+    def reconcile_subscriber_credit_limit(self, db: Session, user_id: uuid.UUID, plan_type: str) -> bool:
+        """
+        Self-heal a Pro/Premium user's credit_limit to match their plan's monthly
+        allowance WITHIN the current period (without resetting usage). Fixes
+        accounts whose limit is stale — e.g. a Premium sub that was provisioned/
+        backfilled while the row still held the Free starter value (15), or the
+        old 9999 "unlimited" sentinel. Returns True if the limit was corrected.
+        """
+        expected = {"pro": PRO_MONTHLY_CREDITS, "premium": PREMIUM_MONTHLY_CREDITS}.get(plan_type)
+        if expected is None:
+            return False
+        record = self.get_or_create(db, user_id)
+        if (record.credits_limit or 0) == expected:
+            return False
+        record.credits_limit = expected
+        if record.period_start is None:
+            record.period_start = date.today()
+        db.commit()
+        db.refresh(record)
+        return True
+
+    def maybe_grant_premium_monthly_credits(self, db: Session, user_id: uuid.UUID) -> bool:
+        """
+        Reset a Premium user's credit balance to PREMIUM_MONTHLY_CREDITS on the
+        first request of a new calendar month. Returns True if credits renewed.
+        """
+        record = self.get_or_create(db, user_id)
+        today = date.today()
+        period_start = record.period_start or today
+        if today.year > period_start.year or today.month > period_start.month:
+            record.credits_used = 0
+            record.credits_limit = PREMIUM_MONTHLY_CREDITS
             record.period_start = date(today.year, today.month, 1)
             db.commit()
             db.refresh(record)
