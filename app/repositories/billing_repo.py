@@ -3,6 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Optional
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.payment import Payment
@@ -24,6 +25,20 @@ class PlanRepository(BaseRepository[Plan, Any, Any]):
         return (
             db.query(self.model)
             .filter(self.model.id == plan_id, self.model.is_active.is_(True))
+            .first()
+        )
+
+    def get_free_plan(self, db: Session) -> Optional[Plan]:
+        """Return the canonical Free plan used as the default on signup.
+
+        Matches the active plan named exactly "Free" (case-insensitive). The
+        cheapest one wins if more than one ever exists, keeping the result
+        deterministic.
+        """
+        return (
+            db.query(self.model)
+            .filter(self.model.is_active.is_(True), func.lower(self.model.name) == "free")
+            .order_by(self.model.price.asc())
             .first()
         )
 

@@ -12,6 +12,7 @@ from app.core.security import get_password_hash, verify_password
 from app.models.user import User, UserRole
 from app.models.verification import VerificationType
 from app.repositories.auth_repo import auth_repo
+from app.repositories.billing_repo import plan_repo, subscription_repo
 from app.repositories.user_repo import user_repo
 from app.schemas.partner_profile import PartnerProfileCreate, PartnerProfileRegistration
 from app.schemas.user import UserCreate
@@ -90,6 +91,12 @@ class UserService:
                     commit=False,
                     refresh=False,
                 )
+            # Provision a default Free subscription so every account has an
+            # explicit plan record from signup. The usage/billing endpoints and
+            # the AI plan gates read this; without it the user is only implicitly
+            # "Free" and the subscriptions table stays empty. Best-effort: a
+            # missing Free plan must not block registration.
+            UserService._ensure_free_subscription(db, db_user.id)
             db.commit()
         except Exception:
             db.rollback()
@@ -106,6 +113,29 @@ class UserService:
         )
 
         return db_user
+
+    @staticmethod
+    def _ensure_free_subscription(db: Session, user_id: uuid.UUID) -> None:
+        """Attach the default Free plan to a user if they have no active subscription.
+
+        Runs within the caller's transaction (commit=False). Failure to find or
+        attach the Free plan is logged but never raised, so account creation is
+        never blocked by billing configuration.
+        """
+        try:
+            if subscription_repo.get_active_by_user(db, user_id):
+                return
+            free_plan = plan_repo.get_free_plan(db)
+            if not free_plan:
+                logger.warning(
+                    "No active Free plan found; user %s created without a subscription", user_id
+                )
+                return
+            subscription_repo.create_or_update(
+                db, user_id=user_id, plan_id=free_plan.id, commit=False
+            )
+        except Exception:
+            logger.exception("Failed to provision Free subscription for user %s", user_id)
 
     @staticmethod
     def create_otp(

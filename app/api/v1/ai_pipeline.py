@@ -9,8 +9,10 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import check_ai_usage, get_current_user, get_db
+from app.constants.credit_costs import SECTION_CREDIT_COSTS
 from app.core.database import SessionLocal
 from app.repositories.billing_repo import subscription_repo
+from app.repositories.usage_repo import usage_repo as _usage_repo
 from app.core.config import settings
 from app.models.user import User
 from app.schemas.ai_pipeline import (
@@ -106,12 +108,28 @@ async def general_chat(
     request: GeneralChatRequest,
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
-    return await AIPipelineService.general_chat(
+    result = await AIPipelineService.general_chat(
         user_id=current_user.id,
         message=request.message,
         history=request.history,
         settings_language=request.settings_language,
     )
+    # Bug fix: when generalBot triggers a full section run internally, the cost
+    # of that section run was not charged (only the 0-credit chat gate ran).
+    # Deduct the section credits here, after the fact.
+    if result.get("intent") == "run_section" and result.get("action") == "triggered":
+        section = (result.get("section") or "").replace("-", "_")
+        cost = SECTION_CREDIT_COSTS.get(section, 0)
+        if cost > 0:
+            try:
+                db = SessionLocal()
+                try:
+                    _usage_repo.deduct_credits(db, current_user.id, cost)
+                finally:
+                    db.close()
+            except Exception:
+                logger.warning("Failed to charge section credits for run_section intent (section=%s)", section)
+    return result
 
 
 @router.post(
@@ -1121,11 +1139,6 @@ async def idea_intake_manual(payload: dict[str, Any], current_user: User = Depen
     payload["user_id"] = str(current_user.id)
     return await _forward_post_to_ai("idea-intake/manual", payload=payload, extra_headers=_ai_headers(current_user))
 
-@router.post("/explain", summary="Explain", tags=["AI - General Chat"])
-async def explain(payload: dict[str, Any], current_user: User = Depends(get_current_user)):
-    payload["user_id"] = str(current_user.id)
-    return await _forward_post_to_ai("explain", payload=payload, extra_headers=_ai_headers(current_user))
-
 
 @router.get(
     "/ideas/{idea_id}/partner-suggestions",
@@ -1143,7 +1156,7 @@ async def get_partner_suggestions(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="AI_PIPELINE_API_KEY not configured on server.",
         )
-    target_url = f"{_AI_BASE_URL}/partners/suggest-for-idea"
+    target_url = f"{_AI_BASE_URL}/pipeline/partners/suggest-for-idea"
     headers = {"x-api-key": settings.AI_PIPELINE_API_KEY}
     params = {"idea_id": str(idea_id), "user_id": str(current_user.id), "limit": limit}
     try:

@@ -129,8 +129,10 @@ class PaymobCheckoutResponse(BaseModel):
 # ─────────────────────────────────────────────
 
 class PPFPurchaseRequest(BaseModel):
-    """Request body to buy PPF sections (1–10 at a time)."""
-    quantity: int = 1   # number of sections to buy (1 section = 135 EGP)
+    """Request body to buy one or more PAYG feature runs."""
+    feature_key: str = "unknown"           # e.g. "market-potential", "customers", "roadmap"
+    quantity: int = 1                      # runs to purchase (1–50)
+    total_amount_egp: Optional[Decimal] = None  # when set, overrides feature_key price lookup (mixed-cart)
     first_name:   Optional[str] = None
     last_name:    Optional[str] = None
     email:        Optional[str] = None

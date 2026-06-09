@@ -14,6 +14,7 @@ from app.models.user import User, UserRole
 from app.repositories.admin_repo import security_repo
 from app.repositories.auth_repo import auth_repo
 from app.repositories.billing_repo import subscription_repo
+from app.constants.credit_costs import get_route_info
 from app.repositories.usage_repo import usage_repo, PPF_TOKENS_PER_SECTION
 from app.repositories.user_repo import user_repo
 
@@ -168,74 +169,140 @@ def check_ai_usage(
     current_user: User = Depends(get_current_user),
 ) -> User:
     """
-    Gate-check AI token limits before forwarding to the AI service.
+    Credit-based gate for every AI pipeline request.
 
-    Opens and closes its own DB session immediately so the connection is
-    returned to the pool before the AI forwarding call starts. The old
-    Depends(get_db) signature held the connection open for the entire
-    30-120 s AI request wait, exhausting the pool under concurrent load.
-
-    Token counting strategy:
-    - The bizifyAI service writes REAL token counts (from Groq usage.total_tokens)
-      directly to the usages table after every LLM call.
-    - This dependency only READS the current usage to enforce the plan limit.
-    - GET requests (reading cached results) are always free.
-    - POST/PUT/PATCH requests are checked against the limit before proceeding.
-      If the user is already over their limit, the request is rejected here
-      before any AI compute is consumed.
+    Strategy:
+    - GET / DELETE / PATCH requests are always free (no credit cost).
+    - POST/PUT requests look up the route in CREDIT_COSTS to find the cost.
+    - Plan type is derived from the active subscription's features_json.
+    - Plan gates block certain routes for Free users (marketing, roadmap, etc.).
+    - Chat routes:
+        - 'general': 20 turns/day counter for Free + PAYG; unlimited for subscribers.
+        - 'section': blocked on Free; PAYG with ppf_purchased > 0; free for Pro/Premium.
+    - Credit deduction:
+        - Free/Subscribers: deduct from credits_used. If exhausted, fall back to PPF.
+        - PAYG: consume 1 PPF section per generation/regen (not per chat).
+    - Monthly renewal: Free users with credits_remaining == 0 receive 5 credits
+      on the first of the next calendar month (checked on every request).
     """
-    # GET requests only read cached data — never count against quota
-    if request.method == "GET":
+    if request.method in ("GET", "HEAD", "OPTIONS", "DELETE", "PATCH"):
         return current_user
 
     db = SessionLocal()
     try:
         sub = subscription_repo.get_active_by_user(db, current_user.id)
-        features: dict = {}
-        if sub and sub.plan and sub.plan.features_json:
-            features = sub.plan.features_json
+        features: dict = sub.plan.features_json if (sub and sub.plan and sub.plan.features_json) else {}
 
-        if features.get("ai_analysis") is False:
+        # Derive plan type
+        is_ppf = bool(features.get("is_ppf"))
+        plan_name = (sub.plan.name if sub and sub.plan else "Free").lower()
+        if is_ppf:
+            plan_type = "payg"
+        elif plan_name in ("pro", "premium"):
+            plan_type = plan_name
+        else:
+            plan_type = "free"
+
+        # Lookup credit cost + gates for this route
+        route = get_route_info(request.url.path, request.method)
+
+        # ── Plan gate check ────────────────────────────────────────────────────
+        if plan_type in route.plan_gates:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Your current plan does not include AI analysis features. Please upgrade your plan.",
+                detail=(
+                    "This feature is not available on your current plan. "
+                    "Upgrade to Pro or purchase it as Pay-As-You-Go."
+                ),
             )
 
-        # PPF plan — skip subscription token check, only use credit balance
-        if features.get("is_ppf"):
+        # ── Chat routes ────────────────────────────────────────────────────────
+        if route.chat_type == "general":
+            # Subscribers: unlimited chat — just allow
+            if plan_type in ("pro", "premium"):
+                return current_user
+            # Free & PAYG: 20 turns/day
+            allowed, turns = usage_repo.check_and_increment_chat(db, current_user.id)
+            if not allowed:
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail=(
+                        f"Daily chat limit reached ({turns} / 20 turns). "
+                        "Resets at midnight, or upgrade to Pro for unlimited chat."
+                    ),
+                )
+            return current_user
+
+        if route.chat_type == "section":
+            # Pro/Premium: free unlimited section chat
+            if plan_type in ("pro", "premium"):
+                return current_user
+            # PAYG: allowed if they have ever purchased at least one section
+            if plan_type == "payg":
+                record = usage_repo.get_or_create(db, current_user.id)
+                if (record.ppf_purchased or 0) > 0:
+                    return current_user
+                raise HTTPException(
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                    detail="Purchase a section to unlock section chat for that analysis.",
+                )
+            # Free: blocked (plan_gates already caught this above for routes that set it,
+            # but section chat routes always gate Free — double-check here)
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Section chat is available to Pro, Premium, and Pay-As-You-Go subscribers.",
+            )
+
+        # ── Free credit routes (0 credits, no chat type) ──────────────────────
+        if route.credits == 0:
+            return current_user
+
+        # ── Credit-bearing generation / regeneration routes ───────────────────
+        cost = route.credits
+
+        if plan_type == "payg":
+            # PAYG: consume 1 PPF section per feature run (pricing is handled at purchase)
             ppf_balance = usage_repo.get_ppf_balance(db, current_user.id)
             if ppf_balance > 0:
                 usage_repo.consume_ppf_section(db, current_user.id)
-                usage_repo.add_tokens(db, current_user.id, PPF_TOKENS_PER_SECTION)
-                db.commit()
                 return current_user
             raise HTTPException(
                 status_code=status.HTTP_402_PAYMENT_REQUIRED,
-                detail="No Pay-Per-Feature credits remaining. Buy more sections to continue.",
+                detail="No Pay-As-You-Go credits remaining. Purchase a feature run to continue.",
             )
 
-        plan_limit: Optional[int] = features.get("ai_tokens")
-        _, record = usage_repo.check_limit(db, current_user.id)
-        active_limit = plan_limit if plan_limit is not None else (record.limit_value or 20_000)
-        used = record.used or 0
+        # Subscription path (Free, Pro, Premium)
+        # Free: try monthly renewal before checking balance
+        if plan_type == "free":
+            usage_repo.maybe_grant_free_monthly_credits(db, current_user.id)
 
-        if active_limit == -1 or used < active_limit:
+        remaining = usage_repo.get_credits_remaining(db, current_user.id)
+        if remaining >= cost:
+            usage_repo.deduct_credits(db, current_user.id, cost)
             return current_user
 
-        # Subscription quota exhausted — fall back to PPF credits if any
+        # Credits exhausted — fall back to PAYG if user has PPF credits
         ppf_balance = usage_repo.get_ppf_balance(db, current_user.id)
         if ppf_balance > 0:
             usage_repo.consume_ppf_section(db, current_user.id)
-            usage_repo.add_tokens(db, current_user.id, PPF_TOKENS_PER_SECTION)
-            db.commit()
             return current_user
 
+        # Determine the right error message by plan
+        if plan_type == "free":
+            remaining_cr = usage_repo.get_credits_remaining(db, current_user.id)
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail=(
+                    f"Not enough credits (need {cost}, have {remaining_cr}). "
+                    "Upgrade to Pro for 90 credits/month, or buy this feature as Pay-As-You-Go."
+                ),
+            )
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=(
-                f"AI token limit reached ({used:,}/{active_limit:,} tokens used). "
-                "Upgrade your plan or buy Pay-Per-Feature credits to continue."
+                f"Monthly credit limit reached (need {cost} credits). "
+                "Buy more as Pay-As-You-Go or wait for your next billing cycle."
             ),
         )
     finally:
-        db.close()  # connection returned to pool BEFORE the AI forwarding call
+        db.close()
