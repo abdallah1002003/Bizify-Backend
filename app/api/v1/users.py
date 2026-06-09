@@ -282,6 +282,8 @@ def get_me(
     current_user: User = Depends(get_current_user),
 ) -> dict:
     """Return the authenticated user's data including partner approval status and business id."""
+    # Re-associate user with the request-scoped DB session to allow lazy-loading relationship attributes
+    current_user = db.merge(current_user, load=False)
     result: dict = {
         "id": str(current_user.id),
         "email": current_user.email,

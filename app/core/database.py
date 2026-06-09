@@ -12,22 +12,27 @@ connect_args = (
     else {}
 )
 
-_is_postgres = not settings.get_database_url().startswith("sqlite")
+db_url = settings.get_database_url()
+_is_postgres = not db_url.startswith("sqlite")
 
-engine = create_engine(
-    settings.get_database_url(),
-    connect_args=connect_args,
+engine_kwargs = {
+    "connect_args": connect_args,
+    "pool_pre_ping": True,
+    "pool_recycle": 300,
+}
+if _is_postgres:
     # Transaction-mode pooler (port 6543) on Supabase multiplexes real Postgres
     # connections so many app-level connections share few actual DB connections.
     # Keep the pool small — transaction pooling does the heavy lifting server-side.
     # pool_pre_ping silently drops stale sockets; pool_timeout fails fast so a
     # full pool surfaces as a 503 quickly rather than queuing for 30 s.
-    pool_size=5 if _is_postgres else 1,
-    max_overflow=5 if _is_postgres else 0,
-    pool_timeout=8,
-    pool_pre_ping=True,
-    pool_recycle=300,
-)
+    engine_kwargs.update({
+        "pool_size": 5,
+        "max_overflow": 5,
+        "pool_timeout": 8,
+    })
+
+engine = create_engine(db_url, **engine_kwargs)
 
 SessionLocal = sessionmaker(autocommit = False, autoflush = False, bind = engine)
 

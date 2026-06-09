@@ -1,3 +1,9 @@
+import os
+import sys
+
+# Force testing database URL to in-memory SQLite before importing the application settings
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+
 from unittest.mock import patch
 
 import pytest
@@ -5,10 +11,6 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-
-from app.api.dependencies import get_db
-from app.core.database import Base
-from app.main import app
 
 # Create an in-memory SQLite database for fast, isolated testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -19,6 +21,17 @@ engine = create_engine(
     poolclass=StaticPool,
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Overwrite engine and SessionLocal in app.core.database so that the entire application,
+# including dependency overrides and custom instantiations inside routes/middleware,
+# uses the test SQLite engine.
+import app.core.database
+app.core.database.engine = engine
+app.core.database.SessionLocal = TestingSessionLocal
+
+from app.api.dependencies import get_db
+from app.core.database import Base
+from app.main import app
 
 
 @pytest.fixture(scope="session", autouse=True)

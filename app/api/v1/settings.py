@@ -51,6 +51,7 @@ def update_my_profile(
     """
     Update profile information for the authenticated user.
     """
+    current_user = db.merge(current_user, load=False)
     return SettingsService.update_profile(db, current_user, data)
 
 
@@ -64,6 +65,7 @@ def change_my_password(
     """
     Update password and invalidate other sessions (Global Logout).
     """
+    current_user = db.merge(current_user, load=False)
     ip = request.client.host
     return SettingsService.update_password(db, current_user, data, ip)
 
@@ -111,6 +113,7 @@ def deactivate_my_account(
     """
     Deactivate account immediately (Soft Delete).
     """
+    current_user = db.merge(current_user, load=False)
     ip = request.client.host
     return SettingsService.deactivate_account(db, current_user, ip)
 
@@ -124,5 +127,6 @@ def delete_my_account(
     """
     Permanently delete/anonymize account (Hard Delete).
     """
+    current_user = db.merge(current_user, load=False)
     ip = request.client.host
     return SettingsService.delete_account(db, current_user, ip)

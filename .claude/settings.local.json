@@ -12,7 +12,8 @@
       "Bash(grep -v \"get_\\\\|health\\\\|version\\\\|stream\\\\|status\\\\|questionnaire\\\\|profile\\\\|problems\\\\|idea$\\\\|run$\\\\|rerun\")",
       "Bash(Get-ChildItem -Path \"c:/BIDT/GP/Bizify-Backend\" -Recurse -Directory)",
       "Bash(Select-Object -First 30 FullName)",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(sqlite3 /Users/abdallahabdelrhimantar/Desktop/Bizify-Backend-main/sql_app.db \".tables\")"
     ]
   }
 }
