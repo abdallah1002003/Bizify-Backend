@@ -15,7 +15,7 @@ from app.repositories.admin_repo import security_repo
 from app.repositories.auth_repo import auth_repo
 from app.repositories.billing_repo import subscription_repo
 from app.constants.credit_costs import get_route_info
-from app.repositories.usage_repo import usage_repo, PPF_TOKENS_PER_SECTION
+from app.repositories.usage_repo import usage_repo, PPF_TOKENS_PER_SECTION, PRO_MONTHLY_CREDITS
 from app.repositories.user_repo import user_repo
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
@@ -271,10 +271,15 @@ def check_ai_usage(
                 detail="No Pay-As-You-Go credits remaining. Purchase a feature run to continue.",
             )
 
-        # Subscription path (Free, Pro, Premium)
-        # Free: try monthly renewal before checking balance
+        # Premium: unlimited — skip credit check entirely
+        if plan_type == "premium":
+            return current_user
+
+        # Subscription path (Free, Pro)
         if plan_type == "free":
             usage_repo.maybe_grant_free_monthly_credits(db, current_user.id)
+        elif plan_type == "pro":
+            usage_repo.maybe_grant_pro_monthly_credits(db, current_user.id)
 
         remaining = usage_repo.get_credits_remaining(db, current_user.id)
         if remaining >= cost:

@@ -10,7 +10,22 @@ from app.core import paymob_client, paypal_client
 from app.models.plan import Plan
 from app.models.subscription import Subscription
 from app.repositories.billing_repo import payment_repo, plan_repo, ppf_credit_repo, subscription_repo
-from app.repositories.usage_repo import usage_repo
+from app.repositories.usage_repo import usage_repo, PRO_MONTHLY_CREDITS, PREMIUM_MONTHLY_CREDITS
+
+
+def _credits_for_plan(plan: Plan) -> int:
+    """Return the monthly credit allowance to apply when this plan activates."""
+    name = (plan.name or "").lower()
+    if "premium" in name:
+        return PREMIUM_MONTHLY_CREDITS
+    if "pro" in name:
+        return PRO_MONTHLY_CREDITS
+    return 15  # Free / unknown — baseline
+
+
+def _provision_plan_credits(db: Session, user_id: uuid.UUID, plan: Plan) -> None:
+    """Reset the user's credit period to match their newly activated plan."""
+    usage_repo.set_plan_credits(db, user_id, _credits_for_plan(plan))
 
 
 def get_active_plans(db: Session) -> list[Plan]:
@@ -170,6 +185,7 @@ async def capture_payment(
     db.add(payment)
 
     subscription_repo.activate(db, subscription, commit=False)
+    _provision_plan_credits(db, subscription.user_id, plan)
     db.commit()
     db.refresh(subscription)
     db.refresh(payment)
@@ -526,6 +542,10 @@ async def handle_paymob_webhook(data: dict[str, Any], db: Session) -> None:
             if is_success:
                 # Activate only now that money is confirmed received.
                 subscription_repo.activate(db, subscription, commit=False)
+                # Reset the user's credit allowance to match the new plan.
+                activated_plan = plan_repo.get_active_by_id(db, subscription.plan_id)
+                if activated_plan:
+                    _provision_plan_credits(db, subscription.user_id, activated_plan)
             else:
                 # Failed payment — discard the pending subscription so it never
                 # lingers and is never treated as active.

@@ -18,6 +18,13 @@ PPF_TOKENS_PER_SECTION = 3_000
 FREE_STARTER_CREDITS = 15
 FREE_MONTHLY_RENEWAL = 5
 
+# Pro plan: 90 credits/month
+PRO_MONTHLY_CREDITS = 90
+
+# Premium plan: treated as unlimited — set_plan_credits uses this sentinel;
+# check_ai_usage short-circuits before the credit check for premium users.
+PREMIUM_MONTHLY_CREDITS = 9999
+
 # Daily general-chat turn limit for Free and PAYG users
 CHAT_DAILY_LIMIT = 20
 
@@ -122,6 +129,23 @@ class UsageRepository:
         db.commit()
         db.refresh(record)
         return record
+
+    def maybe_grant_pro_monthly_credits(self, db: Session, user_id: uuid.UUID) -> bool:
+        """
+        Reset a Pro user's credit balance to PRO_MONTHLY_CREDITS on the first
+        request of a new calendar month. Returns True if credits were renewed.
+        """
+        record = self.get_or_create(db, user_id)
+        today = date.today()
+        period_start = record.period_start or today
+        if today.year > period_start.year or today.month > period_start.month:
+            record.credits_used = 0
+            record.credits_limit = PRO_MONTHLY_CREDITS
+            record.period_start = date(today.year, today.month, 1)
+            db.commit()
+            db.refresh(record)
+            return True
+        return False
 
     def maybe_grant_free_monthly_credits(self, db: Session, user_id: uuid.UUID) -> bool:
         """
