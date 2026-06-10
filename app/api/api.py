@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.v1 import (
     admin,
+    admin_partners,
     ai_pipeline,
     auth,
     billing,
@@ -24,6 +25,7 @@ api_router = APIRouter()
 
 api_router.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 api_router.include_router(admin.router, prefix="/admin", tags=["Admin Configuration"])
+api_router.include_router(admin_partners.router, prefix="/admin", tags=["Admin Partners"])
 api_router.include_router(users.router, prefix="/users", tags=["User Management"])
 api_router.include_router(
     marketplace.router, prefix="/marketplace", tags=["Marketplace"]
