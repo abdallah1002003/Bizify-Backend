@@ -100,7 +100,7 @@ def marketplace_browse(
         f"COALESCE(details_json->>'about', about_summary, description) AS about, "
         f"COALESCE(details_json->>'city', '') AS city, "
         f"COALESCE(details_json->>'country', country) AS country, "
-        f"details_json->'tags' AS tags, "
+        f"COALESCE((details_json->'tags')::jsonb, (details_json->'product_tags')::jsonb, skills_json::jsonb) AS tags, "
         f"CASE WHEN COALESCE(details_json->>'phone', phone_number) IS NOT NULL "
         f"  OR details_json->>'whatsapp' IS NOT NULL THEN 'direct' ELSE 'pending' END AS contact_status, "
         f"COALESCE(details_json->>'phone', phone_number) AS phone, "
