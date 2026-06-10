@@ -12,6 +12,7 @@ from app.api.v1 import (
     ideas,
     imports,
     marketplace,
+    marketplace_browse,
     notifications,
     payment_methods,
     profile,
@@ -29,6 +30,9 @@ api_router.include_router(admin_partners.router, prefix="/admin", tags=["Admin P
 api_router.include_router(users.router, prefix="/users", tags=["User Management"])
 api_router.include_router(
     marketplace.router, prefix="/marketplace", tags=["Marketplace"]
+)
+api_router.include_router(
+    marketplace_browse.router, prefix="/marketplace", tags=["Marketplace"]
 )
 api_router.include_router(profile.router, prefix="/profile", tags=["User Profiling"])
 
