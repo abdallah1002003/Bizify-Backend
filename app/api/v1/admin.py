@@ -61,6 +61,33 @@ def delete_user(
     return None
 
 
+class BulkAction(BaseModel):
+    ids: list[UUID]
+    action: str  # "approve" | "reject"
+
+
+@router.post("/requests/bulk", response_model=dict)
+def bulk_action_requests(
+    payload: BulkAction,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(RoleChecker([UserRole.ADMIN])),
+) -> dict:
+    """Bulk approve or reject partner requests."""
+    if payload.action not in ("approve", "reject"):
+        raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'")
+    affected = 0
+    for pid in payload.ids:
+        try:
+            if payload.action == "approve":
+                PartnerService.approve_request(db, pid, current_admin.id)
+            else:
+                PartnerService.reject_request(db, pid, current_admin.id)
+            affected += 1
+        except Exception:
+            pass
+    return {"affected": affected}
+
+
 @router.patch("/approve/{profile_id}", response_model=PartnerProfileRead)
 def approve_request(
     profile_id: UUID,

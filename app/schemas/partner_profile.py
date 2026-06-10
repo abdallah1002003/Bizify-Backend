@@ -83,5 +83,6 @@ class PartnerProfileRead(PartnerProfileBase):
     linkedin_url: Optional[str] = None
     approved_at: Optional[datetime] = None
     created_at: datetime
-    
+    details_json: Optional[Any] = None
+
     model_config = ConfigDict(from_attributes=True)
