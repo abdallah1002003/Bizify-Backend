@@ -94,10 +94,17 @@ def marketplace_browse(
     pp = {**params, "lim": page_size, "off": (page - 1) * page_size}
     items = [dict(r) for r in db.execute(text(
         f"SELECT id, company_name, partner_type::text AS partner_type, {BM_EXPR} AS business_model, "
-        f"details_json->>'category' AS category, details_json->>'category_slug' AS category_slug, "
-        f"details_json->>'about' AS about, details_json->>'city' AS city, details_json->>'country' AS country, "
-        f"details_json->'tags' AS tags, details_json->>'contact_status' AS contact_status, "
-        f"details_json->>'phone' AS phone, details_json->>'whatsapp' AS whatsapp, details_json->>'website' AS website "
+        f"COALESCE(details_json->>'category', "
+        f"  (SELECT name FROM partner_categories WHERE id = category_id LIMIT 1)) AS category, "
+        f"details_json->>'category_slug' AS category_slug, "
+        f"COALESCE(details_json->>'about', about_summary, description) AS about, "
+        f"COALESCE(details_json->>'city', '') AS city, "
+        f"COALESCE(details_json->>'country', country) AS country, "
+        f"COALESCE(details_json->'tags', details_json->'product_tags', skills_json) AS tags, "
+        f"CASE WHEN COALESCE(details_json->>'phone', phone_number) IS NOT NULL "
+        f"  OR details_json->>'whatsapp' IS NOT NULL THEN 'direct' ELSE 'pending' END AS contact_status, "
+        f"COALESCE(details_json->>'phone', phone_number) AS phone, "
+        f"details_json->>'whatsapp' AS whatsapp, details_json->>'website' AS website "
         f"FROM partner_profiles WHERE {where} ORDER BY company_name LIMIT :lim OFFSET :off"), pp).mappings()]
     return {"total": total, "page": page, "page_size": page_size,
             "has_more": (page * page_size) < total, "items": items}
