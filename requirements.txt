@@ -58,7 +58,7 @@ pyasn1==0.6.3
 pycparser==2.23
 pydantic==2.11.7
 pydantic-settings==2.11.0
-pydantic_core==2.33.2
+pydantic_core @ https://files.pythonhosted.org/packages/47/bc/cd720e078576bdb8255d5032c5d63ee5c0bf4b7173dd955185a1d658c456/pydantic_core-2.33.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
 Pygments==2.20.0
 PyJWT==2.8.0
 pypdf==6.12.2
