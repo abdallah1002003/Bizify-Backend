@@ -34,7 +34,7 @@ greenlet==3.2.5
 h11==0.16.0
 h2==4.3.0
 hpack==4.1.0
-httpcore==1.0.9
+httpcore @ https://files.pythonhosted.org/packages/7e/f5/f66802a942d491edb555dd61e3a9961140fd64c90bce1eafd741609d334d/httpcore-1.0.9-py3-none-any.whl
 httptools==0.8.0
 httpx==0.28.1
 hyperframe==6.1.0
