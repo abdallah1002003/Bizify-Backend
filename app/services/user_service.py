@@ -44,13 +44,10 @@ class UserService:
         requires_partner_application = user_in.role in PARTNER_REGISTRATION_ROLES
         partner_files = partner_files or []
 
-        if requires_partner_application and (not partner_profile_in or not partner_files):
+        if requires_partner_application and not partner_profile_in:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(
-                    "Mentor, supplier, and manufacturer registration requires "
-                    "partner details and supporting documents."
-                ),
+                detail="Mentor, supplier, and manufacturer registration requires partner details.",
             )
 
         if not requires_partner_application and partner_profile_in:

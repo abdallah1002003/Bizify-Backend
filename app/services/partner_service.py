@@ -44,12 +44,6 @@ class PartnerService:
                 detail="Partner profile already exists for this user",
             )
 
-        if not files:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Supporting documents are required for partner registration",
-            )
-
         file_paths: list[str] = []
         try:
             for file in files:

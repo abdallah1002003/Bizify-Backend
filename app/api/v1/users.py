@@ -16,6 +16,7 @@ from app.schemas.partner_profile import (
 )
 from app.schemas.user import EntrepreneurRegistration, UserCreate, UserRead
 from app.schemas.user_profile import UserProfileRead, UserProfileUpdate
+from app.repositories.partner_repo import partner_repo
 from app.services.partner_service import PartnerService
 from app.services.profile_service import ProfileService
 from app.services.user_service import UserService
@@ -124,12 +125,19 @@ async def register_partner_user(
     role: PartnerType = Form(...),
     password: str = Form(...),
     confirm_password: str = Form(...),
-    files: list[UploadFile] = File(..., description="Upload one or more supporting files"),
+    files: Optional[list[UploadFile]] = File(default=None),
     company_name: Optional[str] = Form(None),
     phone_number: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
     services_json: Optional[str] = Form(None),
     experience_json: Optional[str] = Form(None),
+    # Extra contact / location fields stored in details_json
+    whatsapp: Optional[str] = Form(None),
+    website: Optional[str] = Form(None),
+    address: Optional[str] = Form(None),
+    city: Optional[str] = Form(None),
+    governorate: Optional[str] = Form(None),
+    business_model: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ) -> UserRead:
     """Register a partner account using multipart form data."""
@@ -152,7 +160,6 @@ async def register_partner_user(
     existing_user = UserService.get_user_by_email(db, user_in.email)
     if existing_user:
         if not existing_user.is_verified:
-            # Overwrite unverified user to prevent locking out incomplete signups
             UserService.delete_user_by_email(db, existing_user.email)
         else:
             raise HTTPException(
@@ -160,12 +167,30 @@ async def register_partner_user(
                 detail="Email already registered",
             )
 
-    return UserService.create_user(
+    user = UserService.create_user(
         db,
         user_in,
         partner_profile_in=partner_profile_in,
-        partner_files=files,
+        partner_files=files or [],
     )
+
+    # Persist extra contact/location fields in details_json
+    extra = {k: v for k, v in {
+        "whatsapp": whatsapp,
+        "website": website,
+        "address": address,
+        "city": city,
+        "governorate": governorate,
+        "business_model": business_model,
+        "provenance": "self-registered",
+    }.items() if v}
+    if extra:
+        profile = partner_repo.get_by_user_id(db, user.id)
+        if profile:
+            profile.details_json = {**(profile.details_json or {}), **extra}
+            db.commit()
+
+    return user
 
 
 @router.post(
