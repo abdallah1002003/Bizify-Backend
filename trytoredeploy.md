@@ -2,3 +2,4 @@ iam just don't have access to go on render and redeploy so i will always each ti
 
 
 want to redeploy again - updated AI Pipeline URL to Railway domain
+redeploy: pin Python 3.12.3 via .python-version file
