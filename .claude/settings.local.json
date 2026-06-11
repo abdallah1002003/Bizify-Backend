@@ -13,7 +13,8 @@
       "Bash(Get-ChildItem -Path \"c:/BIDT/GP/Bizify-Backend\" -Recurse -Directory)",
       "Bash(Select-Object -First 30 FullName)",
       "Bash(python -c ' *)",
-      "Bash(sqlite3 /Users/abdallahabdelrhimantar/Desktop/Bizify-Backend-main/sql_app.db \".tables\")"
+      "Bash(sqlite3 /Users/abdallahabdelrhimantar/Desktop/Bizify-Backend-main/sql_app.db \".tables\")",
+      "Bash(python3 -)"
     ]
   }
 }
