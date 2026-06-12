@@ -77,10 +77,10 @@ def bulk_action_requests(
     if payload.action not in ("approve", "reject"):
         raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'")
 
-    str_ids = [str(pid) for pid in payload.ids]
+    # payload.ids are already UUID objects (Pydantic coerces them)
     profiles = (
         db.query(PartnerProfile)
-        .filter(PartnerProfile.id.in_(str_ids))
+        .filter(PartnerProfile.id.in_(payload.ids))
         .all()
     )
 
@@ -88,19 +88,19 @@ def bulk_action_requests(
     from datetime import datetime, timezone
     now = datetime.now(timezone.utc)
 
-    # Build a map of user_id → partner_type for role promotion (approve only)
-    user_type_map: dict[str, PartnerType] = {}
+    # Build a map of user_id (UUID) → partner_type for role promotion (approve only)
+    user_type_map: dict[UUID, PartnerType] = {}
     for profile in profiles:
         profile.approval_status = new_status
         profile.approved_by = current_admin.id
         profile.approved_at = now
         if payload.action == "approve" and profile.user_id and profile.partner_type:
-            user_type_map[str(profile.user_id)] = profile.partner_type
+            user_type_map[profile.user_id] = profile.partner_type
 
     if payload.action == "approve" and user_type_map:
         users = db.query(User).filter(User.id.in_(list(user_type_map.keys()))).all()
         for user in users:
-            ptype = user_type_map.get(str(user.id))
+            ptype = user_type_map.get(user.id)
             if ptype:
                 try:
                     user.role = UserRole(ptype.value)
