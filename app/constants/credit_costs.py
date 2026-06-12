@@ -172,6 +172,10 @@ _ROUTE_TABLE: dict[str, RouteInfo] = {
     "audit":                        RouteInfo(credits=3),
     "audit/regenerate":             RouteInfo(credits=3),
     "audit/regenerate-custom":      RouteInfo(credits=3),
+    # Improve-section charges the underlying section's regen cost post-hoc in
+    # the endpoint handler (cost varies by section) — the gate itself is free.
+    "audit/improve-section":        RouteInfo(credits=0),
+    "audit/improve-all":            RouteInfo(credits=0),
 
     "roadmap/generate":             RouteInfo(credits=10, plan_gates=FREE_PLAN_GATES),
     "roadmap/task":                 RouteInfo(credits=0),   # custom task add — no AI cost

@@ -204,10 +204,16 @@ async def translate_idea(
         raise HTTPException(status_code=400, detail="Idea is already in the requested language.")
 
     try:
-        async with httpx.AsyncClient(timeout=120) as client:
+        # AI routes are mounted under /pipeline, and section rows are stored
+        # under the idea OWNER's user_id (required by TranslateIdeaInput).
+        async with httpx.AsyncClient(timeout=300) as client:
             resp = await client.post(
-                f"{settings.AI_PIPELINE_BASE_URL}/translate/idea",
-                json={"idea_id": str(idea_id), "target_language": target_language},
+                f"{settings.AI_PIPELINE_BASE_URL}/pipeline/translate/idea",
+                json={
+                    "idea_id": str(idea_id),
+                    "user_id": str(idea.owner_id),
+                    "target_language": target_language,
+                },
                 headers={"X-API-Key": settings.AI_PIPELINE_API_KEY or ""},
             )
             resp.raise_for_status()
