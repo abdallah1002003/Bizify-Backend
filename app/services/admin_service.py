@@ -99,30 +99,30 @@ class AdminService:
                 .filter(PartnerProfile.approval_status == ApprovalStatus.PENDING)
                 .count()
             )
+            # Query by partner_type, not user role — pending partners still have
+            # role=ENTREPRENEUR until approval, so user.role is always ENTREPRENEUR here.
+            from app.models.partner_profile import PartnerType
             pending_mentors = (
                 db.query(PartnerProfile)
-                .join(User, PartnerProfile.user_id == User.id)
                 .filter(
                     PartnerProfile.approval_status == ApprovalStatus.PENDING,
-                    User.role == UserRole.MENTOR,
+                    PartnerProfile.partner_type == PartnerType.MENTOR,
                 )
                 .count()
             )
             pending_suppliers = (
                 db.query(PartnerProfile)
-                .join(User, PartnerProfile.user_id == User.id)
                 .filter(
                     PartnerProfile.approval_status == ApprovalStatus.PENDING,
-                    User.role == UserRole.SUPPLIER,
+                    PartnerProfile.partner_type == PartnerType.SUPPLIER,
                 )
                 .count()
             )
             pending_manufacturers = (
                 db.query(PartnerProfile)
-                .join(User, PartnerProfile.user_id == User.id)
                 .filter(
                     PartnerProfile.approval_status == ApprovalStatus.PENDING,
-                    User.role == UserRole.MANUFACTURER,
+                    PartnerProfile.partner_type == PartnerType.MANUFACTURER,
                 )
                 .count()
             )

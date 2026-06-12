@@ -8,9 +8,10 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import RoleChecker, get_db
-from app.models.partner_profile import ApprovalStatus
+from app.models.partner_profile import ApprovalStatus, PartnerProfile, PartnerType
 from app.models.platform_setting import PlatformSetting
 from app.models.user import User, UserRole
+from app.repositories.partner_repo import partner_repo
 from app.repositories.user_repo import user_repo
 from app.schemas.partner_profile import PartnerProfileRead
 from app.schemas.security_log import SecurityLogRead
@@ -72,20 +73,48 @@ def bulk_action_requests(
     db: Session = Depends(get_db),
     current_admin: User = Depends(RoleChecker([UserRole.ADMIN])),
 ) -> dict:
-    """Bulk approve or reject partner requests."""
+    """Bulk approve or reject partner requests in a single transaction."""
     if payload.action not in ("approve", "reject"):
         raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'")
-    affected = 0
-    for pid in payload.ids:
-        try:
-            if payload.action == "approve":
-                PartnerService.approve_request(db, pid, current_admin.id)
-            else:
-                PartnerService.reject_request(db, pid, current_admin.id)
-            affected += 1
-        except Exception:
-            pass
-    return {"affected": affected}
+
+    str_ids = [str(pid) for pid in payload.ids]
+    profiles = (
+        db.query(PartnerProfile)
+        .filter(PartnerProfile.id.in_(str_ids))
+        .all()
+    )
+
+    new_status = ApprovalStatus.APPROVED if payload.action == "approve" else ApprovalStatus.REJECTED
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+
+    # Build a map of user_id → partner_type for role promotion (approve only)
+    user_type_map: dict[str, PartnerType] = {}
+    for profile in profiles:
+        profile.approval_status = new_status
+        profile.approved_by = current_admin.id
+        profile.approved_at = now
+        if payload.action == "approve" and profile.user_id and profile.partner_type:
+            user_type_map[str(profile.user_id)] = profile.partner_type
+
+    if payload.action == "approve" and user_type_map:
+        users = db.query(User).filter(User.id.in_(list(user_type_map.keys()))).all()
+        for user in users:
+            ptype = user_type_map.get(str(user.id))
+            if ptype:
+                try:
+                    user.role = UserRole(ptype.value)
+                except ValueError:
+                    pass
+
+    try:
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        logger.error("Bulk %s failed: %s", payload.action, exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Bulk {payload.action} failed") from exc
+
+    return {"affected": len(profiles)}
 
 
 @router.patch("/approve/{profile_id}", response_model=PartnerProfileRead)
