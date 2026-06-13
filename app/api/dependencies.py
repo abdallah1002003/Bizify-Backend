@@ -116,11 +116,14 @@ def get_current_user(
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        user.last_activity = now
-        user_repo.save(db, db_obj=user)
-        db.commit()
-        db.refresh(user)   # reload attributes before detaching — commit expires them
-        # Detach the user from the session so it can be used after db.close()
+        # Only write last_activity if it's stale by more than 5 minutes — avoids
+        # a DB write + commit on every single request, which was the main source
+        # of auth latency (300-750 ms per request at Supabase round-trip cost).
+        if (now - last_activity) > timedelta(minutes=5):
+            user.last_activity = now
+            user_repo.save(db, db_obj=user)
+            db.commit()
+            db.refresh(user)
         db.expunge(user)
         return user
     finally:
