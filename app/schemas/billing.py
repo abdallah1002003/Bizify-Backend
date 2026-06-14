@@ -163,3 +163,51 @@ class PPFBalanceResponse(BaseModel):
     purchased: int
     used:      int
     remaining: int
+
+
+# ─────────────────────────────────────────────
+#  InstaPay – manual bank transfer
+# ─────────────────────────────────────────────
+
+class InstapaySubscribeRequest(BaseModel):
+    plan_id:   uuid.UUID
+    reference: str  # InstaPay transaction reference number
+
+
+class InstapaySubscribeResponse(BaseModel):
+    payment_id:      uuid.UUID
+    subscription_id: uuid.UUID
+    status:          str  # "pending_review"
+
+
+class InstapayPPFRequest(BaseModel):
+    feature_key:      str = "unknown"
+    quantity:         int = 1
+    total_amount_egp: Optional[Decimal] = None
+    reference:        str  # InstaPay transaction reference number
+
+
+class InstapayPPFResponse(BaseModel):
+    ppf_credit_id: uuid.UUID
+    quantity:      int
+    amount:        Decimal
+    status:        str  # "pending_review"
+
+
+# ─────────────────────────────────────────────
+#  Admin – InstaPay pending review
+# ─────────────────────────────────────────────
+
+class InstapayPendingPayment(BaseModel):
+    id:          uuid.UUID
+    type:        str          # "subscription" | "ppf"
+    user_id:     uuid.UUID
+    user_email:  Optional[str] = None
+    amount:      Decimal
+    currency:    str
+    reference:   str
+    plan_name:   Optional[str] = None  # for subscription type
+    quantity:    Optional[int] = None  # for ppf type
+    created_at:  datetime
+
+    model_config = ConfigDict(from_attributes=True)

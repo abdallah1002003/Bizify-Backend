@@ -11,6 +11,10 @@ from app.models.user import User
 from app.schemas.billing import (
     CaptureRequest,
     CaptureResponse,
+    InstapayPPFRequest,
+    InstapayPPFResponse,
+    InstapaySubscribeRequest,
+    InstapaySubscribeResponse,
     OrderCreate,
     OrderResponse,
     PaymobCheckoutRequest,
@@ -231,6 +235,45 @@ async def capture_ppf_paypal(
     """Capture an approved PayPal order and credit the PPF sections."""
     return await payment_service.capture_ppf_paypal_payment(
         order_id=body.order_id, user_id=current_user.id, db=db
+    )
+
+
+# ─────────────────────────────────────────────
+#  InstaPay – manual reference flow
+# ─────────────────────────────────────────────
+
+@router.post("/instapay/subscribe", response_model=InstapaySubscribeResponse, status_code=status.HTTP_202_ACCEPTED)
+def instapay_subscribe(
+    body: InstapaySubscribeRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Submit an InstaPay subscription payment for admin review."""
+    return payment_service.create_instapay_subscription(
+        plan_id=body.plan_id,
+        user_id=current_user.id,
+        reference=body.reference,
+        db=db,
+    )
+
+
+@router.post("/instapay/ppf", response_model=InstapayPPFResponse, status_code=status.HTTP_202_ACCEPTED)
+def instapay_ppf(
+    body: InstapayPPFRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Submit an InstaPay PPF purchase for admin review."""
+    if body.quantity < 1 or body.quantity > 10:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="quantity must be between 1 and 10.")
+    return payment_service.create_instapay_ppf(
+        quantity=body.quantity,
+        user_id=current_user.id,
+        reference=body.reference,
+        db=db,
+        feature_key=body.feature_key,
+        total_amount_override=body.total_amount_egp,
     )
 
 

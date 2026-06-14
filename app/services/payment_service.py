@@ -494,6 +494,205 @@ async def capture_ppf_paypal_payment(
     }
 
 
+# ─────────────────────────────────────────────
+#  InstaPay – manual reference flow
+# ─────────────────────────────────────────────
+
+def create_instapay_subscription(
+    plan_id: uuid.UUID,
+    user_id: uuid.UUID,
+    reference: str,
+    db: Session,
+) -> dict[str, Any]:
+    """
+    Record an InstaPay subscription payment for admin review.
+    Creates a PENDING subscription + PENDING payment with the reference number.
+    Nothing is activated until an admin approves it.
+    """
+    if not reference or not reference.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="InstaPay reference number is required.",
+        )
+    plan = get_plan_or_404(plan_id, db)
+
+    pending_sub = subscription_repo.create_pending(
+        db, user_id=user_id, plan_id=plan.id, commit=False,
+    )
+    payment = payment_repo.create_instapay_payment(
+        db,
+        user_id=user_id,
+        subscription_id=pending_sub.id,
+        amount=plan.price,
+        instapay_reference=reference.strip(),
+        commit=True,
+    )
+    db.refresh(pending_sub)
+
+    return {
+        "payment_id":      payment.id,
+        "subscription_id": pending_sub.id,
+        "status":          "pending_review",
+    }
+
+
+def create_instapay_ppf(
+    quantity: int,
+    user_id: uuid.UUID,
+    reference: str,
+    db: Session,
+    feature_key: str = "unknown",
+    total_amount_override: Optional[Decimal] = None,
+) -> dict[str, Any]:
+    """
+    Record an InstaPay PPF purchase for admin review.
+    Creates a pending PPFCredit with payment_method='instapay'.
+    Credits are added only after admin approval.
+    """
+    if not reference or not reference.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="InstaPay reference number is required.",
+        )
+    unit_price = get_ppf_price(feature_key)
+    total = total_amount_override if total_amount_override is not None else (unit_price * quantity)
+
+    credit = ppf_credit_repo.create_pending(
+        db,
+        user_id=user_id,
+        quantity=quantity,
+        amount=total,
+        payment_method="instapay",
+        payment_ref=reference.strip(),
+    )
+    return {
+        "ppf_credit_id": credit.id,
+        "quantity":       quantity,
+        "amount":         total,
+        "status":         "pending_review",
+    }
+
+
+def approve_instapay_payment(payment_id: uuid.UUID, db: Session) -> dict[str, Any]:
+    """Admin: approve an InstaPay subscription payment → activate subscription."""
+    payment = db.get(payment_repo.model, payment_id)
+    if not payment or payment.instapay_reference is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="InstaPay payment not found.")
+    if payment.status == "succeeded":
+        return {"status": "already_approved"}
+
+    payment.status = "succeeded"
+    db.add(payment)
+
+    if payment.subscription_id:
+        subscription = db.get(Subscription, payment.subscription_id)
+        if subscription:
+            subscription_repo.activate(db, subscription, commit=False)
+            plan = plan_repo.get_active_by_id(db, subscription.plan_id)
+            if plan:
+                _provision_plan_credits(db, subscription.user_id, plan)
+
+    db.commit()
+    return {"status": "approved"}
+
+
+def reject_instapay_payment(payment_id: uuid.UUID, db: Session) -> dict[str, Any]:
+    """Admin: reject an InstaPay subscription payment → cancel pending subscription."""
+    payment = db.get(payment_repo.model, payment_id)
+    if not payment or payment.instapay_reference is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="InstaPay payment not found.")
+    if payment.status != "pending":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Payment is not pending.")
+
+    payment.status = "failed"
+    db.add(payment)
+
+    if payment.subscription_id:
+        subscription = db.get(Subscription, payment.subscription_id)
+        if subscription:
+            from app.models.subscription import SubscriptionStatus
+            if subscription.status != SubscriptionStatus.ACTIVE:
+                subscription_repo.cancel(db, subscription, commit=False)
+
+    db.commit()
+    return {"status": "rejected"}
+
+
+def approve_instapay_ppf(ppf_credit_id: uuid.UUID, db: Session) -> dict[str, Any]:
+    """Admin: approve an InstaPay PPF credit → add sections to user balance."""
+    credit = db.get(ppf_credit_repo.model, ppf_credit_id)
+    if not credit or credit.payment_method != "instapay":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="InstaPay PPF credit not found.")
+    if credit.status == "succeeded":
+        return {"status": "already_approved"}
+
+    ppf_credit_repo.confirm(db, credit)
+    usage_repo.add_ppf_sections(db, credit.user_id, credit.quantity)
+    return {"status": "approved"}
+
+
+def reject_instapay_ppf(ppf_credit_id: uuid.UUID, db: Session) -> dict[str, Any]:
+    """Admin: reject an InstaPay PPF credit."""
+    credit = db.get(ppf_credit_repo.model, ppf_credit_id)
+    if not credit or credit.payment_method != "instapay":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="InstaPay PPF credit not found.")
+    if credit.status != "pending":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="PPF credit is not pending.")
+
+    credit.status = "failed"
+    db.add(credit)
+    db.commit()
+    return {"status": "rejected"}
+
+
+def list_pending_instapay(db: Session) -> list[dict[str, Any]]:
+    """Return all pending InstaPay payments (subscriptions + PPF) for admin review."""
+    from app.models.user import User as UserModel
+
+    results: list[dict[str, Any]] = []
+
+    # Subscription payments
+    for payment in payment_repo.get_pending_instapay(db):
+        user = db.get(UserModel, payment.user_id)
+        plan_name = None
+        if payment.subscription_id:
+            sub = db.get(Subscription, payment.subscription_id)
+            if sub:
+                plan = plan_repo.get_active_by_id(db, sub.plan_id)
+                plan_name = plan.name if plan else None
+        results.append({
+            "id":         payment.id,
+            "type":       "subscription",
+            "user_id":    payment.user_id,
+            "user_email": user.email if user else None,
+            "amount":     payment.amount,
+            "currency":   payment.currency,
+            "reference":  payment.instapay_reference,
+            "plan_name":  plan_name,
+            "quantity":   None,
+            "created_at": payment.created_at,
+        })
+
+    # PPF credits
+    for credit in ppf_credit_repo.get_pending_instapay(db):
+        user = db.get(UserModel, credit.user_id)
+        results.append({
+            "id":         credit.id,
+            "type":       "ppf",
+            "user_id":    credit.user_id,
+            "user_email": user.email if user else None,
+            "amount":     credit.amount_paid,
+            "currency":   credit.currency,
+            "reference":  credit.payment_ref,
+            "plan_name":  None,
+            "quantity":   credit.quantity,
+            "created_at": credit.created_at,
+        })
+
+    results.sort(key=lambda x: x["created_at"])
+    return results
+
+
 async def handle_paymob_webhook(data: dict[str, Any], db: Session) -> None:
     """
     Process Paymob's Transaction Processed Callback.

@@ -28,6 +28,8 @@ class Payment(Base):
     # Paymob-specific identifiers
     paymob_order_id = Column(String, nullable = True, index = True)
     paymob_transaction_id = Column(String, nullable = True, index = True)
+    # InstaPay manual payment
+    instapay_reference = Column(String, nullable = True, index = True)
     created_at = Column(DateTime, default = datetime.utcnow)
 
     user = relationship("User", back_populates = "payments")

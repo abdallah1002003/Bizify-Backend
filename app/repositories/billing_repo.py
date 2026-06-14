@@ -46,6 +46,45 @@ class PlanRepository(BaseRepository[Plan, Any, Any]):
 class PaymentRepository(BaseRepository[Payment, Any, Any]):
     """Data-access helpers for payments."""
 
+    def get_pending_instapay(self, db: Session) -> list[Payment]:
+        """Return all InstaPay payments awaiting admin review."""
+        return (
+            db.query(self.model)
+            .filter(
+                self.model.instapay_reference.isnot(None),
+                self.model.status == "pending",
+            )
+            .order_by(self.model.created_at.asc())
+            .all()
+        )
+
+    def create_instapay_payment(
+        self,
+        db: Session,
+        *,
+        user_id: uuid.UUID,
+        subscription_id: uuid.UUID,
+        amount: Decimal,
+        instapay_reference: str,
+        commit: bool = True,
+    ) -> Payment:
+        """Persist a pending InstaPay subscription payment for admin review."""
+        payment = Payment(
+            user_id=user_id,
+            subscription_id=subscription_id,
+            amount=amount,
+            currency="EGP",
+            status="pending",
+            instapay_reference=instapay_reference,
+        )
+        db.add(payment)
+        if commit:
+            db.commit()
+            db.refresh(payment)
+        else:
+            db.flush()
+        return payment
+
     def get_by_user(self, db: Session, user_id: uuid.UUID) -> list[Payment]:
         """Return all payments made by a user, newest first."""
         return (
@@ -360,6 +399,18 @@ class PPFCreditRepository(BaseRepository[PPFCredit, Any, Any]):
 
     def get_by_payment_ref(self, db: Session, ref: str) -> Optional[PPFCredit]:
         return db.query(self.model).filter(self.model.payment_ref == ref).first()
+
+    def get_pending_instapay(self, db: Session) -> list[PPFCredit]:
+        """Return all InstaPay PPF credits awaiting admin review."""
+        return (
+            db.query(self.model)
+            .filter(
+                self.model.payment_method == "instapay",
+                self.model.status == "pending",
+            )
+            .order_by(self.model.created_at.asc())
+            .all()
+        )
 
 
 plan_repo = PlanRepository(Plan)

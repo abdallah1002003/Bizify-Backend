@@ -13,12 +13,14 @@ from app.models.platform_setting import PlatformSetting
 from app.models.user import User, UserRole
 from app.repositories.partner_repo import partner_repo
 from app.repositories.user_repo import user_repo
+from app.schemas.billing import InstapayPendingPayment
 from app.schemas.partner_profile import PartnerProfileRead
 from app.schemas.security_log import SecurityLogRead
 from app.schemas.user import UserRead
 from app.services.admin_service import AdminService
 from app.services.partner_service import PartnerService
 from app.services.user_service import UserService
+from app.services import payment_service
 
 logger = logging.getLogger(__name__)
 
@@ -314,3 +316,56 @@ def update_platform_config(
         raise HTTPException(status_code=500, detail="Failed to save settings") from exc
 
     return _load_platform_config(db)
+
+
+# ─────────────────────────────────────────────
+#  InstaPay – admin review endpoints
+# ─────────────────────────────────────────────
+
+@router.get("/billing/instapay/pending", response_model=list[InstapayPendingPayment])
+def list_instapay_pending(
+    db: Session = Depends(get_db),
+    _current_admin: User = Depends(RoleChecker([UserRole.ADMIN])),
+) -> list[InstapayPendingPayment]:
+    """List all pending InstaPay payments (subscriptions + PPF) awaiting review."""
+    return payment_service.list_pending_instapay(db)
+
+
+@router.post("/billing/instapay/{payment_id}/approve", response_model=dict)
+def approve_instapay(
+    payment_id: UUID,
+    db: Session = Depends(get_db),
+    _current_admin: User = Depends(RoleChecker([UserRole.ADMIN])),
+) -> dict:
+    """Approve an InstaPay subscription payment → activate the subscription."""
+    return payment_service.approve_instapay_payment(payment_id, db)
+
+
+@router.post("/billing/instapay/{payment_id}/reject", response_model=dict)
+def reject_instapay(
+    payment_id: UUID,
+    db: Session = Depends(get_db),
+    _current_admin: User = Depends(RoleChecker([UserRole.ADMIN])),
+) -> dict:
+    """Reject an InstaPay subscription payment."""
+    return payment_service.reject_instapay_payment(payment_id, db)
+
+
+@router.post("/billing/instapay/ppf/{ppf_credit_id}/approve", response_model=dict)
+def approve_instapay_ppf(
+    ppf_credit_id: UUID,
+    db: Session = Depends(get_db),
+    _current_admin: User = Depends(RoleChecker([UserRole.ADMIN])),
+) -> dict:
+    """Approve an InstaPay PPF credit → add sections to user balance."""
+    return payment_service.approve_instapay_ppf(ppf_credit_id, db)
+
+
+@router.post("/billing/instapay/ppf/{ppf_credit_id}/reject", response_model=dict)
+def reject_instapay_ppf(
+    ppf_credit_id: UUID,
+    db: Session = Depends(get_db),
+    _current_admin: User = Depends(RoleChecker([UserRole.ADMIN])),
+) -> dict:
+    """Reject an InstaPay PPF credit."""
+    return payment_service.reject_instapay_ppf(ppf_credit_id, db)
