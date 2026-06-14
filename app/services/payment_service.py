@@ -509,10 +509,11 @@ def create_instapay_subscription(
     Creates a PENDING subscription + PENDING payment with the reference number.
     Nothing is activated until an admin approves it.
     """
-    if not reference or not reference.strip():
+    ref = (reference or "").strip()
+    if not ref.isdigit() or len(ref) != 12:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="InstaPay reference number is required.",
+            detail="InstaPay reference number must be exactly 12 digits.",
         )
     plan = get_plan_or_404(plan_id, db)
 
@@ -524,7 +525,7 @@ def create_instapay_subscription(
         user_id=user_id,
         subscription_id=pending_sub.id,
         amount=plan.price,
-        instapay_reference=reference.strip(),
+        instapay_reference=ref,
         commit=True,
     )
     db.refresh(pending_sub)
@@ -549,10 +550,11 @@ def create_instapay_ppf(
     Creates a pending PPFCredit with payment_method='instapay'.
     Credits are added only after admin approval.
     """
-    if not reference or not reference.strip():
+    ref = (reference or "").strip()
+    if not ref.isdigit() or len(ref) != 12:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="InstaPay reference number is required.",
+            detail="InstaPay reference number must be exactly 12 digits.",
         )
     unit_price = get_ppf_price(feature_key)
     total = total_amount_override if total_amount_override is not None else (unit_price * quantity)
@@ -563,7 +565,7 @@ def create_instapay_ppf(
         quantity=quantity,
         amount=total,
         payment_method="instapay",
-        payment_ref=reference.strip(),
+        payment_ref=ref,
     )
     return {
         "ppf_credit_id": credit.id,
